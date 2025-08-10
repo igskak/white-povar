@@ -1,0 +1,127 @@
+project_name: White-Label Cooking App
+frontend:
+  tech_stack:
+    - Flutter 3.x
+    - Riverpod for state management
+    - Firebase Auth (email, Google, Apple)
+  structure:
+    lib:
+      - main.dart
+      - core:
+          - constants/
+          - theme/
+          - utils/
+      - data:
+          - models/
+          - services/
+      - features:
+          - recipes:
+              - presentation:
+                  - pages/
+                  - widgets/
+              - data:
+                  - recipe_repository.dart
+              - domain:
+                  - entities/
+                  - usecases/
+          - search:
+              - presentation/
+              - data/
+              - domain/
+      - shared:
+          - widgets/
+          - helpers/
+      - state:
+          - providers/
+    assets:
+      - images/
+      - icons/
+backend:
+  tech_stack:
+    - Python 3.x
+    - FastAPI
+    - Supabase (database + storage)
+    - OpenAI Vision API
+  structure:
+    app:
+      - main.py
+      - config.py
+      - api:
+          v1:
+            - endpoints:
+                - recipes.py
+                - search.py
+                - auth.py
+      - core:
+          - security.py
+          - settings.py
+      - models:
+          - recipe.py
+          - ingredient.py
+          - user.py
+      - schemas:
+          - recipe.py
+          - ingredient.py
+          - user.py
+      - services:
+          - openai_service.py
+          - database.py
+      - crud:
+          - recipe.py
+          - ingredient.py
+          - user.py
+    tests: []
+mvp_features:
+  - Recipe library with filters (time, difficulty, cuisine, category)
+  - Recipe detail page (ingredients, steps, photos, favorites)
+  - Search recipes by photo of ingredients (OpenAI Vision API)
+  - White-label customization (theme, logo, chef info)
+  - Basic auth
+later_features:
+  - User profiles with cloud favorites
+  - About the Chef page
+  - Voice search for recipes
+  - Paid content (subscriptions, books, courses)
+  - Push notifications
+api_endpoints:
+  - POST /auth/login
+  - POST /auth/register
+  - GET /recipes
+  - GET /recipes/{id}
+  - POST /search/photo
+development_plan:
+  phase_1_backend:
+    - Setup FastAPI project
+    - Mock /recipes endpoints
+    - Connect to DB
+    - Implement auth
+    - Implement /search/photo with OpenAI Vision
+  phase_2_frontend:
+    - Setup Flutter project
+    - Implement navigation
+    - Connect to backend
+    - Recipe list + detail
+    - Local favorites
+  phase_3_ai_search:
+    - Photo picker
+    - API integration
+    - Display results
+  phase_4_white_label:
+    - Theme customization
+    - CMS integration
+  phase_5_deployment:
+    - Deploy backend
+    - Build & release mobile apps
+deployment:
+  backend: Render or Railway or AWS
+  mobile: Android & iOS
+technical_decisions:
+  database: Supabase
+  state_management: Riverpod
+  image_storage: Supabase Storage
+  auth: Firebase Auth tokens
+  sample_data: AI-generated sample recipes
+  initial_chefs: 1 chef configuration
+notes:
+  - White-label approach: core app reused for multiple chefs
+  - Revenue share model: 50/50 after store commission
