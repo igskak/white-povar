@@ -9,7 +9,7 @@ ls -la
 
 echo "=== Installing dependencies ==="
 pip install --upgrade pip setuptools wheel
-echo "Installing from requirements-minimal.txt..."
-pip install -r requirements-minimal.txt
+echo "Installing from requirements-ultra-minimal.txt..."
+pip install -r requirements-ultra-minimal.txt
 
 echo "=== Build completed successfully ==="
