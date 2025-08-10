@@ -1,0 +1,19 @@
+# Production requirements - minimal set for deployment
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+supabase==2.3.4
+sqlalchemy==2.0.27
+asyncpg==0.29.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+httpx==0.26.0
+pydantic==2.6.1
+pydantic-settings==2.1.0
+openai==1.12.0
+python-dotenv==1.0.1
+python-json-logger==2.0.7
+gunicorn==21.2.0
+
+# Image processing - use system packages if possible
+pillow>=10.2.0,<11.0.0

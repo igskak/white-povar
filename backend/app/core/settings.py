@@ -26,11 +26,21 @@ class Settings(BaseSettings):
     # Firebase
     firebase_project_id: str
     
-    # CORS
-    allowed_origins: List[str] = ["*"]
+    # CORS - Production ready origins
+    allowed_origins: List[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "https://your-app.web.app",  # Replace with your Firebase Hosting domain
+        "https://your-app.firebaseapp.com",  # Replace with your Firebase Hosting domain
+    ]
     
     # Database
     database_url: Optional[str] = None
+
+    # File Storage
+    supabase_storage_bucket: str = "recipe-images"
+    max_file_size: int = 10 * 1024 * 1024  # 10MB
     
     class Config:
         env_file = ".env"
