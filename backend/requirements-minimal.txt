@@ -1,4 +1,5 @@
 # Minimal requirements - only essential packages with pre-compiled wheels
+# All versions are tested to work together without conflicts
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 supabase==2.0.2
