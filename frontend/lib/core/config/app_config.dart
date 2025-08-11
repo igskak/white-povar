@@ -8,12 +8,12 @@ class AppConfig {
   // Supabase Configuration
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://your-project.supabase.co',
+    defaultValue: 'https://qnlfvpqmkmbvzmzqgjpo.supabase.co',
   );
   
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'your-anon-key',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFubGZ2cHFta21idnptenFnanBvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ4NDQ2NDAsImV4cCI6MjA3MDQyMDY0MH0.ll2KBzdgAKUErgGKhgxKsDV3WWGDkfb3-hHCjPKtzxg',
   );
   
   // Environment

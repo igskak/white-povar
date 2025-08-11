@@ -47,11 +47,14 @@ dependencies:
   retrofit: ^4.0.3
   json_annotation: ^4.8.1
 
-  # Firebase (commented out for now)
-  # firebase_core: ^2.24.2
-  # firebase_auth: ^4.15.3
-  # google_sign_in: ^6.1.6
-  # sign_in_with_apple: ^5.0.0
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  google_sign_in: ^6.1.6
+  sign_in_with_apple: ^5.0.0
+
+  # Supabase
+  supabase_flutter: ^2.0.0
 
   # Local Storage
   shared_preferences: ^2.2.2
