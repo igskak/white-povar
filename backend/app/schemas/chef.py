@@ -12,11 +12,11 @@ class SocialLinks(BaseModel):
     website: Optional[HttpUrl] = None
 
 class ThemeConfig(BaseModel):
-    primary_color: str = Field(..., regex=r'^#[0-9A-Fa-f]{6}$')
-    secondary_color: str = Field(..., regex=r'^#[0-9A-Fa-f]{6}$')
-    accent_color: str = Field(..., regex=r'^#[0-9A-Fa-f]{6}$')
-    background_color: str = Field(..., regex=r'^#[0-9A-Fa-f]{6}$')
-    text_color: str = Field(..., regex=r'^#[0-9A-Fa-f]{6}$')
+    primary_color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
+    secondary_color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
+    accent_color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
+    background_color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
+    text_color: str = Field(..., pattern=r'^#[0-9A-Fa-f]{6}$')
     font_family: str = Field(default="Inter", min_length=1, max_length=50)
     
     @validator('primary_color', 'secondary_color', 'accent_color', 'background_color', 'text_color')

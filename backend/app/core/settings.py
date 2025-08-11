@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+import json
 
 
 class Settings(BaseSettings):
@@ -26,14 +27,8 @@ class Settings(BaseSettings):
     # Firebase
     firebase_project_id: str
     
-    # CORS - Production ready origins
-    allowed_origins: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:8080",
-        "https://your-app.web.app",  # Replace with your Firebase Hosting domain
-        "https://your-app.firebaseapp.com",  # Replace with your Firebase Hosting domain
-    ]
+    # CORS - Production ready origins  
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,https://your-app.web.app,https://your-app.firebaseapp.com"
     
     # Database
     database_url: Optional[str] = None
@@ -55,6 +50,11 @@ class Settings(BaseSettings):
             supabase_host = self.supabase_url.replace("https://", "").replace("http://", "")
             # Note: In production, you'd get the actual DB password from Supabase dashboard
             self.database_url = f"postgresql://postgres:password@{supabase_host}:5432/postgres"
+    
+    @property
+    def cors_origins(self) -> List[str]:
+        """Parse allowed_origins string into a list for CORS configuration"""
+        return [origin.strip() for origin in self.allowed_origins.split(",")]
 
 
 # Global settings instance
