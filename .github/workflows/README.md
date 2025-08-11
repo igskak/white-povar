@@ -87,3 +87,4 @@ You can trigger deployments manually:
 2. Verify all secrets are configured
 3. Test builds locally with same environment variables
 4. Check service status (Firebase, Render, Supabase)
+# Force GitHub Actions refresh - Mon Aug 11 23:40:02 CEST 2025
