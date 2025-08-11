@@ -34,7 +34,7 @@ White Povar/
 
 ### Frontend (Flutter)
 - **Cross-Platform**: Runs on iOS, Android, and Web
-- **Authentication**: Email/password login with social auth support (Google, Apple)
+- **Authentication**: Firebase Auth ready; Supabase client configured in app
 - **Recipe Browsing**: Beautiful recipe cards with filtering and search
 - **Responsive Design**: Adaptive UI that works on all screen sizes
 - **State Management**: Riverpod for efficient state management
@@ -55,6 +55,8 @@ White Povar/
 - **Go Router**: Declarative routing
 - **Dio**: HTTP client for API communication
 - **Hive**: Local storage solution
+- **Supabase Flutter**: Database, auth, storage
+- **Firebase Core/Auth**: Platform auth integration and hosting
 
 ## Getting Started
 
@@ -95,18 +97,24 @@ White Povar/
    cd frontend
    ```
 
-2. Install dependencies:
+2. Install dependencies (includes Supabase and Firebase):
    ```bash
    flutter pub get
    ```
 
-3. Run the app:
+3. Run the app (pass runtime config with dart-define):
    ```bash
    # For web
-   flutter run -d chrome --web-port 3000
+   flutter run -d chrome --web-port 3000 \
+     --dart-define=API_BASE_URL=http://localhost:8000 \
+     --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
+     --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
 
    # For mobile (with device/emulator connected)
-   flutter run
+   flutter run \
+     --dart-define=API_BASE_URL=http://10.0.2.2:8000 \
+     --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
+     --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
    ```
 
 4. Access the app at: http://localhost:3000
@@ -279,9 +287,12 @@ White Povar/
    firebase init hosting
    ```
 
-2. **Build and Deploy**:
+2. **Build and Deploy** (provide runtime config):
    ```bash
-   flutter build web --release
+   flutter build web --release \
+     --dart-define=API_BASE_URL=https://your-backend.example.com \
+     --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
+     --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
    firebase deploy
    ```
 
