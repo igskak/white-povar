@@ -335,46 +335,64 @@ White Povar/
    ```
 
 ### Automated Deployment Pipeline
-Since GitHub is connected to Render, deployments are automatic:
 
-1. **Backend Auto-Deploy**:
-   - Push to `main` branch triggers Render deployment
-   - Render automatically builds and deploys the FastAPI backend
-   - Environment variables are preserved across deployments
+This project includes complete CI/CD automation via GitHub Actions:
 
-2. **Frontend CI/CD** (GitHub Actions):
-   ```yaml
-   # .github/workflows/deploy-frontend.yml
-   name: Deploy Frontend to Firebase
-   on:
-     push:
-       branches: [main]
-       paths: ['frontend/**']
+#### CI/CD Workflows
 
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v3
-         - uses: subosito/flutter-action@v2
-           with:
-             flutter-version: '3.16.0'
-         - name: Install dependencies
-           run: |
-             cd frontend
-             flutter pub get
-         - name: Build web
-           run: |
-             cd frontend
-             flutter build web --release
-         - name: Deploy to Firebase
-           uses: FirebaseExtended/action-hosting-deploy@v0
-           with:
-             repoToken: '${{ secrets.GITHUB_TOKEN }}'
-             firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
-             projectId: your-firebase-project-id
-             channelId: live
+1. **Continuous Integration** (`ci.yml`):
+   - Runs on all pushes and PRs
+   - Tests frontend (Flutter analysis, tests, build)
+   - Tests backend (Python linting, tests, import validation)
+
+2. **Frontend Deployment** (`deploy-frontend.yml`):
+   - Triggers on main branch pushes to `frontend/` directory
+   - Builds Flutter web with production configuration
+   - Deploys to Firebase Hosting
+   - Creates preview deployments for PRs
+
+3. **Backend Deployment** (`deploy-backend.yml`):
+   - Triggers on main branch pushes to `backend/` directory
+   - Runs tests and linting
+   - Triggers Render deployment via webhook
+
+#### Required GitHub Secrets
+
+Set these in your GitHub repository Settings → Secrets and variables → Actions:
+
+**Frontend:**
+- `FIREBASE_TOKEN`: Firebase deployment token
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anonymous key
+- `API_BASE_URL`: Backend API URL (optional)
+
+**Backend:**
+- `RENDER_DEPLOY_HOOK`: Render.com deployment webhook URL
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_ANON_KEY`: Supabase anonymous key
+- `SUPABASE_SERVICE_KEY`: Supabase service role key
+- `OPENAI_API_KEY`: OpenAI API key for AI features
+- `SECRET_KEY`: JWT secret key for authentication
+
+#### Setup GitHub Actions
+
+1. **Get Firebase Token**:
+   ```bash
+   npm install -g firebase-tools
+   firebase login:ci
+   # Copy the token to GitHub Secrets as FIREBASE_TOKEN
    ```
+
+2. **Get Render Deploy Hook**:
+   - Go to your Render service → Settings → Deploy Hook
+   - Copy the webhook URL to GitHub Secrets as `RENDER_DEPLOY_HOOK`
+
+3. **Manual Deployment**:
+   - Go to Actions tab in GitHub
+   - Select desired workflow
+   - Click "Run workflow" to deploy manually
+
+See `.github/workflows/README.md` for detailed CI/CD documentation.
 
 ### File Storage (Supabase Storage)
 1. **Setup Storage Bucket**:
