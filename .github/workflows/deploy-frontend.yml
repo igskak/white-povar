@@ -14,19 +14,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         
-      - name: Setup Dart SDK 3.5.4
-        uses: dart-lang/setup-dart@v1.6.5
-        with:
-          sdk: '3.5.4'
-          
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
           
-      - name: Verify Dart version
-        run: dart --version
+      - name: Verify Flutter and Dart versions
+        run: |
+          flutter --version
+          dart --version
           
       - name: Install dependencies
         run: |
