@@ -3,23 +3,23 @@ fastapi==0.109.2
 uvicorn[standard]==0.27.1
 
 # Database and ORM
-supabase==2.3.4
-sqlalchemy==2.0.27
-alembic==1.13.1
-asyncpg==0.29.0  # Async PostgreSQL driver
+supabase>=2.3.0,<3.0.0
+sqlalchemy>=2.0.25,<2.1.0
+alembic>=1.13.0,<2.0.0
+asyncpg>=0.29.0,<1.0.0  # Async PostgreSQL driver
 
 # Authentication and Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
 
-# HTTP client and validation
-httpx==0.26.0
-pydantic==2.6.1
-pydantic-settings==2.1.0
+# HTTP client and validation (compatible with supabase)
+httpx>=0.24.0,<0.26.0
+pydantic>=2.9.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
 
 # OpenAI integration
-openai==1.12.0
+openai>=1.12.0,<2.0.0
 
 # Utilities
 python-dotenv==1.0.1
