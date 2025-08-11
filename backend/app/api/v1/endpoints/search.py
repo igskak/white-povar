@@ -11,7 +11,7 @@ from app.schemas.recipe import Recipe
 from app.services.database import supabase_service
 from app.services.openai_service import openai_service
 from app.core.security import get_current_user
-from app.models.chef import Chef
+from app.schemas.chef import Chef
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

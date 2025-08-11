@@ -175,3 +175,17 @@ def get_auth_service():
         return MockAuth()
     else:
         return firebase_auth
+
+# FastAPI Dependencies  
+async def get_current_user():
+    """
+    Simplified dependency for development - returns mock chef data
+    TODO: Implement proper authentication in production
+    """
+    # Return a simple dict for now to avoid circular imports
+    return {
+        "id": "mock-chef-id",
+        "name": "Mock Chef", 
+        "bio": "Mock chef for development",
+        "app_name": "Mock App"
+    }

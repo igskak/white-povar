@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.services.ai_service import ai_service
 from app.core.security import get_current_user
-from app.models.chef import Chef
+from app.schemas.chef import Chef
 import logging
 
 logger = logging.getLogger(__name__)
