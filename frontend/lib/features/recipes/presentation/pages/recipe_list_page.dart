@@ -6,6 +6,7 @@ import '../../providers/recipe_provider.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/recipe_filter_bar.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../ai/widgets/ai_assistant_button.dart';
 
 class RecipeListPage extends ConsumerStatefulWidget {
   const RecipeListPage({super.key});
@@ -45,6 +46,7 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
             icon: const Icon(Icons.search),
             onPressed: () => context.push('/search'),
           ),
+          const AIAssistantIconButton(),
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
@@ -85,7 +87,7 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
         children: [
           // Filter Bar
           const RecipeFilterBar(),
-          
+
           // Recipe List
           Expanded(
             child: recipeState.when(

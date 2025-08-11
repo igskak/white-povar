@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 from app.core.settings import settings
-from app.api.v1.endpoints import recipes, search, auth
+from app.api.v1.endpoints import recipes, search, auth, ai
 
 # Create FastAPI application
 app = FastAPI(
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(recipes.router, prefix="/recipes", tags=["recipes"])
 app.include_router(search.router, prefix="/search", tags=["search"])
+app.include_router(ai.router, prefix="/ai", tags=["ai-assistant"])
 
 @app.get("/")
 async def root():

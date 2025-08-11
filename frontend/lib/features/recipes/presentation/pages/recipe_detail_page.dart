@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../providers/recipe_provider.dart';
+import '../../../ai/widgets/ai_assistant_button.dart';
 
 class RecipeDetailPage extends ConsumerWidget {
   final String recipeId;
@@ -54,7 +55,7 @@ class RecipeDetailPage extends ConsumerWidget {
                       ),
               ),
             ),
-            
+
             // Recipe Content
             SliverToBoxAdapter(
               child: Padding(
@@ -71,11 +72,11 @@ class RecipeDetailPage extends ConsumerWidget {
                     Text(
                       recipe.description,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                            color: Colors.grey[600],
+                          ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Recipe Stats
                     Row(
                       children: [
@@ -98,9 +99,9 @@ class RecipeDetailPage extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Ingredients Section
                     Text(
                       'Ingredients',
@@ -108,30 +109,30 @@ class RecipeDetailPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     ...recipe.ingredients.map((ingredient) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor,
-                              shape: BoxShape.circle,
-                            ),
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  '${ingredient.amount} ${ingredient.unit} ${ingredient.name}',
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              '${ingredient.amount} ${ingredient.unit} ${ingredient.name}',
-                              style: Theme.of(context).textTheme.bodyLarge,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                    
+                        )),
+
                     const SizedBox(height: 24),
-                    
+
                     // Instructions Section
                     Text(
                       'Instructions',
@@ -205,6 +206,16 @@ class RecipeDetailPage extends ConsumerWidget {
           ),
         ),
       ),
+      floatingActionButton: recipeAsync.when(
+        data: (recipe) => AIAssistantButton(
+          recipeTitle: recipe.title,
+          ingredients: recipe.ingredients.map((ing) => ing.name).toList(),
+          instructions: recipe.instructions,
+          context: 'Recipe: ${recipe.title}',
+        ),
+        loading: () => null,
+        error: (_, __) => null,
+      ),
     );
   }
 }
@@ -236,14 +247,14 @@ class _StatCard extends StatelessWidget {
             Text(
               value,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
           ],
         ),
