@@ -43,10 +43,11 @@ jobs:
     - name: Run tests
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SECRET_KEY: ${{ secrets.SECRET_KEY || 'test-secret-key-for-ci' }}
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID || 'test-firebase-project' }}
       run: |
         pytest tests/ -v || echo "No tests found, skipping..."
         
