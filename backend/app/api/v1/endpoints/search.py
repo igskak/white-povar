@@ -1,17 +1,64 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, status, Depends, Query
+from typing import List, Optional, Dict, Any
 import logging
 import base64
 import io
 from PIL import Image
+from pydantic import BaseModel
 
 from app.schemas.search import PhotoSearchRequest, PhotoSearchResponse, TextSearchRequest, TextSearchResponse
 from app.schemas.recipe import Recipe
 from app.services.database import supabase_service
 from app.services.openai_service import openai_service
+from app.core.security import get_current_user
+from app.models.chef import Chef
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Advanced Search Models
+class AdvancedSearchFilters(BaseModel):
+    query: Optional[str] = None
+    cuisine: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: Optional[int] = None
+    max_prep_time: Optional[int] = None
+    max_cook_time: Optional[int] = None
+    max_total_time: Optional[int] = None
+    dietary_restrictions: Optional[List[str]] = None
+    ingredients: Optional[List[str]] = None
+    chef_id: Optional[str] = None
+    is_featured: Optional[bool] = None
+    tags: Optional[List[str]] = None
+    min_servings: Optional[int] = None
+    max_servings: Optional[int] = None
+    sort_by: str = "created_at"
+    sort_order: str = "desc"
+
+class AdvancedSearchResponse(BaseModel):
+    recipes: List[Recipe]
+    total_count: int
+    page: int
+    page_size: int
+    total_pages: int
+    has_next: bool
+    has_prev: bool
+    filters_applied: Dict[str, Any]
+
+class SearchSuggestions(BaseModel):
+    recipes: List[str]
+    cuisines: List[str]
+    ingredients: List[str]
+    tags: List[str]
+
+class FilterOptions(BaseModel):
+    cuisines: List[str]
+    categories: List[str]
+    difficulty_range: Dict[str, int]
+    time_ranges: Dict[str, Dict[str, int]]
+    servings_range: Dict[str, int]
+    popular_tags: List[str]
+    dietary_restrictions: List[str]
 
 @router.post("/photo", response_model=PhotoSearchResponse)
 async def search_by_photo(request: PhotoSearchRequest):
@@ -228,7 +275,214 @@ async def get_search_suggestions(
                 break
         
         return {"suggestions": suggestions}
-        
+
     except Exception as e:
         logger.error(f"Error getting search suggestions: {str(e)}")
         return {"suggestions": []}
+
+@router.post("/advanced", response_model=AdvancedSearchResponse)
+async def advanced_search(
+    filters: AdvancedSearchFilters,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    current_user: Chef = Depends(get_current_user)
+):
+    """
+    Advanced recipe search with comprehensive filtering
+    """
+    try:
+        # Build search query for Supabase
+        query_filters = {}
+
+        # Apply filters
+        if filters.chef_id:
+            query_filters['chef_id'] = filters.chef_id
+
+        if filters.cuisine:
+            query_filters['cuisine'] = f"ilike.%{filters.cuisine}%"
+
+        if filters.category:
+            query_filters['category'] = f"ilike.%{filters.category}%"
+
+        if filters.difficulty:
+            query_filters['difficulty'] = f"eq.{filters.difficulty}"
+
+        if filters.max_prep_time:
+            query_filters['prep_time_minutes'] = f"lte.{filters.max_prep_time}"
+
+        if filters.max_cook_time:
+            query_filters['cook_time_minutes'] = f"lte.{filters.max_cook_time}"
+
+        if filters.max_total_time:
+            query_filters['total_time_minutes'] = f"lte.{filters.max_total_time}"
+
+        if filters.min_servings:
+            query_filters['servings'] = f"gte.{filters.min_servings}"
+
+        if filters.max_servings:
+            query_filters['servings'] = f"lte.{filters.max_servings}"
+
+        if filters.is_featured is not None:
+            query_filters['is_featured'] = f"eq.{filters.is_featured}"
+
+        # Calculate offset for pagination
+        offset = (page - 1) * page_size
+
+        # Execute search
+        result = await supabase_service.get_recipes(
+            filters=query_filters,
+            limit=page_size,
+            offset=offset
+        )
+
+        recipes = []
+        if result.data:
+            for recipe_data in result.data:
+                # Get ingredients for each recipe
+                ingredients_result = await supabase_service.execute_query(
+                    'ingredients', 'select',
+                    filters={'recipe_id': recipe_data['id']}
+                )
+                recipe_data['ingredients'] = ingredients_result.data or []
+
+                # Apply text search filter if provided
+                if filters.query:
+                    query_lower = filters.query.lower()
+                    title_match = query_lower in recipe_data.get('title', '').lower()
+                    desc_match = query_lower in recipe_data.get('description', '').lower()
+                    ingredient_match = any(
+                        query_lower in ing.get('name', '').lower()
+                        for ing in recipe_data['ingredients']
+                    )
+
+                    if not (title_match or desc_match or ingredient_match):
+                        continue
+
+                # Apply dietary restrictions filter
+                if filters.dietary_restrictions:
+                    recipe_tags = recipe_data.get('tags', []) or []
+                    if not any(restriction in recipe_tags for restriction in filters.dietary_restrictions):
+                        continue
+
+                # Apply tags filter
+                if filters.tags:
+                    recipe_tags = recipe_data.get('tags', []) or []
+                    if not any(tag in recipe_tags for tag in filters.tags):
+                        continue
+
+                # Apply ingredients filter
+                if filters.ingredients:
+                    recipe_ingredients = [ing.get('name', '').lower() for ing in recipe_data['ingredients']]
+                    if not any(
+                        any(filter_ing.lower() in recipe_ing for recipe_ing in recipe_ingredients)
+                        for filter_ing in filters.ingredients
+                    ):
+                        continue
+
+                recipe = Recipe(**recipe_data)
+                recipes.append(recipe)
+
+        # Get total count (simplified - in production you'd do a separate count query)
+        total_count = len(recipes)
+        total_pages = (total_count + page_size - 1) // page_size
+
+        return AdvancedSearchResponse(
+            recipes=recipes,
+            total_count=total_count,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            has_next=page < total_pages,
+            has_prev=page > 1,
+            filters_applied=filters.model_dump(exclude_none=True)
+        )
+
+    except Exception as e:
+        logger.error(f"Advanced search error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Advanced search failed"
+        )
+
+@router.get("/filters", response_model=FilterOptions)
+async def get_filter_options():
+    """
+    Get available filter options for the search interface
+    """
+    try:
+        # Get all recipes to analyze available options
+        result = await supabase_service.get_recipes(filters={}, limit=1000, offset=0)
+
+        cuisines = set()
+        categories = set()
+        difficulties = []
+        prep_times = []
+        cook_times = []
+        total_times = []
+        servings = []
+        all_tags = set()
+
+        if result.data:
+            for recipe_data in result.data:
+                if recipe_data.get('cuisine'):
+                    cuisines.add(recipe_data['cuisine'])
+
+                if recipe_data.get('category'):
+                    categories.add(recipe_data['category'])
+
+                if recipe_data.get('difficulty'):
+                    difficulties.append(recipe_data['difficulty'])
+
+                if recipe_data.get('prep_time_minutes'):
+                    prep_times.append(recipe_data['prep_time_minutes'])
+
+                if recipe_data.get('cook_time_minutes'):
+                    cook_times.append(recipe_data['cook_time_minutes'])
+
+                if recipe_data.get('total_time_minutes'):
+                    total_times.append(recipe_data['total_time_minutes'])
+
+                if recipe_data.get('servings'):
+                    servings.append(recipe_data['servings'])
+
+                if recipe_data.get('tags'):
+                    all_tags.update(recipe_data['tags'])
+
+        return FilterOptions(
+            cuisines=sorted(list(cuisines)),
+            categories=sorted(list(categories)),
+            difficulty_range={
+                "min": min(difficulties) if difficulties else 1,
+                "max": max(difficulties) if difficulties else 5
+            },
+            time_ranges={
+                "prep_time": {
+                    "min": min(prep_times) if prep_times else 0,
+                    "max": max(prep_times) if prep_times else 180
+                },
+                "cook_time": {
+                    "min": min(cook_times) if cook_times else 0,
+                    "max": max(cook_times) if cook_times else 300
+                },
+                "total_time": {
+                    "min": min(total_times) if total_times else 0,
+                    "max": max(total_times) if total_times else 480
+                }
+            },
+            servings_range={
+                "min": min(servings) if servings else 1,
+                "max": max(servings) if servings else 12
+            },
+            popular_tags=sorted(list(all_tags))[:20],  # Top 20 tags
+            dietary_restrictions=[
+                "vegetarian", "vegan", "gluten-free", "dairy-free",
+                "nut-free", "low-carb", "keto", "paleo", "low-sodium"
+            ]
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting filter options: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get filter options"
+        )
