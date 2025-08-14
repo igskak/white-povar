@@ -1,6 +1,6 @@
 import httpx
 import json
-import jwt
+from jose import jwt
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
 import logging
