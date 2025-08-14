@@ -13,8 +13,14 @@ class OpenAIService:
     """Service for OpenAI API interactions, specifically Vision API for ingredient detection"""
     
     def __init__(self):
-        openai.api_key = settings.openai_api_key
-        self.client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = None
+        
+    @property
+    def client(self):
+        """Lazy-load OpenAI client to avoid validation during import"""
+        if self._client is None:
+            self._client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
+        return self._client
     
     async def analyze_ingredients(self, base64_image: str) -> Dict[str, Any]:
         """

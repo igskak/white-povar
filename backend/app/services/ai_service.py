@@ -8,8 +8,14 @@ logger = logging.getLogger(__name__)
 
 class AIService:
     def __init__(self):
-        openai.api_key = settings.openai_api_key
-        self.client = openai.OpenAI(api_key=settings.openai_api_key)
+        self._client = None
+        
+    @property
+    def client(self):
+        """Lazy-load OpenAI client to avoid validation during import"""
+        if self._client is None:
+            self._client = openai.OpenAI(api_key=settings.openai_api_key)
+        return self._client
     
     async def generate_recipe_suggestions(
         self, 
