@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/recipe.dart';
 import '../../../core/config/app_config.dart';
@@ -23,7 +22,7 @@ class RecipeService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('${AppConfig.recipesEndpoint}'),
+        Uri.parse(AppConfig.recipesEndpoint),
         headers: headers,
       );
 
@@ -63,7 +62,7 @@ class RecipeService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.post(
-        Uri.parse('${AppConfig.recipesEndpoint}'),
+        Uri.parse(AppConfig.recipesEndpoint),
         headers: headers,
         body: jsonEncode(recipe.toJson()),
       );

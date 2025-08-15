@@ -158,10 +158,12 @@ class AuthService {
       );
 
       if (response.statusCode != 200) {
-        print('Warning: Failed to sync user with backend: ${response.statusCode}');
+        // Log warning for debugging
+        debugPrint('Warning: Failed to sync user with backend: ${response.statusCode}');
       }
     } catch (e) {
-      print('Warning: Failed to sync user with backend: $e');
+      // Log error for debugging
+      debugPrint('Warning: Failed to sync user with backend: $e');
     }
   }
 

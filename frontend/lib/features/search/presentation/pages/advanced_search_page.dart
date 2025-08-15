@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../providers/search_provider.dart';
 import '../../models/search_filters.dart';
-import '../widgets/search_filters_panel.dart';
-import '../widgets/search_results_list.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/search_suggestions_widget.dart';
 
@@ -24,7 +21,6 @@ class AdvancedSearchPage extends ConsumerStatefulWidget {
 class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  bool _showFilters = false;
   bool _showSuggestions = false;
 
   @override
@@ -69,7 +65,6 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
     final filters = searchState.filters.copyWith(query: query);
     
     ref.read(searchProvider.notifier).search(filters: filters);
-    ref.read(searchHistoryProvider.notifier).addSearch(query);
     
     _searchFocusNode.unfocus();
     setState(() {
@@ -80,12 +75,6 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
   void _onSuggestionSelected(String suggestion) {
     _searchController.text = suggestion;
     _performSearch();
-  }
-
-  void _toggleFilters() {
-    setState(() {
-      _showFilters = !_showFilters;
-    });
   }
 
   void _clearSearch() {
@@ -99,22 +88,16 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
   @override
   Widget build(BuildContext context) {
     final searchState = ref.watch(searchProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Recipes'),
+        title: const Text('Advanced Search'),
         actions: [
           IconButton(
-            icon: Icon(_showFilters ? Icons.filter_list : Icons.filter_list_outlined),
-            onPressed: _toggleFilters,
-            tooltip: 'Filters',
+            onPressed: _clearSearch,
+            icon: const Icon(Icons.clear),
+            tooltip: 'Clear search',
           ),
-          if (searchState.hasResults)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: _clearSearch,
-              tooltip: 'Clear search',
-            ),
         ],
       ),
       body: Column(
@@ -174,43 +157,45 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
           
           // Content Area
           Expanded(
-            child: Row(
+            child: Stack(
               children: [
-                // Filters Panel
-                if (_showFilters)
-                  Container(
-                    width: 300,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: BorderSide(
-                          color: Theme.of(context).dividerColor,
+                // Search Results Placeholder
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Search for recipes',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.grey[600],
                         ),
                       ),
-                    ),
-                    child: const SearchFiltersPanel(),
-                  ),
-                
-                // Main Content
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // Search Results
-                      const SearchResultsList(),
-                      
-                      // Search Suggestions Overlay
-                      if (_showSuggestions)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          child: SearchSuggestionsWidget(
-                            query: _searchController.text,
-                            onSuggestionSelected: _onSuggestionSelected,
-                          ),
-                        ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Use the search bar above to find recipes',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
                     ],
                   ),
                 ),
+                
+                // Search Suggestions Overlay
+                if (_showSuggestions)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: SearchSuggestionsWidget(
+                      query: _searchController.text,
+                      onSuggestionSelected: _onSuggestionSelected,
+                    ),
+                  ),
               ],
             ),
           ),
