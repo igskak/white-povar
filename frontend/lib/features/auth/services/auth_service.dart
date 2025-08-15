@@ -78,7 +78,7 @@ class AuthService {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb ? null : 'io.supabase.cookingapp://login-callback',
+        redirectTo: kIsWeb ? 'https://white-povar.web.app/auth/callback' : 'io.supabase.cookingapp://login-callback',
       );
       
       // For OAuth, we need to wait for the redirect to complete

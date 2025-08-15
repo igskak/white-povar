@@ -7,6 +7,7 @@ import '../../features/recipes/presentation/pages/recipe_list_page.dart';
 import '../../features/recipes/presentation/pages/recipe_detail_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/auth/presentation/pages/auth_callback_page.dart';
 
 // Route names
 class AppRoutes {
@@ -15,6 +16,7 @@ class AppRoutes {
   static const String recipes = '/recipes';
   static const String recipeDetail = '/recipes/:id';
   static const String search = '/search';
+  static const String authCallback = '/auth/callback';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -43,6 +45,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         name: 'login',
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.authCallback,
+        name: 'auth-callback',
+        builder: (context, state) => const AuthCallbackPage(),
       ),
       GoRoute(
         path: AppRoutes.home,
