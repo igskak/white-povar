@@ -41,13 +41,7 @@ jobs:
     - name: Run tests
       run: flutter test
       
-    - name: Build web (test)
-      run: |
-        flutter build web \
-          --dart-define=API_BASE_URL=https://test-api.example.com \
-          --dart-define=SUPABASE_URL=https://test.supabase.co \
-          --dart-define=SUPABASE_ANON_KEY=test-key \
-          --release
+    # Removed duplicate build step - this is handled by deploy-frontend.yml
 
   backend-ci:
     runs-on: ubuntu-latest
