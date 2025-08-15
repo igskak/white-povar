@@ -1,45 +1,45 @@
 import 'package:equatable/equatable.dart';
-import '../services/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class AuthState extends Equatable {
+class AppAuthState extends Equatable {
   final bool isLoading;
   final bool isAuthenticated;
-  final MockUser? user;
+  final User? user;
   final String? error;
 
-  const AuthState._({
+  const AppAuthState._({
     required this.isLoading,
     required this.isAuthenticated,
     this.user,
     this.error,
   });
 
-  const AuthState.initial()
+  const AppAuthState.initial()
       : this._(
           isLoading: false,
           isAuthenticated: false,
         );
 
-  const AuthState.loading()
+  const AppAuthState.loading()
       : this._(
           isLoading: true,
           isAuthenticated: false,
         );
 
-  const AuthState.authenticated(MockUser user)
+  const AppAuthState.authenticated(User user)
       : this._(
           isLoading: false,
           isAuthenticated: true,
           user: user,
         );
 
-  const AuthState.unauthenticated()
+  const AppAuthState.unauthenticated()
       : this._(
           isLoading: false,
           isAuthenticated: false,
         );
 
-  const AuthState.error(String error)
+  const AppAuthState.error(String error)
       : this._(
           isLoading: false,
           isAuthenticated: false,

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     firebase_project_id: str
     
     # CORS - Production ready origins  
-    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,https://your-app.web.app,https://your-app.firebaseapp.com"
+    allowed_origins: str = "https://white-povar.web.app,https://white-povar.firebaseapp.com,http://localhost:3000,http://localhost:8080"
     
     # Database
     database_url: Optional[str] = None

@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "678384767745",
+    "project_id": "white-povar",
+    "storage_bucket": "white-povar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678384767745:android:0360e6dc732ec21dbd0100",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "678384767745-ef5foegi0lt1se8799d21hg3ou3ml3mp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeC0agp9k3m8TXxCvv_Vn0tWeMgWbCv1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "678384767745-ef5foegi0lt1se8799d21hg3ou3ml3mp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "678384767745-5tj6arih95kmojg6j04m4eaups4pjnrq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.whitePovar"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678384767745:android:1170c48279073616bd0100",
+        "android_client_info": {
+          "package_name": "com.example.white_povar"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "678384767745-ef5foegi0lt1se8799d21hg3ou3ml3mp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeC0agp9k3m8TXxCvv_Vn0tWeMgWbCv1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "678384767745-ef5foegi0lt1se8799d21hg3ou3ml3mp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "678384767745-5tj6arih95kmojg6j04m4eaups4pjnrq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.whitePovar"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -14,14 +14,12 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: SUPABASE_URL
-        sync: false  # Set manually in Render dashboard
+        value: ${{ secrets.SUPABASE_URL }}
       - key: SUPABASE_KEY
-        sync: false  # Set manually in Render dashboard
+        value: ${{ secrets.SUPABASE_ANON_KEY }}
       - key: SUPABASE_SERVICE_KEY
-        sync: false  # Set manually in Render dashboard
-      - key: DATABASE_URL
-        sync: false  # Set manually in Render dashboard
+        value: ${{ secrets.SUPABASE_SERVICE_KEY }}
       - key: OPENAI_API_KEY
-        sync: false  # Set manually in Render dashboard
+        value: ${{ secrets.OPENAI_API_KEY }}
       - key: FIREBASE_PROJECT_ID
-        sync: false  # Set manually in Render dashboard
+        value: ${{ secrets.FIREBASE_PROJECT_ID }}

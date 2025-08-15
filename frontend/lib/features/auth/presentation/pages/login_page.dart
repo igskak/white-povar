@@ -14,7 +14,7 @@ class LoginPage extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     // Listen to auth state changes
-    ref.listen<AuthState>(authProvider, (previous, next) {
+    ref.listen<AppAuthState>(authProvider, (previous, next) {
       if (next.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

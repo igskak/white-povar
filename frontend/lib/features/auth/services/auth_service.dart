@@ -1,155 +1,107 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-
-// Mock User class to replace Firebase User
-class MockUser {
-  final String uid;
-  final String? email;
-  final String? displayName;
-  final String? photoURL;
-
-  MockUser({
-    required this.uid,
-    this.email,
-    this.displayName,
-    this.photoURL,
-  });
-}
-
-// Mock UserCredential class
-class MockUserCredential {
-  final MockUser user;
-
-  MockUserCredential({required this.user});
-}
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../../../core/config/app_config.dart';
 
 class AuthService {
-  final StreamController<MockUser?> _authStateController =
-      StreamController<MockUser?>.broadcast();
-  MockUser? _currentUser;
+  final SupabaseClient _supabase = Supabase.instance.client;
+  final StreamController<User?> _authStateController =
+      StreamController<User?>.broadcast();
+  User? _currentUser;
 
   // Stream of auth state changes
-  Stream<MockUser?> get authStateChanges => _authStateController.stream;
+  Stream<User?> get authStateChanges => _authStateController.stream;
 
   // Current user
-  MockUser? get currentUser => _currentUser;
+  User? get currentUser => _currentUser ?? _supabase.auth.currentUser;
+
+  // Initialize auth state
+  void initialize() {
+    _currentUser = _supabase.auth.currentUser;
+    _authStateController.add(_currentUser);
+    
+    // Listen to Supabase auth state changes
+    _supabase.auth.onAuthStateChange.listen((data) {
+      _currentUser = data.session?.user;
+      _authStateController.add(_currentUser);
+    });
+  }
 
   // Sign in with email and password
-  Future<MockUserCredential> signInWithEmail(
-      String email, String password) async {
+  Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Mock validation
-      if (email.isEmpty || password.isEmpty) {
-        throw Exception('Email and password are required');
-      }
-
-      if (!email.contains('@')) {
-        throw Exception('Invalid email address');
-      }
-
-      if (password.length < 6) {
-        throw Exception('Password must be at least 6 characters');
-      }
-
-      // Create mock user
-      final user = MockUser(
-        uid: 'mock_${email.hashCode}',
+      final response = await _supabase.auth.signInWithPassword(
         email: email,
-        displayName: email.split('@')[0],
+        password: password,
       );
-
-      _currentUser = user;
-      _authStateController.add(user);
-
-      return MockUserCredential(user: user);
+      
+      if (response.user != null) {
+        _currentUser = response.user;
+        _authStateController.add(response.user);
+        
+        // Sync with backend
+        await _syncUserWithBackend(response.user!);
+      }
+      
+      return response;
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception('Sign in failed: $e');
     }
   }
 
   // Sign up with email and password
-  Future<MockUserCredential> signUpWithEmail(
-      String email, String password) async {
+  Future<AuthResponse> signUpWithEmail(String email, String password) async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Mock validation
-      if (email.isEmpty || password.isEmpty) {
-        throw Exception('Email and password are required');
-      }
-
-      if (!email.contains('@')) {
-        throw Exception('Invalid email address');
-      }
-
-      if (password.length < 6) {
-        throw Exception('Password must be at least 6 characters');
-      }
-
-      // Create mock user
-      final user = MockUser(
-        uid: 'mock_${email.hashCode}',
+      final response = await _supabase.auth.signUp(
         email: email,
-        displayName: email.split('@')[0],
+        password: password,
       );
-
-      _currentUser = user;
-      _authStateController.add(user);
-
-      return MockUserCredential(user: user);
+      
+      if (response.user != null) {
+        _currentUser = response.user;
+        _authStateController.add(response.user);
+        
+        // Sync with backend
+        await _syncUserWithBackend(response.user!);
+      }
+      
+      return response;
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception('Sign up failed: $e');
     }
   }
 
   // Sign in with Google
-  Future<MockUserCredential> signInWithGoogle() async {
+  Future<void> signInWithGoogle() async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Create mock Google user
-      final user = MockUser(
-        uid: 'google_mock_user',
-        email: 'user@gmail.com',
-        displayName: 'Google User',
-        photoURL: 'https://via.placeholder.com/150',
+      await _supabase.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'io.supabase.cookingapp://login-callback',
       );
-
-      _currentUser = user;
-      _authStateController.add(user);
-
-      return MockUserCredential(user: user);
+      
+      // For OAuth, we need to wait for the redirect to complete
+      // The user will be updated via the auth state listener
     } catch (e) {
       throw Exception('Google sign in failed: $e');
     }
   }
 
   // Sign in with Apple (iOS only)
-  Future<MockUserCredential> signInWithApple() async {
+  Future<void> signInWithApple() async {
     if (kIsWeb) {
       throw Exception('Apple sign in is not available on web');
     }
 
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Create mock Apple user
-      final user = MockUser(
-        uid: 'apple_mock_user',
-        email: 'user@privaterelay.appleid.com',
-        displayName: 'Apple User',
+      await _supabase.auth.signInWithOAuth(
+        OAuthProvider.apple,
+        redirectTo: 'io.supabase.cookingapp://login-callback',
       );
-
-      _currentUser = user;
-      _authStateController.add(user);
-
-      return MockUserCredential(user: user);
+      
+      // For OAuth, we need to wait for the redirect to complete
+      // The user will be updated via the auth state listener
     } catch (e) {
       throw Exception('Apple sign in failed: $e');
     }
@@ -157,29 +109,60 @@ class AuthService {
 
   // Sign out
   Future<void> signOut() async {
-    _currentUser = null;
-    _authStateController.add(null);
+    try {
+      await _supabase.auth.signOut();
+      _currentUser = null;
+      _authStateController.add(null);
+    } catch (e) {
+      throw Exception('Sign out failed: $e');
+    }
   }
 
   // Send password reset email
   Future<void> sendPasswordResetEmail(String email) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (email.isEmpty || !email.contains('@')) {
-      throw Exception('Invalid email address');
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+    } catch (e) {
+      throw Exception('Password reset failed: $e');
     }
-
-    // Mock success - in real app this would send an email
   }
 
-  // Get mock ID token for API calls
+  // Get ID token for API calls
   Future<String?> getIdToken() async {
-    final user = currentUser;
-    if (user != null) {
-      return 'mock_token_${user.uid}';
+    try {
+      final session = _supabase.auth.currentSession;
+      return session?.accessToken;
+    } catch (e) {
+      return null;
     }
-    return null;
+  }
+
+  // Sync user with backend
+  Future<void> _syncUserWithBackend(User user) async {
+    try {
+      final token = await getIdToken();
+      if (token == null) return;
+
+      final response = await http.post(
+        Uri.parse('${AppConfig.authEndpoint}/sync'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'id': user.id,
+          'email': user.email,
+          'display_name': user.userMetadata?['full_name'] ?? user.userMetadata?['name'],
+          'avatar_url': user.userMetadata?['avatar_url'],
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print('Warning: Failed to sync user with backend: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Warning: Failed to sync user with backend: $e');
+    }
   }
 
   // Dispose resources

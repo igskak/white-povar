@@ -2,7 +2,7 @@ class AppConfig {
   // API Configuration
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000',
+    defaultValue: 'https://white-povar-backend.onrender.com',
   );
   
   // Supabase Configuration
@@ -19,7 +19,7 @@ class AppConfig {
   // Environment
   static const String environment = String.fromEnvironment(
     'ENVIRONMENT',
-    defaultValue: 'development',
+    defaultValue: 'production',
   );
   
   // App Configuration
@@ -43,8 +43,9 @@ class AppConfig {
   static bool get isStaging => environment == 'staging';
   
   // API endpoints
-  static String get authEndpoint => '$apiBaseUrl/api/auth';
-  static String get recipesEndpoint => '$apiBaseUrl/api/recipes';
-  static String get configEndpoint => '$apiBaseUrl/api/config';
-  static String get uploadEndpoint => '$apiBaseUrl/api/upload';
+  static String get authEndpoint => '$apiBaseUrl/api/v1/auth';
+  static String get recipesEndpoint => '$apiBaseUrl/api/v1/recipes';
+  static String get searchEndpoint => '$apiBaseUrl/api/v1/search';
+  static String get configEndpoint => '$apiBaseUrl/api/v1/config';
+  static String get uploadEndpoint => '$apiBaseUrl/api/v1/upload';
 }

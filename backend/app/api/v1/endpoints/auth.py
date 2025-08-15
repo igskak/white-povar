@@ -119,3 +119,54 @@ async def refresh_token():
     """Refresh access token"""
     # TODO: Implement token refresh logic
     return {"access_token": "new_mock_token", "token_type": "bearer"}
+
+class UserSyncRequest(BaseModel):
+    id: str
+    email: str
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+@router.post("/sync")
+async def sync_user(request: UserSyncRequest, current_user: User = Depends(verify_firebase_token)):
+    """Sync user information with backend"""
+    try:
+        # Update or create user in our database
+        user_data = {
+            'id': request.id,
+            'email': request.email,
+            'display_name': request.display_name,
+            'avatar_url': request.avatar_url,
+            'updated_at': 'now()'
+        }
+        
+        # Check if user exists
+        existing_user = await supabase_service.execute_query(
+            'users', 'select', filters={'id': request.id}
+        )
+        
+        if existing_user.data:
+            # Update existing user
+            await supabase_service.execute_query(
+                'users', 'update', 
+                filters={'id': request.id}, 
+                data=user_data, 
+                use_service_key=True
+            )
+        else:
+            # Create new user
+            user_data['created_at'] = 'now()'
+            user_data['favorites'] = []
+            await supabase_service.execute_query(
+                'users', 'insert', 
+                data=user_data, 
+                use_service_key=True
+            )
+        
+        return {"message": "User synced successfully"}
+        
+    except Exception as e:
+        logger.error(f"User sync failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to sync user"
+        )
