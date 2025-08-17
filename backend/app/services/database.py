@@ -35,7 +35,7 @@ class SupabaseService:
                         if isinstance(value, list):
                             query = query.in_(key, value)
                         else:
-                            query = query.eq(key, value)
+                            query = query.filter(key, 'eq', value)
                 return query.execute()
             
             elif operation == "insert":
@@ -45,13 +45,13 @@ class SupabaseService:
                 query = query.update(data)
                 if filters:
                     for key, value in filters.items():
-                        query = query.eq(key, value)
+                        query = query.filter(key, 'eq', value)
                 return query.execute()
             
             elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
-                        query = query.eq(key, value)
+                        query = query.filter(key, 'eq', value)
                 return query.delete().execute()
             
             else:
@@ -78,18 +78,20 @@ class SupabaseService:
         
         def _execute():
             client = self.get_client()
+            # For older Supabase client, use filter() method instead of chaining
             query = client.table('recipes').select('*')
             
-            # Apply filters
-            for key, value in query_filters.items():
-                query = query.eq(key, value)
+            # Apply filters using filter() method
+            if query_filters:
+                for key, value in query_filters.items():
+                    query = query.filter(key, 'eq', value)
             
             # Apply time filter if specified
             if filters and filters.get('max_time'):
-                query = query.lte('total_time_minutes', filters['max_time'])
+                query = query.filter('total_time_minutes', 'lte', filters['max_time'])
             
-            # Apply pagination
-            query = query.range(offset, offset + limit - 1)
+            # Apply pagination using limit and offset
+            query = query.limit(limit).offset(offset)
             
             return query.execute()
         
@@ -101,12 +103,12 @@ class SupabaseService:
         def _execute():
             client = self.get_client()
             # Get recipe with ingredients
-            recipe_result = client.table('recipes').select('*').eq('id', recipe_id).execute()
+            recipe_result = client.table('recipes').select('*').filter('id', 'eq', recipe_id).execute()
             if not recipe_result.data:
                 return {"data": None}
             
             # Get ingredients for this recipe
-            ingredients_result = client.table('ingredients').select('*').eq('recipe_id', recipe_id).order('order').execute()
+            ingredients_result = client.table('ingredients').select('*').filter('recipe_id', 'eq', recipe_id).order('order').execute()
             
             recipe = recipe_result.data[0]
             recipe['ingredients'] = ingredients_result.data
@@ -128,9 +130,9 @@ class SupabaseService:
             search_query = search_query.or_(f'title.ilike.%{query}%,description.ilike.%{query}%')
             
             if chef_id:
-                search_query = search_query.eq('chef_id', chef_id)
+                search_query = search_query.filter('chef_id', 'eq', chef_id)
             
-            search_query = search_query.range(offset, offset + limit - 1)
+            search_query = search_query.limit(limit).offset(offset)
             
             return search_query.execute()
         
