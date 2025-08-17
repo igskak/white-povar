@@ -2,7 +2,7 @@ class AppConfig {
   // API Configuration
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://white-povar-backend.onrender.com',
+    defaultValue: 'https://white-povar.onrender.com',
   );
   
   // Supabase Configuration
