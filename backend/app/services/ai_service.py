@@ -219,6 +219,7 @@ class AIService:
     def _parse_recipe_suggestions(self, response: str) -> List[Dict[str, Any]]:
         """Parse recipe suggestions from AI response"""
         try:
+            logger.info(f"Raw AI response: {response[:500]}...")  # Log first 500 chars
             parsed = json.loads(response)
             # Handle both formats: direct list or wrapped in 'recipes' key
             if isinstance(parsed, list):
@@ -228,8 +229,9 @@ class AIService:
             else:
                 logger.error(f"Unexpected recipe suggestions format: {parsed}")
                 return []
-        except json.JSONDecodeError:
-            logger.error("Failed to parse recipe suggestions JSON")
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse recipe suggestions JSON: {e}")
+            logger.error(f"Raw response that failed to parse: {response}")
             return []
     
     def _parse_substitutions(self, response: str) -> List[Dict[str, str]]:
