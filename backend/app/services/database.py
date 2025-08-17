@@ -65,14 +65,21 @@ class SupabaseService:
         """Get recipes with optional filtering"""
         def _execute():
             client = self.get_client()
-            # For now, just get basic data without complex filtering to test connection
             try:
-                # Simple select without filters first
-                result = client.table('recipes').select('*').execute()
+                # Debug: Let's see what methods are available
+                table = client.table('recipes')
+                print(f"Table object type: {type(table)}")
+                print(f"Available methods: {dir(table)}")
+                
+                # Try the most basic query possible
+                result = table.select('*').execute()
                 return result
             except Exception as e:
                 # Log the actual error for debugging
                 print(f"Supabase query error: {str(e)}")
+                print(f"Error type: {type(e)}")
+                import traceback
+                traceback.print_exc()
                 raise e
         
         loop = asyncio.get_event_loop()
