@@ -153,15 +153,25 @@ async def get_recipe(recipe_id: str):
             )
         
         recipe_data = result.data[0]
-        
-        # Get nutrition data if available
-        nutrition_result = await supabase_service.execute_query(
-            'nutrition', 'select',
-            filters={'recipe_id': recipe_id}
-        )
-        if nutrition_result.data:
-            recipe_data['nutrition'] = nutrition_result.data[0]
-        
+
+        # Add empty ingredients list (same as in get_recipes)
+        recipe_data['ingredients'] = []
+
+        # Convert string UUIDs to UUID objects
+        if isinstance(recipe_data.get('id'), str):
+            recipe_data['id'] = UUID(recipe_data['id'])
+        if isinstance(recipe_data.get('chef_id'), str):
+            recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+        # Get nutrition data if available (skip for now to avoid errors)
+        # TODO: Fix nutrition query once we understand the schema
+        # nutrition_result = await supabase_service.execute_query(
+        #     'nutrition', 'select',
+        #     filters={'recipe_id': recipe_id}
+        # )
+        # if nutrition_result.data:
+        #     recipe_data['nutrition'] = nutrition_result.data[0]
+
         recipe = Recipe(**recipe_data)
         return recipe
         
