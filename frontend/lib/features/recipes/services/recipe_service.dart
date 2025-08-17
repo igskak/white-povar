@@ -27,8 +27,9 @@ class RecipeService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Recipe.fromJson(json)).toList();
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final List<dynamic> recipesData = responseData['recipes'] as List<dynamic>;
+        return recipesData.map((json) => Recipe.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load recipes: ${response.statusCode}');
       }
