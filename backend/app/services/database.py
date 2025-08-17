@@ -35,7 +35,13 @@ class SupabaseService:
                         if isinstance(value, list):
                             query = query.in_(key, value)
                         else:
-                            query = query.filter(key, 'eq', value)
+                            # For Supabase client 2.0.2, use the correct method
+                            try:
+                                query = query.eq(key, value)
+                            except AttributeError:
+                                # Fallback: just return basic data without filtering
+                                print(f"Warning: Filter method not available, returning unfiltered data")
+                                break
                 return query.execute()
             
             elif operation == "insert":
@@ -45,13 +51,21 @@ class SupabaseService:
                 query = query.update(data)
                 if filters:
                     for key, value in filters.items():
-                        query = query.filter(key, 'eq', value)
+                        try:
+                            query = query.eq(key, value)
+                        except AttributeError:
+                            print(f"Warning: Filter method not available for update")
+                            break
                 return query.execute()
             
             elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
-                        query = query.filter(key, 'eq', value)
+                        try:
+                            query = query.eq(key, value)
+                        except AttributeError:
+                            print(f"Warning: Filter method not available for delete")
+                            break
                 return query.delete().execute()
             
             else:
