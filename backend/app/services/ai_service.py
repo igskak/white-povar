@@ -219,7 +219,15 @@ class AIService:
     def _parse_recipe_suggestions(self, response: str) -> List[Dict[str, Any]]:
         """Parse recipe suggestions from AI response"""
         try:
-            return json.loads(response)
+            parsed = json.loads(response)
+            # Handle both formats: direct list or wrapped in 'recipes' key
+            if isinstance(parsed, list):
+                return parsed
+            elif isinstance(parsed, dict) and 'recipes' in parsed:
+                return parsed['recipes']
+            else:
+                logger.error(f"Unexpected recipe suggestions format: {parsed}")
+                return []
         except json.JSONDecodeError:
             logger.error("Failed to parse recipe suggestions JSON")
             return []
