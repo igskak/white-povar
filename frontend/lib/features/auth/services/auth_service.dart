@@ -57,6 +57,7 @@ class AuthService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: kIsWeb ? 'https://white-povar.web.app/auth/callback' : null,
       );
       
       if (response.user != null) {
@@ -78,7 +79,7 @@ class AuthService {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb ? 'https://white-povar.web.app/auth/callback' : 'io.supabase.cookingapp://login-callback',
+        redirectTo: kIsWeb ? 'https://qnlfvpqmkmbvzmzqgjpo.supabase.co/auth/v1/callback' : 'io.supabase.cookingapp://login-callback',
       );
       
       // For OAuth, we need to wait for the redirect to complete
