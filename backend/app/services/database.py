@@ -63,37 +63,17 @@ class SupabaseService:
     
     async def get_recipes(self, filters: Optional[Dict] = None, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Get recipes with optional filtering"""
-        query_filters = {}
-        if filters:
-            if filters.get('chef_id'):
-                query_filters['chef_id'] = str(filters['chef_id'])
-            if filters.get('cuisine'):
-                query_filters['cuisine'] = filters['cuisine']
-            if filters.get('category'):
-                query_filters['category'] = filters['category']
-            if filters.get('difficulty'):
-                query_filters['difficulty'] = filters['difficulty']
-            if filters.get('is_featured') is not None:
-                query_filters['is_featured'] = filters['is_featured']
-        
         def _execute():
             client = self.get_client()
-            # For older Supabase client, use filter() method instead of chaining
-            query = client.table('recipes').select('*')
-            
-            # Apply filters using filter() method
-            if query_filters:
-                for key, value in query_filters.items():
-                    query = query.filter(key, 'eq', value)
-            
-            # Apply time filter if specified
-            if filters and filters.get('max_time'):
-                query = query.filter('total_time_minutes', 'lte', filters['max_time'])
-            
-            # Apply pagination using limit and offset
-            query = query.limit(limit).offset(offset)
-            
-            return query.execute()
+            # For now, just get basic data without complex filtering to test connection
+            try:
+                # Simple select without filters first
+                result = client.table('recipes').select('*').execute()
+                return result
+            except Exception as e:
+                # Log the actual error for debugging
+                print(f"Supabase query error: {str(e)}")
+                raise e
         
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
@@ -102,18 +82,17 @@ class SupabaseService:
         """Get single recipe by ID with ingredients"""
         def _execute():
             client = self.get_client()
-            # Get recipe with ingredients
-            recipe_result = client.table('recipes').select('*').filter('id', 'eq', recipe_id).execute()
-            if not recipe_result.data:
-                return {"data": None}
-            
-            # Get ingredients for this recipe
-            ingredients_result = client.table('ingredients').select('*').filter('recipe_id', 'eq', recipe_id).order('order').execute()
-            
-            recipe = recipe_result.data[0]
-            recipe['ingredients'] = ingredients_result.data
-            
-            return {"data": [recipe]}
+            try:
+                # Simple select by ID first
+                recipe_result = client.table('recipes').select('*').eq('id', recipe_id).execute()
+                if not recipe_result.data:
+                    return {"data": None}
+                
+                recipe = recipe_result.data[0]
+                return {"data": [recipe]}
+            except Exception as e:
+                print(f"Supabase query error: {str(e)}")
+                raise e
         
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
@@ -123,18 +102,13 @@ class SupabaseService:
         """Search recipes by text query"""
         def _execute():
             client = self.get_client()
-            # Use Supabase full-text search
-            search_query = client.table('recipes').select('*')
-            
-            # Text search in title, description, and tags
-            search_query = search_query.or_(f'title.ilike.%{query}%,description.ilike.%{query}%')
-            
-            if chef_id:
-                search_query = search_query.filter('chef_id', 'eq', chef_id)
-            
-            search_query = search_query.limit(limit).offset(offset)
-            
-            return search_query.execute()
+            try:
+                # Simple search for now
+                search_query = client.table('recipes').select('*')
+                return search_query.execute()
+            except Exception as e:
+                print(f"Supabase search error: {str(e)}")
+                raise e
         
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
