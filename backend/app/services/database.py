@@ -66,16 +66,16 @@ class SupabaseService:
         def _execute():
             client = self.get_client()
             try:
-                # Debug: Let's see what methods are available
+                # For Supabase client 2.0.2, just get basic data first
                 table = client.table('recipes')
-                print(f"Table object type: {type(table)}")
-                print(f"Available methods: {dir(table)}")
                 
-                # Try the most basic query possible
+                # Try the most basic query possible - just select all
+                print("Attempting basic select query...")
                 result = table.select('*').execute()
+                print(f"Query successful! Result: {result}")
                 return result
+                
             except Exception as e:
-                # Log the actual error for debugging
                 print(f"Supabase query error: {str(e)}")
                 print(f"Error type: {type(e)}")
                 import traceback
