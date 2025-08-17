@@ -48,13 +48,25 @@ async def get_recipes(
         
         recipes = []
         for recipe_data in result.data:
-            # For now, skip ingredients to avoid the error
-            # TODO: Fix ingredients query once we understand the schema
-            recipe_data['ingredients'] = []
+            try:
+                # For now, skip ingredients to avoid the error
+                # TODO: Fix ingredients query once we understand the schema
+                recipe_data['ingredients'] = []
 
-            # Convert to Recipe model
-            recipe = Recipe(**recipe_data)
-            recipes.append(recipe)
+                # Convert string UUIDs to UUID objects
+                if isinstance(recipe_data.get('id'), str):
+                    recipe_data['id'] = UUID(recipe_data['id'])
+                if isinstance(recipe_data.get('chef_id'), str):
+                    recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+                # Convert to Recipe model
+                recipe = Recipe(**recipe_data)
+                recipes.append(recipe)
+            except Exception as e:
+                logger.error(f"Error converting recipe data to model: {str(e)}")
+                logger.error(f"Recipe data: {recipe_data}")
+                # Skip this recipe and continue with others
+                continue
         
         # Calculate total count and has_more
         total_count = len(result.data)
@@ -91,12 +103,24 @@ async def get_featured_recipes(
         
         recipes = []
         for recipe_data in result.data:
-            # For now, skip ingredients to avoid the error
-            # TODO: Fix ingredients query once we understand the schema
-            recipe_data['ingredients'] = []
+            try:
+                # For now, skip ingredients to avoid the error
+                # TODO: Fix ingredients query once we understand the schema
+                recipe_data['ingredients'] = []
 
-            recipe = Recipe(**recipe_data)
-            recipes.append(recipe)
+                # Convert string UUIDs to UUID objects
+                if isinstance(recipe_data.get('id'), str):
+                    recipe_data['id'] = UUID(recipe_data['id'])
+                if isinstance(recipe_data.get('chef_id'), str):
+                    recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+                recipe = Recipe(**recipe_data)
+                recipes.append(recipe)
+            except Exception as e:
+                logger.error(f"Error converting featured recipe data to model: {str(e)}")
+                logger.error(f"Recipe data: {recipe_data}")
+                # Skip this recipe and continue with others
+                continue
         
         return recipes
         
