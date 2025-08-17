@@ -38,6 +38,26 @@ class RecipeService {
     }
   }
 
+  // Get featured recipes
+  Future<List<Recipe>> getFeaturedRecipes() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.get(
+        Uri.parse('${AppConfig.recipesEndpoint}/featured'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Recipe.fromJson(json)).toList();
+      } else {
+        throw Exception('Failed to load featured recipes: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load featured recipes: $e');
+    }
+  }
+
   // Get recipe by ID
   Future<Recipe> getRecipe(String id) async {
     try {
@@ -122,13 +142,14 @@ class RecipeService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('${AppConfig.searchEndpoint}?q=${Uri.encodeComponent(query)}'),
+        Uri.parse('${AppConfig.searchEndpoint}/text?q=${Uri.encodeComponent(query)}'),
         headers: headers,
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((json) => Recipe.fromJson(json)).toList();
+        final data = jsonDecode(response.body);
+        final List<dynamic> recipes = data['recipes'] ?? [];
+        return recipes.map((json) => Recipe.fromJson(json)).toList();
       } else {
         throw Exception('Failed to search recipes: ${response.statusCode}');
       }

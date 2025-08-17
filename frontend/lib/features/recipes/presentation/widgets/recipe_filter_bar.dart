@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/recipe_provider.dart';
 
-class RecipeFilterBar extends StatelessWidget {
+class RecipeFilterBar extends ConsumerWidget {
   const RecipeFilterBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentFilter = ref.watch(recipeFilterProvider);
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: SingleChildScrollView(
@@ -13,32 +17,51 @@ class RecipeFilterBar extends StatelessWidget {
           children: [
             _FilterChip(
               label: 'All',
-              isSelected: true,
-              onTap: () {},
+              isSelected: currentFilter.isEmpty,
+              onTap: () {
+                ref.read(recipeFilterProvider.notifier).state = const RecipeFilter();
+                ref.read(recipeListProvider.notifier).loadRecipes(const RecipeFilter());
+              },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Featured',
-              isSelected: false,
-              onTap: () {},
+              isSelected: currentFilter.isFeatured == true,
+              onTap: () {
+                final newFilter = const RecipeFilter(isFeatured: true);
+                ref.read(recipeFilterProvider.notifier).state = newFilter;
+                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
+              },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Quick (< 30 min)',
-              isSelected: false,
-              onTap: () {},
+              isSelected: currentFilter.maxTime == 30,
+              onTap: () {
+                final newFilter = const RecipeFilter(maxTime: 30);
+                ref.read(recipeFilterProvider.notifier).state = newFilter;
+                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
+              },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Mediterranean',
-              isSelected: false,
-              onTap: () {},
+              isSelected: currentFilter.cuisine == 'Mediterranean',
+              onTap: () {
+                final newFilter = const RecipeFilter(cuisine: 'Mediterranean');
+                ref.read(recipeFilterProvider.notifier).state = newFilter;
+                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
+              },
             ),
             const SizedBox(width: 8),
             _FilterChip(
               label: 'Mexican',
-              isSelected: false,
-              onTap: () {},
+              isSelected: currentFilter.cuisine == 'Mexican',
+              onTap: () {
+                final newFilter = const RecipeFilter(cuisine: 'Mexican');
+                ref.read(recipeFilterProvider.notifier).state = newFilter;
+                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
+              },
             ),
           ],
         ),

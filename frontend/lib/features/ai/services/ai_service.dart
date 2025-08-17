@@ -14,7 +14,7 @@ class AIService {
   
   void initialize() {
     _dio = Dio(BaseOptions(
-      baseUrl: '${AppConfig.apiBaseUrl}/ai',
+      baseUrl: '${AppConfig.apiBaseUrl}/api/v1/ai',
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
