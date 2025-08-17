@@ -22,55 +22,42 @@ class SupabaseService:
         """Get Supabase client (service key for admin operations)"""
         return self.service_client if use_service_key else self.client
     
-    async def execute_query(self, table: str, operation: str, data: Optional[Dict] = None, 
+    async def execute_query(self, table: str, operation: str, data: Optional[Dict] = None,
                           filters: Optional[Dict] = None, use_service_key: bool = False) -> Dict[str, Any]:
         """Execute database query asynchronously"""
         def _execute():
             client = self.get_client(use_service_key)
             query = client.table(table)
-            
+
             if operation == "select":
+                query = query.select('*')
                 if filters:
                     for key, value in filters.items():
                         if isinstance(value, list):
                             query = query.in_(key, value)
                         else:
-                            # For Supabase client 2.0.2, use the correct method
-                            try:
-                                query = query.eq(key, value)
-                            except AttributeError:
-                                # Fallback: just return basic data without filtering
-                                print(f"Warning: Filter method not available, returning unfiltered data")
-                                break
+                            query = query.eq(key, value)
                 return query.execute()
-            
+
             elif operation == "insert":
                 return query.insert(data).execute()
-            
+
             elif operation == "update":
                 query = query.update(data)
                 if filters:
                     for key, value in filters.items():
-                        try:
-                            query = query.eq(key, value)
-                        except AttributeError:
-                            print(f"Warning: Filter method not available for update")
-                            break
+                        query = query.eq(key, value)
                 return query.execute()
-            
+
             elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
-                        try:
-                            query = query.eq(key, value)
-                        except AttributeError:
-                            print(f"Warning: Filter method not available for delete")
-                            break
+                        query = query.eq(key, value)
                 return query.delete().execute()
-            
+
             else:
                 raise ValueError(f"Unsupported operation: {operation}")
-        
+
         # Run in thread pool to avoid blocking
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
@@ -80,22 +67,36 @@ class SupabaseService:
         def _execute():
             client = self.get_client()
             try:
-                # For Supabase client 2.0.2, just get basic data first
-                table = client.table('recipes')
-                
-                # Try the most basic query possible - just select all
-                print("Attempting basic select query...")
-                result = table.select('*').execute()
+                # Build the query
+                query = client.table('recipes').select('*')
+
+                # Apply filters if provided
+                if filters:
+                    for key, value in filters.items():
+                        if isinstance(value, list):
+                            query = query.in_(key, value)
+                        else:
+                            query = query.eq(key, value)
+
+                # Apply limit and offset
+                if limit:
+                    query = query.limit(limit)
+                if offset:
+                    query = query.offset(offset)
+
+                # Execute the query
+                result = query.execute()
+
                 print(f"Query successful! Result: {result}")
                 return result
-                
+
             except Exception as e:
                 print(f"Supabase query error: {str(e)}")
                 print(f"Error type: {type(e)}")
                 import traceback
                 traceback.print_exc()
                 raise e
-        
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
     
@@ -118,19 +119,30 @@ class SupabaseService:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
     
-    async def search_recipes_by_text(self, query: str, chef_id: Optional[str] = None, 
+    async def search_recipes_by_text(self, query: str, chef_id: Optional[str] = None,
                                    limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Search recipes by text query"""
         def _execute():
             client = self.get_client()
             try:
-                # Simple search for now
+                # Build search query
                 search_query = client.table('recipes').select('*')
+
+                # Add chef filter if provided
+                if chef_id:
+                    search_query = search_query.eq('chef_id', chef_id)
+
+                # Apply limit and offset
+                if limit:
+                    search_query = search_query.limit(limit)
+                if offset:
+                    search_query = search_query.offset(offset)
+
                 return search_query.execute()
             except Exception as e:
                 print(f"Supabase search error: {str(e)}")
                 raise e
-        
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
     
