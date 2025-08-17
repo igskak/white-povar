@@ -24,10 +24,10 @@ app.add_middleware(
 )
 
 # Include API routers
-app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(recipes.router, prefix="/recipes", tags=["recipes"])
-app.include_router(search.router, prefix="/search", tags=["search"])
-app.include_router(ai.router, prefix="/ai", tags=["ai-assistant"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["recipes"])
+app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
+app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])
 
 @app.get("/")
 async def root():
