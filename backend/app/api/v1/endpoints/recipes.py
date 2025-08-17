@@ -145,14 +145,14 @@ async def get_recipe(recipe_id: str):
             )
         
         result = await supabase_service.get_recipe_by_id(recipe_id)
-        
-        if not result.data:
+
+        if not result.get('data'):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Recipe not found"
             )
-        
-        recipe_data = result.data[0]
+
+        recipe_data = result['data'][0]
 
         # Add empty ingredients list (same as in get_recipes)
         recipe_data['ingredients'] = []
