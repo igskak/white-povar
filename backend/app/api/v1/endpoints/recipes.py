@@ -49,15 +49,22 @@ async def get_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
-                # For now, skip ingredients to avoid the error
-                # TODO: Fix ingredients query once we understand the schema
-                recipe_data['ingredients'] = []
+                # Get ingredients for each recipe
+                ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
+                recipe_data['ingredients'] = ingredients_result.get('data', [])
 
                 # Convert string UUIDs to UUID objects
                 if isinstance(recipe_data.get('id'), str):
                     recipe_data['id'] = UUID(recipe_data['id'])
                 if isinstance(recipe_data.get('chef_id'), str):
                     recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+                # Convert ingredient UUIDs
+                for ingredient in recipe_data['ingredients']:
+                    if isinstance(ingredient.get('id'), str):
+                        ingredient['id'] = UUID(ingredient['id'])
+                    if isinstance(ingredient.get('recipe_id'), str):
+                        ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
 
                 # Convert to Recipe model
                 recipe = Recipe(**recipe_data)
@@ -104,15 +111,22 @@ async def get_featured_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
-                # For now, skip ingredients to avoid the error
-                # TODO: Fix ingredients query once we understand the schema
-                recipe_data['ingredients'] = []
+                # Get ingredients for each recipe
+                ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
+                recipe_data['ingredients'] = ingredients_result.get('data', [])
 
                 # Convert string UUIDs to UUID objects
                 if isinstance(recipe_data.get('id'), str):
                     recipe_data['id'] = UUID(recipe_data['id'])
                 if isinstance(recipe_data.get('chef_id'), str):
                     recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+                # Convert ingredient UUIDs
+                for ingredient in recipe_data['ingredients']:
+                    if isinstance(ingredient.get('id'), str):
+                        ingredient['id'] = UUID(ingredient['id'])
+                    if isinstance(ingredient.get('recipe_id'), str):
+                        ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
 
                 recipe = Recipe(**recipe_data)
                 recipes.append(recipe)
@@ -143,7 +157,7 @@ async def get_recipe(recipe_id: str):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid recipe ID format"
             )
-        
+
         result = await supabase_service.get_recipe_by_id(recipe_id)
 
         if not result.get('data'):
@@ -154,14 +168,22 @@ async def get_recipe(recipe_id: str):
 
         recipe_data = result['data'][0]
 
-        # Add empty ingredients list (same as in get_recipes)
-        recipe_data['ingredients'] = []
+        # Get ingredients for this recipe
+        ingredients_result = await supabase_service.get_recipe_ingredients(recipe_id)
+        recipe_data['ingredients'] = ingredients_result.get('data', [])
 
         # Convert string UUIDs to UUID objects
         if isinstance(recipe_data.get('id'), str):
             recipe_data['id'] = UUID(recipe_data['id'])
         if isinstance(recipe_data.get('chef_id'), str):
             recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
+
+        # Convert ingredient UUIDs
+        for ingredient in recipe_data['ingredients']:
+            if isinstance(ingredient.get('id'), str):
+                ingredient['id'] = UUID(ingredient['id'])
+            if isinstance(ingredient.get('recipe_id'), str):
+                ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
 
         # Get nutrition data if available (skip for now to avoid errors)
         # TODO: Fix nutrition query once we understand the schema

@@ -101,7 +101,7 @@ class SupabaseService:
         return await loop.run_in_executor(None, _execute)
     
     async def get_recipe_by_id(self, recipe_id: str) -> Dict[str, Any]:
-        """Get single recipe by ID with ingredients"""
+        """Get single recipe by ID"""
         def _execute():
             client = self.get_client()
             try:
@@ -109,13 +109,28 @@ class SupabaseService:
                 recipe_result = client.table('recipes').select('*').eq('id', recipe_id).execute()
                 if not recipe_result.data:
                     return {"data": None}
-                
+
                 recipe = recipe_result.data[0]
                 return {"data": [recipe]}
             except Exception as e:
                 print(f"Supabase query error: {str(e)}")
                 raise e
-        
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def get_recipe_ingredients(self, recipe_id: str) -> Dict[str, Any]:
+        """Get ingredients for a specific recipe"""
+        def _execute():
+            client = self.get_client()
+            try:
+                # Get ingredients ordered by their order field
+                ingredients_result = client.table('ingredients').select('*').eq('recipe_id', recipe_id).order('order').execute()
+                return {"data": ingredients_result.data}
+            except Exception as e:
+                print(f"Supabase ingredients query error: {str(e)}")
+                raise e
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
     
