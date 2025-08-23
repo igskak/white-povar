@@ -2,6 +2,8 @@
 
 White Povar cross‑platform Flutter app.
 
+**Current Version**: Stable build from commit d9e2453
+
 ## Stack
 - Flutter 3.x
 - Riverpod, Go Router

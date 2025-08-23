@@ -2,6 +2,8 @@
 
 FastAPI backend for the white-label cooking app with Supabase database and OpenAI Vision integration.
 
+**Current Version**: Stable build from commit d9e2453
+
 ## Features
 
 - **Recipe Management**: CRUD operations for recipes with ingredients and nutrition
