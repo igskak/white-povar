@@ -1,10 +1,10 @@
 name: Continuous Integration
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  push:
+    branches: [ develop ]  # Only run CI on develop branch pushes
   workflow_dispatch:
 
 env:
