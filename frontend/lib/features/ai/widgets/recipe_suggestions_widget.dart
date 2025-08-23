@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/ai_provider.dart';
 import '../models/recipe_suggestion.dart';
+import '../widgets/shopping_list_widget.dart';
+import '../widgets/recipe_detail_dialog.dart';
+import '../services/recipe_conversion_service.dart';
 
 class RecipeSuggestionsWidget extends ConsumerWidget {
   const RecipeSuggestionsWidget({super.key});
@@ -102,14 +105,14 @@ class _SuggestionCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            
+
             // Description
             Text(
               suggestion.description,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
-            
+
             // Time and Techniques
             Row(
               children: [
@@ -131,7 +134,7 @@ class _SuggestionCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             // Missing Ingredients
             if (suggestion.missingIngredients.isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -147,7 +150,8 @@ class _SuggestionCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.shopping_cart, size: 16, color: Colors.orange[700]),
+                        Icon(Icons.shopping_cart,
+                            size: 16, color: Colors.orange[700]),
                         const SizedBox(width: 4),
                         Text(
                           'Missing ingredients:',
@@ -167,25 +171,39 @@ class _SuggestionCard extends StatelessWidget {
                 ),
               ),
             ],
-            
+
             // Action Buttons
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                TextButton.icon(
-                  onPressed: () {
-                    // TODO: Create recipe from suggestion
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Create Recipe'),
+                ElevatedButton.icon(
+                  onPressed: () => _showRecipeDetail(context, suggestion),
+                  icon: const Icon(Icons.visibility, size: 18),
+                  label: const Text('View Recipe'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () {
-                    // TODO: Save suggestion
-                  },
-                  icon: const Icon(Icons.bookmark_border),
-                  label: const Text('Save'),
+                ElevatedButton.icon(
+                  onPressed: () => _showShoppingList(context, suggestion),
+                  icon: const Icon(Icons.shopping_cart, size: 18),
+                  label: const Text('Shopping List'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _saveRecipe(context, suggestion),
+                  icon: const Icon(Icons.bookmark, size: 18),
+                  label: const Text('Save Recipe'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             ),
@@ -193,6 +211,80 @@ class _SuggestionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _showRecipeDetail(
+      BuildContext context, RecipeSuggestion suggestion) async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => RecipeDetailDialog(suggestion: suggestion),
+    );
+
+    if (result == 'save' && context.mounted) {
+      _saveRecipe(context, suggestion);
+    }
+  }
+
+  void _showShoppingList(BuildContext context, RecipeSuggestion suggestion) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ShoppingListWidget(suggestion: suggestion),
+      ),
+    );
+  }
+
+  void _saveRecipe(BuildContext context, RecipeSuggestion suggestion) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Convert and save the recipe
+      final savedRecipe = await RecipeConversionService.instance
+          .saveAISuggestionAsRecipe(suggestion, []);
+
+      // Close loading dialog
+      if (context.mounted) Navigator.of(context).pop();
+
+      // Show success message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('✅ Recipe "${savedRecipe.title}" saved successfully!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                // Navigate to recipe detail page
+                // TODO: Implement navigation to recipe detail
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) Navigator.of(context).pop();
+
+      // Show error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to save recipe: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }
 
