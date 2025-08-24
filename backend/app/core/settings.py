@@ -58,6 +58,12 @@ class Settings(BaseSettings):
 
     # Pagination
     default_page_size: int = 20
+
+    # Ingestion Settings
+    ingestion_workers: int = 2
+    ingestion_base_path: str = "data/ingestion"
+    ingestion_max_retries: int = 3
+    ingestion_confidence_threshold: float = 0.75
     
     class Config:
         env_file = ".env"

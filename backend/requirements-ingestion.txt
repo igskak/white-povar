@@ -1,0 +1,11 @@
+# Additional dependencies for recipe ingestion pipeline
+watchdog>=3.0.0
+pypdf>=3.0.0
+python-docx>=0.8.11
+langdetect>=1.0.9
+rapidfuzz>=3.0.0
+openai>=1.0.0
+
+# Optional dependencies for better format support
+# textract>=1.6.5  # For legacy DOC files (requires system dependencies)
+# pdfminer.six>=20221105  # Alternative PDF parser

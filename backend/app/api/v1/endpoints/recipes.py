@@ -11,6 +11,28 @@ from app.api.v1.endpoints.auth import verify_firebase_token, User
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+def _normalize_instructions(instructions_data):
+    """Normalize instructions data to List[str]"""
+    if isinstance(instructions_data, list):
+        return [str(inst) for inst in instructions_data if inst]
+    elif isinstance(instructions_data, str):
+        # If it's a single string, split by newlines or return as single item
+        if '\n' in instructions_data:
+            return [line.strip() for line in instructions_data.split('\n') if line.strip()]
+        else:
+            return [instructions_data]
+    else:
+        return ["No instructions provided"]
+
+def _normalize_images(images_data):
+    """Normalize images data to List[str]"""
+    if isinstance(images_data, list):
+        return [str(img) for img in images_data if img]
+    elif isinstance(images_data, str) and images_data:
+        return [images_data]
+    else:
+        return []
+
 @router.get("/", response_model=RecipeList)
 async def get_recipes(
     cuisine: Optional[str] = Query(None, description="Filter by cuisine type"),
@@ -51,7 +73,7 @@ async def get_recipes(
             try:
                 # Get ingredients for each recipe
                 ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
-                recipe_data['ingredients'] = ingredients_result.get('data', [])
+                recipe_ingredients = ingredients_result.get('data', [])
 
                 # Convert string UUIDs to UUID objects
                 if isinstance(recipe_data.get('id'), str):
@@ -59,15 +81,54 @@ async def get_recipes(
                 if isinstance(recipe_data.get('chef_id'), str):
                     recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
 
-                # Convert ingredient UUIDs
-                for ingredient in recipe_data['ingredients']:
-                    if isinstance(ingredient.get('id'), str):
-                        ingredient['id'] = UUID(ingredient['id'])
-                    if isinstance(ingredient.get('recipe_id'), str):
-                        ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
+                # Handle field name mapping and data type conversion
+                normalized_data = {
+                    'id': recipe_data['id'],
+                    'chef_id': recipe_data['chef_id'],
+                    'title': recipe_data.get('title', ''),
+                    'description': recipe_data.get('description', ''),
+                    'cuisine': recipe_data.get('cuisine', 'Unknown'),
+                    'category': recipe_data.get('category', 'Unknown'),
+                    'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
+                    'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
+                    'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
+                    'total_time_minutes': recipe_data.get('total_time_minutes',
+                        recipe_data.get('prep_time_minutes', 0) + recipe_data.get('cook_time_minutes', 0)),
+                    'servings': recipe_data.get('servings', 1),
+                    'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
+                    'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+                    'tags': recipe_data.get('tags', []),
+                    'is_featured': recipe_data.get('is_featured', False),
+                    'created_at': recipe_data.get('created_at'),
+                    'updated_at': recipe_data.get('updated_at'),
+                    'ingredients': []  # Will be populated below
+                }
+
+                # Convert ingredients
+                for ingredient_data in recipe_ingredients:
+                    try:
+                        if isinstance(ingredient_data.get('id'), str):
+                            ingredient_data['id'] = UUID(ingredient_data['id'])
+                        if isinstance(ingredient_data.get('recipe_id'), str):
+                            ingredient_data['recipe_id'] = UUID(ingredient_data['recipe_id'])
+
+                        # Map ingredient fields
+                        ingredient = {
+                            'id': ingredient_data['id'],
+                            'recipe_id': ingredient_data['recipe_id'],
+                            'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
+                            'amount': float(ingredient_data.get('amount', 0)),
+                            'unit': ingredient_data.get('unit', 'unit'),
+                            'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
+                            'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
+                        }
+                        normalized_data['ingredients'].append(ingredient)
+                    except Exception as e:
+                        logger.warning(f"Error converting ingredient: {str(e)}")
+                        continue
 
                 # Convert to Recipe model
-                recipe = Recipe(**recipe_data)
+                recipe = Recipe(**normalized_data)
                 recipes.append(recipe)
             except Exception as e:
                 logger.error(f"Error converting recipe data to model: {str(e)}")
@@ -113,7 +174,7 @@ async def get_featured_recipes(
             try:
                 # Get ingredients for each recipe
                 ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
-                recipe_data['ingredients'] = ingredients_result.get('data', [])
+                recipe_ingredients = ingredients_result.get('data', [])
 
                 # Convert string UUIDs to UUID objects
                 if isinstance(recipe_data.get('id'), str):
@@ -121,14 +182,53 @@ async def get_featured_recipes(
                 if isinstance(recipe_data.get('chef_id'), str):
                     recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
 
-                # Convert ingredient UUIDs
-                for ingredient in recipe_data['ingredients']:
-                    if isinstance(ingredient.get('id'), str):
-                        ingredient['id'] = UUID(ingredient['id'])
-                    if isinstance(ingredient.get('recipe_id'), str):
-                        ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
+                # Handle field name mapping and data type conversion
+                normalized_data = {
+                    'id': recipe_data['id'],
+                    'chef_id': recipe_data['chef_id'],
+                    'title': recipe_data.get('title', ''),
+                    'description': recipe_data.get('description', ''),
+                    'cuisine': recipe_data.get('cuisine', 'Unknown'),
+                    'category': recipe_data.get('category', 'Unknown'),
+                    'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
+                    'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
+                    'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
+                    'total_time_minutes': recipe_data.get('total_time_minutes',
+                        recipe_data.get('prep_time_minutes', 0) + recipe_data.get('cook_time_minutes', 0)),
+                    'servings': recipe_data.get('servings', 1),
+                    'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
+                    'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+                    'tags': recipe_data.get('tags', []),
+                    'is_featured': recipe_data.get('is_featured', False),
+                    'created_at': recipe_data.get('created_at'),
+                    'updated_at': recipe_data.get('updated_at'),
+                    'ingredients': []  # Will be populated below
+                }
 
-                recipe = Recipe(**recipe_data)
+                # Convert ingredients
+                for ingredient_data in recipe_ingredients:
+                    try:
+                        if isinstance(ingredient_data.get('id'), str):
+                            ingredient_data['id'] = UUID(ingredient_data['id'])
+                        if isinstance(ingredient_data.get('recipe_id'), str):
+                            ingredient_data['recipe_id'] = UUID(ingredient_data['recipe_id'])
+
+                        # Map ingredient fields
+                        ingredient = {
+                            'id': ingredient_data['id'],
+                            'recipe_id': ingredient_data['recipe_id'],
+                            'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
+                            'amount': float(ingredient_data.get('amount', 0)),
+                            'unit': ingredient_data.get('unit', 'unit'),
+                            'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
+                            'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
+                        }
+                        normalized_data['ingredients'].append(ingredient)
+                    except Exception as e:
+                        logger.warning(f"Error converting ingredient: {str(e)}")
+                        continue
+
+                recipe = Recipe(**normalized_data)
                 recipes.append(recipe)
             except Exception as e:
                 logger.error(f"Error converting featured recipe data to model: {str(e)}")
@@ -170,7 +270,7 @@ async def get_recipe(recipe_id: str):
 
         # Get ingredients for this recipe
         ingredients_result = await supabase_service.get_recipe_ingredients(recipe_id)
-        recipe_data['ingredients'] = ingredients_result.get('data', [])
+        recipe_ingredients = ingredients_result.get('data', [])
 
         # Convert string UUIDs to UUID objects
         if isinstance(recipe_data.get('id'), str):
@@ -178,23 +278,53 @@ async def get_recipe(recipe_id: str):
         if isinstance(recipe_data.get('chef_id'), str):
             recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
 
-        # Convert ingredient UUIDs
-        for ingredient in recipe_data['ingredients']:
-            if isinstance(ingredient.get('id'), str):
-                ingredient['id'] = UUID(ingredient['id'])
-            if isinstance(ingredient.get('recipe_id'), str):
-                ingredient['recipe_id'] = UUID(ingredient['recipe_id'])
+        # Handle field name mapping and data type conversion
+        normalized_data = {
+            'id': recipe_data['id'],
+            'chef_id': recipe_data['chef_id'],
+            'title': recipe_data.get('title', ''),
+            'description': recipe_data.get('description', ''),
+            'cuisine': recipe_data.get('cuisine', 'Unknown'),
+            'category': recipe_data.get('category', 'Unknown'),
+            'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
+            'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
+            'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
+            'total_time_minutes': recipe_data.get('total_time_minutes',
+                recipe_data.get('prep_time_minutes', 0) + recipe_data.get('cook_time_minutes', 0)),
+            'servings': recipe_data.get('servings', 1),
+            'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
+            'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+            'tags': recipe_data.get('tags', []),
+            'is_featured': recipe_data.get('is_featured', False),
+            'created_at': recipe_data.get('created_at'),
+            'updated_at': recipe_data.get('updated_at'),
+            'ingredients': []  # Will be populated below
+        }
 
-        # Get nutrition data if available (skip for now to avoid errors)
-        # TODO: Fix nutrition query once we understand the schema
-        # nutrition_result = await supabase_service.execute_query(
-        #     'nutrition', 'select',
-        #     filters={'recipe_id': recipe_id}
-        # )
-        # if nutrition_result.data:
-        #     recipe_data['nutrition'] = nutrition_result.data[0]
+        # Convert ingredients
+        for ingredient_data in recipe_ingredients:
+            try:
+                if isinstance(ingredient_data.get('id'), str):
+                    ingredient_data['id'] = UUID(ingredient_data['id'])
+                if isinstance(ingredient_data.get('recipe_id'), str):
+                    ingredient_data['recipe_id'] = UUID(ingredient_data['recipe_id'])
 
-        recipe = Recipe(**recipe_data)
+                # Map ingredient fields
+                ingredient = {
+                    'id': ingredient_data['id'],
+                    'recipe_id': ingredient_data['recipe_id'],
+                    'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
+                    'amount': float(ingredient_data.get('amount', 0)),
+                    'unit': ingredient_data.get('unit', 'unit'),
+                    'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
+                    'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
+                }
+                normalized_data['ingredients'].append(ingredient)
+            except Exception as e:
+                logger.warning(f"Error converting ingredient: {str(e)}")
+                continue
+
+        recipe = Recipe(**normalized_data)
         return recipe
         
     except HTTPException:

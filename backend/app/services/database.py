@@ -132,7 +132,7 @@ class SupabaseService:
             client = self.get_client()
             try:
                 # Get ingredients ordered by their order field
-                ingredients_result = client.table('ingredients').select('*').eq('recipe_id', recipe_id).order('order').execute()
+                ingredients_result = client.table('recipe_ingredients').select('*').eq('recipe_id', recipe_id).order('sort_order').execute()
                 return {"data": ingredients_result.data}
             except Exception as e:
                 print(f"Supabase ingredients query error: {str(e)}")
@@ -201,6 +201,108 @@ class SupabaseService:
             
             return recipe_result
         
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    # Ingestion-related methods
+    async def create_ingestion_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new ingestion job"""
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            return client.table('ingestion_jobs').insert(job_data).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def update_ingestion_job(self, job_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Update an ingestion job"""
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            return client.table('ingestion_jobs').update(updates).eq('id', job_id).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def get_ingestion_job(self, job_id: str) -> Dict[str, Any]:
+        """Get ingestion job by ID"""
+        def _execute():
+            client = self.get_client()
+            return client.table('ingestion_jobs').select('*').eq('id', job_id).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def get_ingestion_jobs(self, status: Optional[str] = None, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """Get ingestion jobs with optional status filter"""
+        def _execute():
+            client = self.get_client()
+            query = client.table('ingestion_jobs').select('*')
+
+            if status:
+                query = query.eq('status', status)
+
+            query = query.order('created_at', desc=True).limit(limit).offset(offset)
+            return query.execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def create_recipe_fingerprint(self, fingerprint_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update recipe fingerprint"""
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            # Use upsert to handle duplicates
+            return client.table('recipe_fingerprints').upsert(fingerprint_data).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def find_duplicate_recipes(self, fingerprint_hash: str) -> Dict[str, Any]:
+        """Find recipes with matching fingerprint"""
+        def _execute():
+            client = self.get_client()
+            return client.table('recipe_fingerprints').select('recipe_id').eq('fingerprint_hash', fingerprint_hash).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def find_similar_recipes(self, title_normalized: str, cuisine_normalized: str, total_time_minutes: int, time_tolerance: int = 10) -> Dict[str, Any]:
+        """Find potentially similar recipes for fuzzy duplicate detection"""
+        def _execute():
+            client = self.get_client()
+            time_min = max(0, total_time_minutes - time_tolerance)
+            time_max = total_time_minutes + time_tolerance
+
+            return client.table('recipe_fingerprints').select('recipe_id, title_normalized').eq('cuisine_normalized', cuisine_normalized).gte('total_time_minutes', time_min).lte('total_time_minutes', time_max).execute()
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def create_recipe_with_related(self, recipe_data: Dict[str, Any], ingredients: List[Dict[str, Any]], nutrition: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Create recipe with ingredients and nutrition in a transaction-like manner"""
+        def _execute():
+            client = self.get_client(use_service_key=True)
+
+            # Insert recipe
+            recipe_result = client.table('recipes').insert(recipe_data).execute()
+            if not recipe_result.data:
+                raise Exception("Failed to create recipe")
+
+            recipe_id = recipe_result.data[0]['id']
+
+            # Insert ingredients
+            if ingredients:
+                for ingredient in ingredients:
+                    ingredient['recipe_id'] = recipe_id
+                client.table('ingredients').insert(ingredients).execute()
+
+            # Insert nutrition if provided
+            if nutrition:
+                nutrition['recipe_id'] = recipe_id
+                client.table('nutrition').insert(nutrition).execute()
+
+            return recipe_result
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
 

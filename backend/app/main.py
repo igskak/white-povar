@@ -1,11 +1,22 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
 import uvicorn
 
 from app.core.settings import settings
-from app.api.v1.endpoints import recipes, search, auth, ai, config
+from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion
 from app.middleware.localization import LocalizationMiddleware
+from app.ingestion.service import startup_ingestion, shutdown_ingestion
+
+# Lifespan manager for startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await startup_ingestion()
+    yield
+    # Shutdown
+    await shutdown_ingestion()
 
 # Create FastAPI application
 app = FastAPI(
@@ -13,6 +24,7 @@ app = FastAPI(
     version=settings.version,
     description="Backend API for White-Label Cooking App",
     debug=settings.debug,
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -33,6 +45,7 @@ app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["recipes"])
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])
 app.include_router(config.router, prefix="/api/v1/config", tags=["configuration"])
+app.include_router(ingestion.router, prefix="/api/v1/ingestion", tags=["ingestion"])
 
 @app.get("/")
 async def root():

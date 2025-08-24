@@ -19,8 +19,11 @@ class RecipeFilterBar extends ConsumerWidget {
               label: 'All',
               isSelected: currentFilter.isEmpty,
               onTap: () {
-                ref.read(recipeFilterProvider.notifier).state = const RecipeFilter();
-                ref.read(recipeListProvider.notifier).loadRecipes(const RecipeFilter());
+                ref.read(recipeFilterProvider.notifier).state =
+                    const RecipeFilter();
+                ref
+                    .read(recipeListProvider.notifier)
+                    .loadRecipes(const RecipeFilter());
               },
             ),
             const SizedBox(width: 8),
@@ -28,7 +31,7 @@ class RecipeFilterBar extends ConsumerWidget {
               label: 'Featured',
               isSelected: currentFilter.isFeatured == true,
               onTap: () {
-                final newFilter = const RecipeFilter(isFeatured: true);
+                const newFilter = RecipeFilter(isFeatured: true);
                 ref.read(recipeFilterProvider.notifier).state = newFilter;
                 ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
               },
@@ -38,7 +41,7 @@ class RecipeFilterBar extends ConsumerWidget {
               label: 'Quick (< 30 min)',
               isSelected: currentFilter.maxTime == 30,
               onTap: () {
-                final newFilter = const RecipeFilter(maxTime: 30);
+                const newFilter = RecipeFilter(maxTime: 30);
                 ref.read(recipeFilterProvider.notifier).state = newFilter;
                 ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
               },
@@ -48,7 +51,7 @@ class RecipeFilterBar extends ConsumerWidget {
               label: 'Mediterranean',
               isSelected: currentFilter.cuisine == 'Mediterranean',
               onTap: () {
-                final newFilter = const RecipeFilter(cuisine: 'Mediterranean');
+                const newFilter = RecipeFilter(cuisine: 'Mediterranean');
                 ref.read(recipeFilterProvider.notifier).state = newFilter;
                 ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
               },
@@ -58,7 +61,7 @@ class RecipeFilterBar extends ConsumerWidget {
               label: 'Mexican',
               isSelected: currentFilter.cuisine == 'Mexican',
               onTap: () {
-                final newFilter = const RecipeFilter(cuisine: 'Mexican');
+                const newFilter = RecipeFilter(cuisine: 'Mexican');
                 ref.read(recipeFilterProvider.notifier).state = newFilter;
                 ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
               },
@@ -88,9 +91,7 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? Theme.of(context).primaryColor 
-              : Colors.grey[200],
+          color: isSelected ? Theme.of(context).primaryColor : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
