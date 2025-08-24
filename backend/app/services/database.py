@@ -50,6 +50,13 @@ class SupabaseService:
                 return query.execute()
 
             elif operation == "delete":
+                query = query.delete()
+                if filters:
+                    for key, value in filters.items():
+                        query = query.eq(key, value)
+                return query.execute()
+
+            elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
                         query = query.eq(key, value)
