@@ -17,6 +17,7 @@ from app.ingestion.ai_parser import ai_parser
 from app.ingestion.validation import recipe_validator
 from app.ingestion.dedupe import recipe_deduplicator
 from app.ingestion.file_watcher import directory_manager
+from app.ingestion.ingredient_matcher import ingredient_matcher
 
 logger = logging.getLogger(__name__)
 
@@ -211,24 +212,14 @@ class RecipeProcessor:
             'tags': parsed_recipe.tags,
             'is_featured': False
         }
-        
-        # For now, just create the recipe without ingredients and nutrition
-        # TODO: Add ingredients and nutrition support when tables are available
 
-        # Store ingredients in the description for now
-        ingredients_text = "\n\nIngredients:\n"
-        for ing in parsed_recipe.ingredients:
-            quantity_text = f"{ing.quantity_value} {ing.unit}" if ing.quantity_value and ing.unit else ""
-            ingredients_text += f"- {quantity_text} {ing.name}"
-            if ing.notes:
-                ingredients_text += f" ({ing.notes})"
-            ingredients_text += "\n"
+        # Process ingredients with smart matching to existing base ingredients
+        logger.info(f"Processing {len(parsed_recipe.ingredients)} ingredients...")
+        processed_ingredients = await ingredient_matcher.process_ingredients(parsed_recipe.ingredients)
+        logger.info(f"Successfully processed {len(processed_ingredients)} ingredients")
 
-        # Append ingredients to description
-        recipe_data['description'] = recipe_data['description'] + ingredients_text
-
-        # Create recipe only
-        result = await supabase_service.execute_query('recipes', 'insert', recipe_data, use_service_key=True)
+        # Create recipe with ingredients
+        result = await supabase_service.create_recipe_with_ingredients(recipe_data, processed_ingredients)
         
         if not result.data:
             raise Exception("Failed to create recipe in database")

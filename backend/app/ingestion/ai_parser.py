@@ -72,10 +72,24 @@ IMPORTANT RULES:
 1. If text is not in English, translate all content to English
 2. Improve descriptions to match professional chef style - make them appetizing and descriptive
 3. Use "unknown" for any field you cannot determine from the text
-4. Normalize ingredient units (tbsp, tsp, g, ml, cup, etc.)
-5. Difficulty: 1=very easy, 2=easy, 3=medium, 4=hard, 5=very hard
-6. Instructions should be clear, numbered steps
-7. Tags should include dietary restrictions if mentioned (vegetarian, vegan, gluten-free, etc.)
+4. For ingredients: separate quantity, unit, and name clearly
+5. Normalize units: use g, kg, ml, l, cup, tbsp, tsp, oz, lb, piece (or pc)
+6. Difficulty: 1=very easy, 2=easy, 3=medium, 4=hard, 5=very hard
+7. Instructions should be clear, numbered steps
+8. Tags should include dietary restrictions if mentioned (vegetarian, vegan, gluten-free, etc.)
+
+INGREDIENT PARSING GUIDELINES:
+- Extract clean ingredient names (remove preparation methods)
+- Put preparation methods in "notes" field (diced, chopped, minced, etc.)
+- Normalize quantities to decimal numbers
+- Use standard units: g, kg, ml, l, cup, tbsp, tsp, oz, lb, piece
+- For "to taste" items, use null for quantity and unit
+
+EXAMPLES:
+"2 large onions, diced" → {"name": "onions", "quantity_value": 2, "unit": "piece", "notes": "large, diced"}
+"400g spaghetti" → {"name": "spaghetti", "quantity_value": 400, "unit": "g", "notes": null}
+"3 cloves garlic, minced" → {"name": "garlic", "quantity_value": 3, "unit": "piece", "notes": "cloves, minced"}
+"Salt to taste" → {"name": "salt", "quantity_value": null, "unit": null, "notes": "to taste"}
 
 Return ONLY valid JSON matching this exact schema:
 {
@@ -89,10 +103,10 @@ Return ONLY valid JSON matching this exact schema:
   "servings": 1,
   "ingredients": [
     {
-      "name": "string",
+      "name": "string (clean ingredient name)",
       "quantity_value": 0.0 or null,
-      "unit": "string or null",
-      "notes": "string or null"
+      "unit": "string (normalized) or null",
+      "notes": "string (preparation, size, etc.) or null"
     }
   ],
   "instructions": ["step 1", "step 2"],

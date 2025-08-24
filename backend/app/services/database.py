@@ -278,8 +278,8 @@ class SupabaseService:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
 
-    async def create_recipe_with_related(self, recipe_data: Dict[str, Any], ingredients: List[Dict[str, Any]], nutrition: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Create recipe with ingredients and nutrition in a transaction-like manner"""
+    async def create_recipe_with_ingredients(self, recipe_data: Dict[str, Any], ingredients: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Create recipe with ingredients using the proper recipe_ingredients table"""
         def _execute():
             client = self.get_client(use_service_key=True)
 
@@ -290,21 +290,62 @@ class SupabaseService:
 
             recipe_id = recipe_result.data[0]['id']
 
-            # Insert ingredients
+            # Insert ingredients into recipe_ingredients table
             if ingredients:
-                for ingredient in ingredients:
-                    ingredient['recipe_id'] = recipe_id
-                client.table('ingredients').insert(ingredients).execute()
+                ingredients_to_insert = []
 
-            # Insert nutrition if provided
-            if nutrition:
-                nutrition['recipe_id'] = recipe_id
-                client.table('nutrition').insert(nutrition).execute()
+                # Ensure all ingredients have the same structure
+                for i, ingredient in enumerate(ingredients):
+                    ingredient_data = {
+                        'recipe_id': recipe_id,
+                        'display_name': ingredient['display_name'],
+                        'sort_order': ingredient.get('sort_order', i + 1)
+                    }
+
+                    # Add optional fields consistently
+                    if 'amount' in ingredient and ingredient['amount'] is not None:
+                        ingredient_data['amount'] = ingredient['amount']
+                    if 'unit_id' in ingredient and ingredient['unit_id'] is not None:
+                        ingredient_data['unit_id'] = ingredient['unit_id']
+                    if 'preparation_notes' in ingredient and ingredient['preparation_notes'] is not None:
+                        ingredient_data['preparation_notes'] = ingredient['preparation_notes']
+                    if 'base_ingredient_id' in ingredient and ingredient['base_ingredient_id'] is not None:
+                        ingredient_data['base_ingredient_id'] = ingredient['base_ingredient_id']
+
+                    ingredients_to_insert.append(ingredient_data)
+
+                # Insert ingredients one by one to avoid key mismatch issues
+                for ingredient_data in ingredients_to_insert:
+                    client.table('recipe_ingredients').insert(ingredient_data).execute()
 
             return recipe_result
 
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
+
+    async def find_base_ingredient_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """Find base ingredient by name or alias"""
+        def _execute():
+            client = self.get_client()
+            # Search by exact name match first
+            result = client.table('base_ingredients').select('*').ilike('name_en', f'%{name}%').execute()
+            return result
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _execute)
+        return result.data[0] if result.data else None
+
+    async def find_unit_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """Find unit by name or abbreviation"""
+        def _execute():
+            client = self.get_client()
+            # Search by abbreviation first, then name
+            result = client.table('units').select('*').or_(f'abbreviation_en.ilike.%{name}%,name_en.ilike.%{name}%').execute()
+            return result
+
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _execute)
+        return result.data[0] if result.data else None
 
 # Global instance
 supabase_service = SupabaseService()
