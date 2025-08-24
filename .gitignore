@@ -30,6 +30,17 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+**/build/
+
+# Python related
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
 
 # Symbolication related
 app.*.symbols
