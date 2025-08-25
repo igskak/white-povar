@@ -7,14 +7,15 @@ class SmartRecipeFilterBar extends ConsumerStatefulWidget {
   const SmartRecipeFilterBar({super.key});
 
   @override
-  ConsumerState<SmartRecipeFilterBar> createState() => _SmartRecipeFilterBarState();
+  ConsumerState<SmartRecipeFilterBar> createState() =>
+      _SmartRecipeFilterBarState();
 }
 
 class _SmartRecipeFilterBarState extends ConsumerState<SmartRecipeFilterBar> {
   bool _showAllFilters = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final currentFilter = ref.watch(recipeFilterProvider);
     final filterOptionsAsync = ref.watch(filterOptionsProvider);
     final theme = Theme.of(context);
@@ -48,19 +49,22 @@ class _SmartRecipeFilterBarState extends ConsumerState<SmartRecipeFilterBar> {
                 _FilterChip(
                   label: 'Featured',
                   isSelected: currentFilter.isFeatured == true,
-                  onTap: () => _applyFilter(ref, const RecipeFilter(isFeatured: true)),
+                  onTap: () =>
+                      _applyFilter(ref, const RecipeFilter(isFeatured: true)),
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
                   label: 'Quick (< 30 min)',
                   isSelected: currentFilter.maxTime == 30,
-                  onTap: () => _applyFilter(ref, const RecipeFilter(maxTime: 30)),
+                  onTap: () =>
+                      _applyFilter(ref, const RecipeFilter(maxTime: 30)),
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
                   label: 'Medium (< 60 min)',
                   isSelected: currentFilter.maxTime == 60,
-                  onTap: () => _applyFilter(ref, const RecipeFilter(maxTime: 60)),
+                  onTap: () =>
+                      _applyFilter(ref, const RecipeFilter(maxTime: 60)),
                 ),
                 const SizedBox(width: 8),
                 // Active filters indicator
@@ -72,19 +76,20 @@ class _SmartRecipeFilterBarState extends ConsumerState<SmartRecipeFilterBar> {
                 _FilterChip(
                   label: _showAllFilters ? 'Less Filters' : 'More Filters',
                   isSelected: false,
-                  onTap: () => setState(() => _showAllFilters = !_showAllFilters),
+                  onTap: () =>
+                      setState(() => _showAllFilters = !_showAllFilters),
                   icon: _showAllFilters ? Icons.expand_less : Icons.expand_more,
                 ),
               ],
             ),
           ),
-          
+
           // Expanded filters
           if (_showAllFilters) ...[
             const SizedBox(height: 16),
-            
             filterOptionsAsync.when(
-              data: (filterOptions) => _buildExpandedFilters(context, ref, currentFilter, filterOptions),
+              data: (filterOptions) => _buildExpandedFilters(
+                  context, ref, currentFilter, filterOptions),
               loading: () => const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16),
@@ -92,9 +97,9 @@ class _SmartRecipeFilterBarState extends ConsumerState<SmartRecipeFilterBar> {
                 ),
               ),
               error: (error, stack) => _buildExpandedFilters(
-                context, 
-                ref, 
-                currentFilter, 
+                context,
+                ref,
+                currentFilter,
                 FilterOptions.empty(),
               ),
             ),
@@ -116,43 +121,52 @@ class _SmartRecipeFilterBarState extends ConsumerState<SmartRecipeFilterBar> {
         if (filterOptions.difficulties.isNotEmpty)
           _FilterSection(
             title: 'Difficulty',
-            children: filterOptions.difficulties.map((difficulty) => 
-              _FilterChip(
-                label: _getDifficultyLabel(difficulty),
-                isSelected: currentFilter.difficulty == difficulty,
-                onTap: () => _applyFilter(ref, RecipeFilter(difficulty: difficulty)),
-              ),
-            ).toList(),
+            children: filterOptions.difficulties
+                .map(
+                  (difficulty) => _FilterChip(
+                    label: _getDifficultyLabel(difficulty),
+                    isSelected: currentFilter.difficulty == difficulty,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(difficulty: difficulty)),
+                  ),
+                )
+                .toList(),
           ),
-        
+
         if (filterOptions.difficulties.isNotEmpty) const SizedBox(height: 12),
-        
+
         // Cuisine section
         if (filterOptions.cuisines.isNotEmpty)
           _FilterSection(
             title: 'Cuisine',
-            children: filterOptions.cuisines.map((cuisine) => 
-              _FilterChip(
-                label: cuisine,
-                isSelected: currentFilter.cuisine == cuisine,
-                onTap: () => _applyFilter(ref, RecipeFilter(cuisine: cuisine)),
-              ),
-            ).toList(),
+            children: filterOptions.cuisines
+                .map(
+                  (cuisine) => _FilterChip(
+                    label: cuisine,
+                    isSelected: currentFilter.cuisine == cuisine,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(cuisine: cuisine)),
+                  ),
+                )
+                .toList(),
           ),
-        
+
         if (filterOptions.cuisines.isNotEmpty) const SizedBox(height: 12),
-        
+
         // Category section
         if (filterOptions.categories.isNotEmpty)
           _FilterSection(
             title: 'Category',
-            children: filterOptions.categories.map((category) => 
-              _FilterChip(
-                label: category,
-                isSelected: currentFilter.category == category,
-                onTap: () => _applyFilter(ref, RecipeFilter(category: category)),
-              ),
-            ).toList(),
+            children: filterOptions.categories
+                .map(
+                  (category) => _FilterChip(
+                    label: category,
+                    isSelected: currentFilter.category == category,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(category: category)),
+                  ),
+                )
+                .toList(),
           ),
       ],
     );
@@ -189,14 +203,22 @@ class _ActiveFiltersIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeFilters = <String>[];
-    
-    if (currentFilter.cuisine != null) activeFilters.add(currentFilter.cuisine!);
-    if (currentFilter.category != null) activeFilters.add(currentFilter.category!);
-    if (currentFilter.difficulty != null) activeFilters.add('Level ${currentFilter.difficulty}');
-    if (currentFilter.maxTime != null) activeFilters.add('< ${currentFilter.maxTime}min');
-    
+
+    if (currentFilter.cuisine != null) {
+      activeFilters.add(currentFilter.cuisine!);
+    }
+    if (currentFilter.category != null) {
+      activeFilters.add(currentFilter.category!);
+    }
+    if (currentFilter.difficulty != null) {
+      activeFilters.add('Level ${currentFilter.difficulty}');
+    }
+    if (currentFilter.maxTime != null) {
+      activeFilters.add('< ${currentFilter.maxTime}min');
+    }
+
     if (activeFilters.isEmpty) return const SizedBox.shrink();
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -232,9 +254,9 @@ class _FilterSection extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-          ),
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              ),
         ),
         const SizedBox(height: 8),
         SingleChildScrollView(
@@ -269,28 +291,30 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? theme.colorScheme.primary 
+          color: isSelected
+              ? theme.colorScheme.primary
               : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected 
-                ? theme.colorScheme.primary 
+            color: isSelected
+                ? theme.colorScheme.primary
                 : theme.colorScheme.outline.withOpacity(0.3),
           ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: theme.colorScheme.primary.withOpacity(0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -299,8 +323,8 @@ class _FilterChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected 
-                    ? theme.colorScheme.onPrimary 
+                color: isSelected
+                    ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurface.withOpacity(0.7),
               ),
               const SizedBox(width: 4),
@@ -308,8 +332,8 @@ class _FilterChip extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isSelected 
-                    ? theme.colorScheme.onPrimary 
+                color: isSelected
+                    ? theme.colorScheme.onPrimary
                     : theme.colorScheme.onSurface.withOpacity(0.8),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 14,
