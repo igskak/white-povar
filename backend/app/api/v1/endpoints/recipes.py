@@ -52,6 +52,28 @@ def _get_category_name_from_id(category_id: str) -> str:
     }
     return category_mapping.get(category_id, 'Unknown')
 
+
+def _extract_cuisine_from_tags(tags: list) -> str:
+    """Extract cuisine from tags"""
+    if not tags:
+        return 'Unknown'
+
+    # Common cuisines to look for in tags
+    cuisines = [
+        'Italian', 'Mexican', 'Chinese', 'Indian', 'French', 'Thai', 'Japanese',
+        'Mediterranean', 'American', 'Greek', 'Spanish', 'Korean', 'Vietnamese',
+        'Middle Eastern', 'British', 'German', 'Russian', 'Turkish', 'Lebanese',
+        'Moroccan', 'Ethiopian', 'Brazilian', 'Argentinian', 'Peruvian', 'Caribbean'
+    ]
+
+    # Look for cuisine in tags (case insensitive)
+    for tag in tags:
+        for cuisine in cuisines:
+            if tag.lower() == cuisine.lower():
+                return cuisine
+
+    return 'Unknown'
+
 def _normalize_instructions(instructions_data):
     """Normalize instructions data to List[str]"""
     if isinstance(instructions_data, list):
@@ -128,7 +150,7 @@ async def get_recipes(
                     'chef_id': recipe_data['chef_id'],
                     'title': recipe_data.get('title', ''),
                     'description': recipe_data.get('description', ''),
-                    'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+                    'cuisine': _extract_cuisine_from_tags(recipe_data.get('tags', [])),
                     'category': _get_category_name_from_id(recipe_data.get('category_id')),
                     'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
                     'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
@@ -229,7 +251,7 @@ async def get_featured_recipes(
                     'chef_id': recipe_data['chef_id'],
                     'title': recipe_data.get('title', ''),
                     'description': recipe_data.get('description', ''),
-                    'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+                    'cuisine': _extract_cuisine_from_tags(recipe_data.get('tags', [])),
                     'category': _get_category_name_from_id(recipe_data.get('category_id')),
                     'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
                     'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
@@ -325,7 +347,7 @@ async def get_recipe(recipe_id: str):
             'chef_id': recipe_data['chef_id'],
             'title': recipe_data.get('title', ''),
             'description': recipe_data.get('description', ''),
-            'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+            'cuisine': _extract_cuisine_from_tags(recipe_data.get('tags', [])),
             'category': _get_category_name_from_id(recipe_data.get('category_id')),
             'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
             'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),

@@ -201,6 +201,14 @@ class RecipeProcessor:
         # Map category name to category_id
         category_id = await self._get_category_id(parsed_recipe.category)
 
+        # Add cuisine to tags if detected and not 'unknown'
+        tags = parsed_recipe.tags.copy() if parsed_recipe.tags else []
+        if parsed_recipe.cuisine and parsed_recipe.cuisine.lower() != 'unknown':
+            # Add cuisine as a tag if not already present
+            cuisine_tag = parsed_recipe.cuisine.lower()
+            if cuisine_tag not in [tag.lower() for tag in tags]:
+                tags.append(parsed_recipe.cuisine)
+
         # Convert to database schema - map to actual column names
         recipe_data = {
             'id': str(uuid4()),
@@ -213,7 +221,7 @@ class RecipeProcessor:
             'cook_time_minutes': parsed_recipe.cook_time_minutes,
             'servings': parsed_recipe.servings,
             'instructions': '\n'.join(parsed_recipe.instructions),  # Convert list to text
-            'tags': parsed_recipe.tags,
+            'tags': tags,  # Include cuisine in tags
             'is_featured': False
         }
 
@@ -235,29 +243,103 @@ class RecipeProcessor:
         if not category_name or category_name.lower() == 'unknown':
             return None
 
-        # Category mapping based on available categories
+        # Comprehensive category mapping based on available categories
         category_mapping = {
-            'appetizer': '20000000-0000-0000-0000-000000000001',  # Appetizers
+            # Appetizers
+            'appetizer': '20000000-0000-0000-0000-000000000001',
             'appetizers': '20000000-0000-0000-0000-000000000001',
-            'main course': '20000000-0000-0000-0000-000000000003',  # Second Courses
+            'starter': '20000000-0000-0000-0000-000000000001',
+            'antipasti': '20000000-0000-0000-0000-000000000001',
+            'hors d\'oeuvres': '20000000-0000-0000-0000-000000000001',
+
+            # First Courses (Pasta, Soups, etc.)
+            'first course': '20000000-0000-0000-0000-000000000002',
+            'pasta': '20000000-0000-0000-0000-000000000002',
+            'soup': '20000000-0000-0000-0000-000000000002',
+            'soups': '20000000-0000-0000-0000-000000000002',
+            'risotto': '20000000-0000-0000-0000-000000000002',
+            'noodles': '20000000-0000-0000-0000-000000000002',
+            'ramen': '20000000-0000-0000-0000-000000000002',
+            'pho': '20000000-0000-0000-0000-000000000002',
+
+            # Second Courses (Main dishes)
+            'main course': '20000000-0000-0000-0000-000000000003',
             'main': '20000000-0000-0000-0000-000000000003',
             'entree': '20000000-0000-0000-0000-000000000003',
-            'pasta': '20000000-0000-0000-0000-000000000002',  # First Courses
-            'soup': '20000000-0000-0000-0000-000000000002',  # First Courses
-            'first course': '20000000-0000-0000-0000-000000000002',
-            'side dish': '20000000-0000-0000-0000-000000000004',  # Side Dishes
+            'main dish': '20000000-0000-0000-0000-000000000003',
+            'dinner': '20000000-0000-0000-0000-000000000003',
+            'lunch': '20000000-0000-0000-0000-000000000003',
+            'meat': '20000000-0000-0000-0000-000000000003',
+            'chicken': '20000000-0000-0000-0000-000000000003',
+            'beef': '20000000-0000-0000-0000-000000000003',
+            'pork': '20000000-0000-0000-0000-000000000003',
+            'fish': '20000000-0000-0000-0000-000000000003',
+            'seafood': '20000000-0000-0000-0000-000000000003',
+            'curry': '20000000-0000-0000-0000-000000000003',
+            'stew': '20000000-0000-0000-0000-000000000003',
+            'casserole': '20000000-0000-0000-0000-000000000003',
+
+            # Side Dishes
+            'side dish': '20000000-0000-0000-0000-000000000004',
             'side': '20000000-0000-0000-0000-000000000004',
-            'dessert': '20000000-0000-0000-0000-000000000005',  # Desserts
+            'sides': '20000000-0000-0000-0000-000000000004',
+            'vegetable': '20000000-0000-0000-0000-000000000004',
+            'vegetables': '20000000-0000-0000-0000-000000000004',
+            'accompaniment': '20000000-0000-0000-0000-000000000004',
+
+            # Desserts
+            'dessert': '20000000-0000-0000-0000-000000000005',
             'desserts': '20000000-0000-0000-0000-000000000005',
-            'beverage': '20000000-0000-0000-0000-000000000006',  # Beverages
+            'sweet': '20000000-0000-0000-0000-000000000005',
+            'sweets': '20000000-0000-0000-0000-000000000005',
+            'cake': '20000000-0000-0000-0000-000000000005',
+            'cookies': '20000000-0000-0000-0000-000000000005',
+            'ice cream': '20000000-0000-0000-0000-000000000005',
+            'pudding': '20000000-0000-0000-0000-000000000005',
+            'pie': '20000000-0000-0000-0000-000000000005',
+            'tart': '20000000-0000-0000-0000-000000000005',
+
+            # Beverages
+            'beverage': '20000000-0000-0000-0000-000000000006',
+            'beverages': '20000000-0000-0000-0000-000000000006',
             'drink': '20000000-0000-0000-0000-000000000006',
+            'drinks': '20000000-0000-0000-0000-000000000006',
             'cocktail': '20000000-0000-0000-0000-000000000006',
+            'cocktails': '20000000-0000-0000-0000-000000000006',
             'smoothie': '20000000-0000-0000-0000-000000000006',
-            'bread': '20000000-0000-0000-0000-000000000007',  # Bread & Baked Goods
+            'smoothies': '20000000-0000-0000-0000-000000000006',
+            'juice': '20000000-0000-0000-0000-000000000006',
+            'tea': '20000000-0000-0000-0000-000000000006',
+            'coffee': '20000000-0000-0000-0000-000000000006',
+
+            # Bread & Baked Goods
+            'bread': '20000000-0000-0000-0000-000000000007',
+            'bread & baked goods': '20000000-0000-0000-0000-000000000007',
             'baked': '20000000-0000-0000-0000-000000000007',
+            'baked goods': '20000000-0000-0000-0000-000000000007',
             'pizza': '20000000-0000-0000-0000-000000000007',
-            'salad': '20000000-0000-0000-0000-000000000008',  # Salads
+            'sandwich': '20000000-0000-0000-0000-000000000007',
+            'sandwiches': '20000000-0000-0000-0000-000000000007',
+            'pastry': '20000000-0000-0000-0000-000000000007',
+            'pastries': '20000000-0000-0000-0000-000000000007',
+            'muffin': '20000000-0000-0000-0000-000000000007',
+            'muffins': '20000000-0000-0000-0000-000000000007',
+
+            # Salads
+            'salad': '20000000-0000-0000-0000-000000000008',
             'salads': '20000000-0000-0000-0000-000000000008',
+
+            # Special categories that should map to specific sections
+            'sauce': '20000000-0000-0000-0000-000000000004',  # Side Dishes (sauces are accompaniments)
+            'sauces': '20000000-0000-0000-0000-000000000004',
+            'marinade': '20000000-0000-0000-0000-000000000004',
+            'marinades': '20000000-0000-0000-0000-000000000004',
+            'dressing': '20000000-0000-0000-0000-000000000008',  # Salads (dressings go with salads)
+            'dressings': '20000000-0000-0000-0000-000000000008',
+            'breakfast': '20000000-0000-0000-0000-000000000002',  # First Courses
+            'brunch': '20000000-0000-0000-0000-000000000002',
+            'snack': '20000000-0000-0000-0000-000000000001',  # Appetizers
+            'snacks': '20000000-0000-0000-0000-000000000001',
         }
 
         category_lower = category_name.lower().strip()
