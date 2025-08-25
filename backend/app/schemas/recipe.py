@@ -6,7 +6,7 @@ import uuid
 
 class IngredientBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., ge=0)  # Allow 0 for "to taste" ingredients
     unit: str = Field(..., min_length=1, max_length=50)
     notes: Optional[str] = Field(None, max_length=500)
     order: int = Field(..., ge=0)

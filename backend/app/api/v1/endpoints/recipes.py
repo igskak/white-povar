@@ -11,6 +11,27 @@ from app.api.v1.endpoints.auth import verify_firebase_token, User
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+def _get_unit_name_from_id(unit_id: str) -> str:
+    """Convert unit_id to unit name"""
+    if not unit_id:
+        return 'unit'
+
+    # Simple unit mapping - in production you'd query the units table
+    unit_mapping = {
+        '00000000-0000-0000-0000-000000000001': 'g',
+        '00000000-0000-0000-0000-000000000010': 'ml',
+        '00000000-0000-0000-0000-000000000020': 'piece',
+        '00000000-0000-0000-0000-000000000031': 'tbsp',
+        '00000000-0000-0000-0000-000000000032': 'tsp',
+        '00000000-0000-0000-0000-000000000002': 'kg',
+        '00000000-0000-0000-0000-000000000011': 'l',
+        '00000000-0000-0000-0000-000000000021': 'cup',
+        '00000000-0000-0000-0000-000000000041': 'oz',
+        '00000000-0000-0000-0000-000000000051': 'lb'
+    }
+    return unit_mapping.get(unit_id, 'unit')
+
 def _normalize_instructions(instructions_data):
     """Normalize instructions data to List[str]"""
     if isinstance(instructions_data, list):
@@ -117,8 +138,8 @@ async def get_recipes(
                             'id': ingredient_data['id'],
                             'recipe_id': ingredient_data['recipe_id'],
                             'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
-                            'amount': float(ingredient_data.get('amount', 0)),
-                            'unit': ingredient_data.get('unit', 'unit'),
+                            'amount': float(ingredient_data.get('amount', 0)) if ingredient_data.get('amount') is not None else 0,
+                            'unit': _get_unit_name_from_id(ingredient_data.get('unit_id')) if ingredient_data.get('unit_id') else ingredient_data.get('unit', 'unit'),
                             'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
                             'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
                         }
@@ -218,8 +239,8 @@ async def get_featured_recipes(
                             'id': ingredient_data['id'],
                             'recipe_id': ingredient_data['recipe_id'],
                             'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
-                            'amount': float(ingredient_data.get('amount', 0)),
-                            'unit': ingredient_data.get('unit', 'unit'),
+                            'amount': float(ingredient_data.get('amount', 0)) if ingredient_data.get('amount') is not None else 0,
+                            'unit': _get_unit_name_from_id(ingredient_data.get('unit_id')) if ingredient_data.get('unit_id') else ingredient_data.get('unit', 'unit'),
                             'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
                             'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
                         }
@@ -314,8 +335,8 @@ async def get_recipe(recipe_id: str):
                     'id': ingredient_data['id'],
                     'recipe_id': ingredient_data['recipe_id'],
                     'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
-                    'amount': float(ingredient_data.get('amount', 0)),
-                    'unit': ingredient_data.get('unit', 'unit'),
+                    'amount': float(ingredient_data.get('amount', 0)) if ingredient_data.get('amount') is not None else 0,
+                    'unit': _get_unit_name_from_id(ingredient_data.get('unit_id')) if ingredient_data.get('unit_id') else ingredient_data.get('unit', 'unit'),
                     'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
                     'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
                 }
