@@ -32,6 +32,26 @@ def _get_unit_name_from_id(unit_id: str) -> str:
     }
     return unit_mapping.get(unit_id, 'unit')
 
+
+def _get_category_name_from_id(category_id: str) -> str:
+    """Convert category_id to category name"""
+    if not category_id:
+        return 'Unknown'
+
+    # Category mapping based on database
+    category_mapping = {
+        '20000000-0000-0000-0000-000000000001': 'Appetizers',
+        '20000000-0000-0000-0000-000000000002': 'First Courses',
+        '20000000-0000-0000-0000-000000000003': 'Second Courses',
+        '20000000-0000-0000-0000-000000000004': 'Side Dishes',
+        '20000000-0000-0000-0000-000000000005': 'Desserts',
+        '20000000-0000-0000-0000-000000000006': 'Beverages',
+        '20000000-0000-0000-0000-000000000007': 'Bread & Baked Goods',
+        '20000000-0000-0000-0000-000000000008': 'Salads',
+        '20000000-0000-0000-0000-000000000099': 'Other'
+    }
+    return category_mapping.get(category_id, 'Unknown')
+
 def _normalize_instructions(instructions_data):
     """Normalize instructions data to List[str]"""
     if isinstance(instructions_data, list):
@@ -108,8 +128,8 @@ async def get_recipes(
                     'chef_id': recipe_data['chef_id'],
                     'title': recipe_data.get('title', ''),
                     'description': recipe_data.get('description', ''),
-                    'cuisine': recipe_data.get('cuisine', 'Unknown'),
-                    'category': recipe_data.get('category', 'Unknown'),
+                    'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+                    'category': _get_category_name_from_id(recipe_data.get('category_id')),
                     'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
                     'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
                     'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
@@ -209,8 +229,8 @@ async def get_featured_recipes(
                     'chef_id': recipe_data['chef_id'],
                     'title': recipe_data.get('title', ''),
                     'description': recipe_data.get('description', ''),
-                    'cuisine': recipe_data.get('cuisine', 'Unknown'),
-                    'category': recipe_data.get('category', 'Unknown'),
+                    'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+                    'category': _get_category_name_from_id(recipe_data.get('category_id')),
                     'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
                     'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
                     'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
@@ -305,8 +325,8 @@ async def get_recipe(recipe_id: str):
             'chef_id': recipe_data['chef_id'],
             'title': recipe_data.get('title', ''),
             'description': recipe_data.get('description', ''),
-            'cuisine': recipe_data.get('cuisine', 'Unknown'),
-            'category': recipe_data.get('category', 'Unknown'),
+            'cuisine': recipe_data.get('cuisine', 'Unknown'),  # No cuisine in DB yet
+            'category': _get_category_name_from_id(recipe_data.get('category_id')),
             'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
             'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
             'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),

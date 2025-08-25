@@ -198,12 +198,16 @@ class RecipeProcessor:
     
     async def _create_recipe(self, parsed_recipe: ParsedRecipe, job_id: str) -> str:
         """Create recipe in database from parsed data"""
+        # Map category name to category_id
+        category_id = await self._get_category_id(parsed_recipe.category)
+
         # Convert to database schema - map to actual column names
         recipe_data = {
             'id': str(uuid4()),
             'chef_id': 'a06dccc2-0e3d-45ee-9d16-cb348898dd7a',  # Use existing chef
             'title': parsed_recipe.title,
             'description': parsed_recipe.description,
+            'category_id': category_id,  # Map to category_id using lookup
             'difficulty_level': parsed_recipe.difficulty,  # Map to difficulty_level
             'prep_time_minutes': parsed_recipe.prep_time_minutes,
             'cook_time_minutes': parsed_recipe.cook_time_minutes,
@@ -225,7 +229,47 @@ class RecipeProcessor:
             raise Exception("Failed to create recipe in database")
         
         return result.data[0]['id']
-    
+
+    async def _get_category_id(self, category_name: str) -> Optional[str]:
+        """Map category name to category_id"""
+        if not category_name or category_name.lower() == 'unknown':
+            return None
+
+        # Category mapping based on available categories
+        category_mapping = {
+            'appetizer': '20000000-0000-0000-0000-000000000001',  # Appetizers
+            'appetizers': '20000000-0000-0000-0000-000000000001',
+            'main course': '20000000-0000-0000-0000-000000000003',  # Second Courses
+            'main': '20000000-0000-0000-0000-000000000003',
+            'entree': '20000000-0000-0000-0000-000000000003',
+            'pasta': '20000000-0000-0000-0000-000000000002',  # First Courses
+            'soup': '20000000-0000-0000-0000-000000000002',  # First Courses
+            'first course': '20000000-0000-0000-0000-000000000002',
+            'side dish': '20000000-0000-0000-0000-000000000004',  # Side Dishes
+            'side': '20000000-0000-0000-0000-000000000004',
+            'dessert': '20000000-0000-0000-0000-000000000005',  # Desserts
+            'desserts': '20000000-0000-0000-0000-000000000005',
+            'beverage': '20000000-0000-0000-0000-000000000006',  # Beverages
+            'drink': '20000000-0000-0000-0000-000000000006',
+            'cocktail': '20000000-0000-0000-0000-000000000006',
+            'smoothie': '20000000-0000-0000-0000-000000000006',
+            'bread': '20000000-0000-0000-0000-000000000007',  # Bread & Baked Goods
+            'baked': '20000000-0000-0000-0000-000000000007',
+            'pizza': '20000000-0000-0000-0000-000000000007',
+            'salad': '20000000-0000-0000-0000-000000000008',  # Salads
+            'salads': '20000000-0000-0000-0000-000000000008',
+        }
+
+        category_lower = category_name.lower().strip()
+        category_id = category_mapping.get(category_lower)
+
+        if category_id:
+            logger.info(f"Mapped category '{category_name}' to ID: {category_id}")
+            return category_id
+        else:
+            logger.info(f"No mapping found for category '{category_name}', using 'Other'")
+            return '20000000-0000-0000-0000-000000000099'  # Other
+
     async def _handle_processing_error(self, job_id: str, error_msg: str, file_path: str):
         """Handle processing error with retry logic"""
         # Get current job to check retry count
