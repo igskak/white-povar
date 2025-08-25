@@ -68,6 +68,7 @@ dependencies:
   # Image Handling
   image_picker: ^1.0.4
   cached_network_image: ^3.3.0
+  permission_handler: ^11.0.1
 
   # Utilities
   uuid: ^4.2.1

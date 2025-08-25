@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/recipes/presentation/pages/recipe_list_page.dart';
@@ -8,6 +9,9 @@ import '../../features/recipes/presentation/pages/recipe_detail_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/presentation/pages/auth_callback_page.dart';
+import '../../features/camera/presentation/pages/camera_capture_page.dart';
+import '../../features/camera/presentation/pages/ingredient_review_page.dart';
+import '../../features/camera/presentation/pages/photo_search_results_page.dart';
 
 // Route names
 class AppRoutes {
@@ -17,6 +21,9 @@ class AppRoutes {
   static const String recipeDetail = '/recipes/:id';
   static const String search = '/search';
   static const String authCallback = '/auth/callback';
+  static const String camera = '/camera';
+  static const String cameraReview = '/camera/review';
+  static const String cameraResults = '/camera/results';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -70,6 +77,30 @@ final routerProvider = Provider<GoRouter>((ref) {
           final recipeId = state.pathParameters['id']!;
           return RecipeDetailPage(recipeId: recipeId);
         },
+      ),
+      GoRoute(
+        path: AppRoutes.camera,
+        name: 'camera',
+        builder: (context, state) => const CameraCaptureePage(),
+        routes: [
+          GoRoute(
+            path: 'review',
+            name: 'camera-review',
+            builder: (context, state) {
+              final capturedImage = state.extra as XFile?;
+              if (capturedImage == null) {
+                // Redirect back to camera if no image
+                return const CameraCaptureePage();
+              }
+              return IngredientReviewPage(capturedImage: capturedImage);
+            },
+          ),
+          GoRoute(
+            path: 'results',
+            name: 'camera-results',
+            builder: (context, state) => const PhotoSearchResultsPage(),
+          ),
+        ],
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

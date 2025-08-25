@@ -5,11 +5,15 @@ import '../../models/recipe.dart';
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
   final VoidCallback? onTap;
+  final bool showMatchIndicator;
+  final int matchedIngredients;
 
   const RecipeCard({
     super.key,
     required this.recipe,
     this.onTap,
+    this.showMatchIndicator = false,
+    this.matchedIngredients = 0,
   });
 
   @override
@@ -22,37 +26,75 @@ class RecipeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Recipe Image
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: recipe.images.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: recipe.images.first,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child: CircularProgressIndicator(),
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: recipe.images.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: recipe.images.first,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[200],
+                            child: const Icon(
+                              Icons.restaurant_menu,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.restaurant_menu,
+                            size: 48,
+                            color: Colors.grey,
+                          ),
                         ),
+                ),
+                if (showMatchIndicator && matchedIngredients > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          size: 48,
-                          color: Colors.grey,
-                        ),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.restaurant_menu,
-                        size: 48,
-                        color: Colors.grey,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$matchedIngredients match',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+              ],
             ),
-            
+
             // Recipe Info
             Padding(
               padding: const EdgeInsets.all(16),
@@ -91,21 +133,21 @@ class RecipeCard extends StatelessWidget {
                         ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Description
                   Text(
                     recipe.description,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                          color: Colors.grey[600],
+                        ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Recipe Details
                   Row(
                     children: [
@@ -125,9 +167,9 @@ class RecipeCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   // Cuisine and Category
                   Row(
                     children: [

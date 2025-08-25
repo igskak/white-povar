@@ -181,7 +181,7 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/search'),
+        onPressed: () => context.push('/camera'),
         tooltip: 'Search by photo',
         child: const Icon(Icons.camera_alt),
       ),
