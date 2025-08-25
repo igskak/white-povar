@@ -71,25 +71,34 @@ class AIRecipeParser:
 IMPORTANT RULES:
 1. If text is not in English, translate all content to English
 2. Improve descriptions to match professional chef style - make them appetizing and descriptive
-3. Use "unknown" for any field you cannot determine from the text
-4. For ingredients: separate quantity, unit, and name clearly
-5. Normalize units: use g, kg, ml, l, cup, tbsp, tsp, oz, lb, piece (or pc)
-6. Difficulty: 1=very easy, 2=easy, 3=medium, 4=hard, 5=very hard
-7. Instructions should be clear, numbered steps
-8. Tags should include dietary restrictions if mentioned (vegetarian, vegan, gluten-free, etc.)
+3. For ingredients: separate quantity, unit, and name clearly
+4. Normalize units and provide reasonable quantities for "to taste" items
+5. Difficulty: 1=very easy, 2=easy, 3=medium, 4=hard, 5=very hard
+6. Instructions should be clear, numbered steps
+7. Tags should include dietary restrictions if mentioned (vegetarian, vegan, gluten-free, etc.)
+
+CUISINE CATEGORIES (choose the most appropriate):
+Italian, Mexican, Chinese, Indian, French, Thai, Japanese, Mediterranean, American, Greek, Spanish, Korean, Vietnamese, Middle Eastern, British, German, Russian, Turkish, Lebanese, Moroccan, Ethiopian, Brazilian, Argentinian, Peruvian, Caribbean, Fusion, International
+
+RECIPE CATEGORIES (choose the most appropriate):
+Appetizer, Main Course, Dessert, Side Dish, Soup, Salad, Breakfast, Lunch, Dinner, Snack, Beverage, Sauce, Marinade, Bread, Pasta, Pizza, Sandwich, Smoothie, Cocktail
 
 INGREDIENT PARSING GUIDELINES:
 - Extract clean ingredient names (remove preparation methods)
 - Put preparation methods in "notes" field (diced, chopped, minced, etc.)
-- Normalize quantities to decimal numbers
+- Normalize quantities to reasonable decimal numbers
 - Use standard units: g, kg, ml, l, cup, tbsp, tsp, oz, lb, piece
-- For "to taste" items, use null for quantity and unit
+- For spices/seasonings "to taste": use small reasonable amounts (1-2 tsp for salt, 0.5 tsp for spices)
+- For herbs "to taste": use reasonable amounts (1-2 tbsp fresh, 1 tsp dried)
+- Never use quantity 0 - always provide a reasonable estimate
 
 EXAMPLES:
 "2 large onions, diced" → {"name": "onions", "quantity_value": 2, "unit": "piece", "notes": "large, diced"}
 "400g spaghetti" → {"name": "spaghetti", "quantity_value": 400, "unit": "g", "notes": null}
 "3 cloves garlic, minced" → {"name": "garlic", "quantity_value": 3, "unit": "piece", "notes": "cloves, minced"}
-"Salt to taste" → {"name": "salt", "quantity_value": null, "unit": null, "notes": "to taste"}
+"Salt to taste" → {"name": "salt", "quantity_value": 1, "unit": "tsp", "notes": "to taste"}
+"Cumin to taste" → {"name": "cumin", "quantity_value": 0.5, "unit": "tsp", "notes": "to taste"}
+"Fresh parsley" → {"name": "parsley", "quantity_value": 2, "unit": "tbsp", "notes": "fresh, chopped"}
 
 Return ONLY valid JSON matching this exact schema:
 {
@@ -140,7 +149,9 @@ Return ONLY valid JSON matching this exact schema:
 Remember to:
 - Translate to English if needed
 - Make the description appetizing and professional
-- Use "unknown" for missing information
+- Choose appropriate cuisine and category from the predefined lists
+- Provide reasonable quantities for ALL ingredients (never use 0)
+- For "to taste" items, estimate reasonable amounts (1 tsp salt, 0.5 tsp spices, 2 tbsp fresh herbs)
 - Include dietary tags if applicable
 - Provide confidence scores for each section"""
     
