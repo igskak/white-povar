@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any
 import logging
 import base64
 import io
-from PIL import Image
+from PIL import Image, ImageFile
 from pydantic import BaseModel
 
 from app.schemas.search import PhotoSearchRequest, PhotoSearchResponse, TextSearchRequest, TextSearchResponse
@@ -66,24 +66,75 @@ async def search_by_photo(request: PhotoSearchRequest):
     try:
         # Validate and process the image
         try:
-            image_data = base64.b64decode(request.image)
-            image = Image.open(io.BytesIO(image_data))
-            
-            # Validate image format and size
-            if image.format not in ['JPEG', 'PNG', 'WEBP']:
+            # Decode base64 image
+            try:
+                image_data = base64.b64decode(request.image)
+                logger.info(f"Decoded image data size: {len(image_data)} bytes")
+            except Exception as e:
+                logger.error(f"Base64 decode error: {str(e)}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Image must be in JPEG, PNG, or WEBP format"
+                    detail="Invalid base64 image data"
                 )
-            
+
+            # Check minimum image size
+            if len(image_data) < 100:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Image data too small"
+                )
+
+            # Open image with PIL
+            try:
+                image = Image.open(io.BytesIO(image_data))
+                # Ensure image is loaded and format is detected
+                image.load()
+            except Exception as e:
+                logger.error(f"PIL image open error: {str(e)}")
+                # Try to handle truncated images
+                try:
+                    from PIL import ImageFile
+                    ImageFile.LOAD_TRUNCATED_IMAGES = True
+                    image = Image.open(io.BytesIO(image_data))
+                    image.load()
+                except Exception as e2:
+                    logger.error(f"Failed to load truncated image: {str(e2)}")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Cannot process image file"
+                    )
+
+            # If format is None, try to detect from image data
+            if image.format is None:
+                # Try to detect format from the first few bytes
+                if image_data.startswith(b'\xff\xd8\xff'):
+                    image.format = 'JPEG'
+                elif image_data.startswith(b'\x89PNG'):
+                    image.format = 'PNG'
+                elif image_data.startswith(b'RIFF') and b'WEBP' in image_data[:12]:
+                    image.format = 'WEBP'
+                else:
+                    # Default to JPEG for unknown formats
+                    image.format = 'JPEG'
+
+            # Validate image format (more lenient)
+            supported_formats = ['JPEG', 'PNG', 'WEBP', 'JPG']
+            if image.format not in supported_formats:
+                logger.warning(f"Unsupported format {image.format}, converting to JPEG")
+                # Convert to RGB if necessary and set format to JPEG
+                if image.mode in ('RGBA', 'LA', 'P'):
+                    image = image.convert('RGB')
+                image.format = 'JPEG'
+
             # Resize image if too large (OpenAI has size limits)
             max_size = (1024, 1024)
             if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
                 image.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
+
                 # Convert back to base64
                 buffer = io.BytesIO()
-                image.save(buffer, format=image.format)
+                save_format = 'JPEG' if image.format == 'JPG' else image.format
+                image.save(buffer, format=save_format)
                 request.image = base64.b64encode(buffer.getvalue()).decode()
                 
         except Exception as e:
@@ -174,7 +225,7 @@ async def search_by_text(
         for recipe_data in result.data:
             # Get ingredients for each recipe
             ingredients_result = await supabase_service.execute_query(
-                'ingredients', 'select',
+                'recipe_ingredients', 'select',
                 filters={'recipe_id': recipe_data['id']}
             )
             recipe_data['ingredients'] = ingredients_result.data or []
@@ -220,15 +271,15 @@ async def _find_recipes_by_ingredients(
         for recipe_data in result.data:
             # Get ingredients for this recipe
             ingredients_result = await supabase_service.execute_query(
-                'ingredients', 'select',
+                'recipe_ingredients', 'select',
                 filters={'recipe_id': recipe_data['id']}
             )
             recipe_data['ingredients'] = ingredients_result.data or []
             
-            # Calculate match score
-            recipe_ingredients = [ing['name'].lower() for ing in recipe_data['ingredients']]
+            # Calculate match score using display_name from recipe_ingredients
+            recipe_ingredients = [ing['display_name'].lower() for ing in recipe_data['ingredients'] if ing.get('display_name')]
             detected_lower = [ing.lower() for ing in ingredients]
-            
+
             matches = 0
             for detected_ing in detected_lower:
                 for recipe_ing in recipe_ingredients:
@@ -340,7 +391,7 @@ async def advanced_search(
             for recipe_data in result.data:
                 # Get ingredients for each recipe
                 ingredients_result = await supabase_service.execute_query(
-                    'ingredients', 'select',
+                    'recipe_ingredients', 'select',
                     filters={'recipe_id': recipe_data['id']}
                 )
                 recipe_data['ingredients'] = ingredients_result.data or []
@@ -351,7 +402,7 @@ async def advanced_search(
                     title_match = query_lower in recipe_data.get('title', '').lower()
                     desc_match = query_lower in recipe_data.get('description', '').lower()
                     ingredient_match = any(
-                        query_lower in ing.get('name', '').lower()
+                        query_lower in ing.get('display_name', '').lower()
                         for ing in recipe_data['ingredients']
                     )
 
