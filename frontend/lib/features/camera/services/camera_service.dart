@@ -13,7 +13,7 @@ class CameraService {
       // Web doesn't need explicit permission check
       return true;
     }
-    
+
     final status = await Permission.camera.status;
     return status.isGranted;
   }
@@ -23,7 +23,7 @@ class CameraService {
     if (kIsWeb) {
       return true;
     }
-    
+
     final status = await Permission.camera.request();
     return status.isGranted;
   }
@@ -33,7 +33,7 @@ class CameraService {
     if (kIsWeb || Platform.isIOS) {
       return true;
     }
-    
+
     final status = await Permission.storage.status;
     return status.isGranted;
   }
@@ -43,7 +43,7 @@ class CameraService {
     if (kIsWeb || Platform.isIOS) {
       return true;
     }
-    
+
     final status = await Permission.storage.request();
     return status.isGranted;
   }
@@ -62,8 +62,10 @@ class CameraService {
       final image = await _picker.pickImage(
         source: ImageSource.camera,
         imageQuality: 85,
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 2048, // Increased for better quality
+        maxHeight: 2048, // Increased for better quality
+        preferredCameraDevice:
+            CameraDevice.rear, // Use rear camera for better quality
       );
 
       return image;
@@ -86,8 +88,8 @@ class CameraService {
       final image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 2048, // Increased for better quality
+        maxHeight: 2048, // Increased for better quality
       );
 
       return image;
@@ -113,7 +115,7 @@ class CameraService {
         // The browser will handle the actual availability
         return true;
       }
-      
+
       // For mobile platforms, we can check if camera permission can be requested
       final status = await Permission.camera.status;
       return !status.isPermanentlyDenied;
@@ -125,12 +127,12 @@ class CameraService {
   /// Validate image file
   bool isValidImage(XFile? image) {
     if (image == null) return false;
-    
+
     final extension = image.path.toLowerCase();
-    return extension.endsWith('.jpg') || 
-           extension.endsWith('.jpeg') || 
-           extension.endsWith('.png') || 
-           extension.endsWith('.webp');
+    return extension.endsWith('.jpg') ||
+        extension.endsWith('.jpeg') ||
+        extension.endsWith('.png') ||
+        extension.endsWith('.webp');
   }
 
   /// Get image file size in MB
