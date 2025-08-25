@@ -5,6 +5,26 @@ import '../../providers/recipe_provider.dart';
 class RecipeFilterBar extends ConsumerWidget {
   const RecipeFilterBar({super.key});
 
+  // Available filter options based on our database
+  static const List<String> availableCuisines = [
+    'Italian',
+    'French',
+    'Mediterranean',
+  ];
+
+  static const List<String> availableCategories = [
+    'Appetizers',
+    'First Courses',
+    'Second Courses',
+    'Side Dishes',
+    'Desserts',
+    'Beverages',
+    'Bread & Baked Goods',
+    'Salads',
+  ];
+
+  static const List<int> availableDifficulties = [1, 2, 3, 4, 5];
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentFilter = ref.watch(recipeFilterProvider);
@@ -15,61 +35,96 @@ class RecipeFilterBar extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
+            // All filter
             _FilterChip(
               label: 'All',
               isSelected: currentFilter.isEmpty,
-              onTap: () {
-                ref.read(recipeFilterProvider.notifier).state =
-                    const RecipeFilter();
-                ref
-                    .read(recipeListProvider.notifier)
-                    .loadRecipes(const RecipeFilter());
-              },
+              onTap: () => _applyFilter(ref, const RecipeFilter()),
             ),
             const SizedBox(width: 8),
+
+            // Featured filter
             _FilterChip(
               label: 'Featured',
               isSelected: currentFilter.isFeatured == true,
-              onTap: () {
-                const newFilter = RecipeFilter(isFeatured: true);
-                ref.read(recipeFilterProvider.notifier).state = newFilter;
-                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
-              },
+              onTap: () =>
+                  _applyFilter(ref, const RecipeFilter(isFeatured: true)),
             ),
             const SizedBox(width: 8),
+
+            // Time filters
             _FilterChip(
               label: 'Quick (< 30 min)',
               isSelected: currentFilter.maxTime == 30,
-              onTap: () {
-                const newFilter = RecipeFilter(maxTime: 30);
-                ref.read(recipeFilterProvider.notifier).state = newFilter;
-                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
-              },
+              onTap: () => _applyFilter(ref, const RecipeFilter(maxTime: 30)),
             ),
             const SizedBox(width: 8),
+
             _FilterChip(
-              label: 'Mediterranean',
-              isSelected: currentFilter.cuisine == 'Mediterranean',
-              onTap: () {
-                const newFilter = RecipeFilter(cuisine: 'Mediterranean');
-                ref.read(recipeFilterProvider.notifier).state = newFilter;
-                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
-              },
+              label: 'Medium (< 60 min)',
+              isSelected: currentFilter.maxTime == 60,
+              onTap: () => _applyFilter(ref, const RecipeFilter(maxTime: 60)),
             ),
             const SizedBox(width: 8),
-            _FilterChip(
-              label: 'Mexican',
-              isSelected: currentFilter.cuisine == 'Mexican',
-              onTap: () {
-                const newFilter = RecipeFilter(cuisine: 'Mexican');
-                ref.read(recipeFilterProvider.notifier).state = newFilter;
-                ref.read(recipeListProvider.notifier).loadRecipes(newFilter);
-              },
-            ),
+
+            // Difficulty filters
+            ...availableDifficulties.map((difficulty) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _FilterChip(
+                    label: _getDifficultyLabel(difficulty),
+                    isSelected: currentFilter.difficulty == difficulty,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(difficulty: difficulty)),
+                  ),
+                )),
+
+            // Cuisine filters
+            ...availableCuisines.map((cuisine) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _FilterChip(
+                    label: cuisine,
+                    isSelected: currentFilter.cuisine == cuisine,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(cuisine: cuisine)),
+                  ),
+                )),
+
+            // Category filters
+            ...availableCategories.map((category) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _FilterChip(
+                    label: category,
+                    isSelected: currentFilter.category == category,
+                    onTap: () =>
+                        _applyFilter(ref, RecipeFilter(category: category)),
+                  ),
+                )),
           ],
         ),
       ),
     );
+  }
+
+  void _applyFilter(WidgetRef ref, RecipeFilter filter) {
+    ref.read(recipeFilterProvider.notifier).state = filter;
+    ref.read(recipeListProvider.notifier).loadRecipes(filter);
+  }
+
+  String _getDifficultyLabel(int difficulty) {
+    switch (difficulty) {
+      case 1:
+        return 'Very Easy ⭐';
+      case 2:
+        return 'Easy ⭐⭐';
+      case 3:
+        return 'Medium ⭐⭐⭐';
+      case 4:
+        return 'Hard ⭐⭐⭐⭐';
+      case 5:
+        return 'Very Hard ⭐⭐⭐⭐⭐';
+      default:
+        return 'Level $difficulty';
+    }
   }
 }
 

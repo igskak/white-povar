@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../providers/recipe_provider.dart';
 import '../widgets/recipe_card.dart';
-import '../widgets/recipe_filter_bar.dart';
+import '../widgets/smart_recipe_filter_bar.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
 
@@ -86,7 +86,7 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
       body: Column(
         children: [
           // Filter Bar
-          const RecipeFilterBar(),
+          const SmartRecipeFilterBar(),
 
           // Recipe List
           Expanded(
