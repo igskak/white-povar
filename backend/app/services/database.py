@@ -50,13 +50,6 @@ class SupabaseService:
                 return query.execute()
 
             elif operation == "delete":
-                query = query.delete()
-                if filters:
-                    for key, value in filters.items():
-                        query = query.eq(key, value)
-                return query.execute()
-
-            elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
                         query = query.eq(key, value)
@@ -74,8 +67,11 @@ class SupabaseService:
         def _execute():
             client = self.get_client()
             try:
-                # Build the query
-                query = client.table('recipes').select('*')
+                # Build the query with JOIN to include ingredients
+                query = client.table('recipes').select('''
+                    *,
+                    recipe_ingredients(*)
+                ''')
 
                 # Apply filters if provided
                 if filters:
@@ -147,8 +143,18 @@ class SupabaseService:
         def _execute():
             client = self.get_client()
             try:
-                # Build search query
-                search_query = client.table('recipes').select('*')
+                # Build search query with actual text search
+                search_query = client.table('recipes').select('''
+                    *,
+                    recipe_ingredients(*)
+                ''')
+
+                # Add text search filters - search in title, description, and tags
+                search_query = search_query.or_(
+                    f'title.ilike.%{query}%,'
+                    f'description.ilike.%{query}%,'
+                    f'tags.cs.{{{query}}}'
+                )
 
                 # Add chef filter if provided
                 if chef_id:

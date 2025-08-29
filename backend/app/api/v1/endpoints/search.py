@@ -223,13 +223,11 @@ async def search_by_text(
         
         recipes = []
         for recipe_data in result.data:
-            # Get ingredients for each recipe
-            ingredients_result = await supabase_service.execute_query(
-                'recipe_ingredients', 'select',
-                filters={'recipe_id': recipe_data['id']}
-            )
-            recipe_data['ingredients'] = ingredients_result.data or []
-            
+            # Ingredients are now included via JOIN, no need for separate query
+            # Extract ingredients from the nested structure
+            ingredients = recipe_data.pop('recipe_ingredients', [])
+            recipe_data['ingredients'] = ingredients
+
             recipe = Recipe(**recipe_data)
             recipes.append(recipe)
         
@@ -379,7 +377,7 @@ async def advanced_search(
         # Calculate offset for pagination
         offset = (page - 1) * page_size
 
-        # Execute search
+        # Execute search with JOIN to include ingredients
         result = await supabase_service.get_recipes(
             filters=query_filters,
             limit=page_size,
@@ -389,12 +387,9 @@ async def advanced_search(
         recipes = []
         if result.data:
             for recipe_data in result.data:
-                # Get ingredients for each recipe
-                ingredients_result = await supabase_service.execute_query(
-                    'recipe_ingredients', 'select',
-                    filters={'recipe_id': recipe_data['id']}
-                )
-                recipe_data['ingredients'] = ingredients_result.data or []
+                # Ingredients are now included via JOIN, no need for separate query
+                ingredients = recipe_data.pop('recipe_ingredients', [])
+                recipe_data['ingredients'] = ingredients
 
                 # Apply text search filter if provided
                 if filters.query:

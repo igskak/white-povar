@@ -134,9 +134,8 @@ async def get_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
-                # Get ingredients for each recipe
-                ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
-                recipe_ingredients = ingredients_result.get('data', [])
+                # Ingredients are now included via JOIN, no need for separate query
+                recipe_ingredients = recipe_data.pop('recipe_ingredients', [])
 
                 # Convert string UUIDs to UUID objects
                 if isinstance(recipe_data.get('id'), str):
