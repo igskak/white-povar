@@ -61,12 +61,92 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "environment": settings.environment}
 
-# Global exception handler
+# Import standardized exceptions
+from app.core.exceptions import (
+    BaseAPIException,
+    DatabaseException,
+    ValidationException,
+    AuthenticationException,
+    AuthorizationException,
+    NotFoundException,
+    ConflictException,
+    BusinessLogicException,
+    RateLimitException,
+    InternalServerException,
+)
+from pydantic import ValidationError
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Standardized exception handlers
+@app.exception_handler(BaseAPIException)
+async def base_api_exception_handler(request, exc: BaseAPIException):
+    """Handle custom API exceptions with consistent structure"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "error_code": exc.error_code,
+            "type": "api_error"
+        },
+        headers=exc.headers
+    )
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request, exc: ValidationError):
+    """Handle Pydantic validation errors"""
+    logger.warning(f"Validation error: {exc}")
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Validation error",
+            "error_code": "VALIDATION_ERROR",
+            "type": "validation_error",
+            "errors": exc.errors()
+        }
+    )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """Handle FastAPI HTTP exceptions"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+            "error_code": f"HTTP_{exc.status_code}",
+            "type": "http_error"
+        }
+    )
+
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request, exc: Exception):
+    """Handle unexpected exceptions"""
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
+
+    # In debug mode, show the actual error
+    if settings.debug:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Internal server error: {str(exc)}",
+                "error_code": "INTERNAL_ERROR",
+                "type": "internal_error",
+                "debug_info": {
+                    "exception_type": type(exc).__name__,
+                    "exception_message": str(exc)
+                }
+            }
+        )
+
+    # In production, hide implementation details
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": str(exc) if settings.debug else "Something went wrong"}
+        content={
+            "detail": "An unexpected error occurred. Please try again later.",
+            "error_code": "INTERNAL_ERROR",
+            "type": "internal_error"
+        }
     )
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../recipes/models/recipe.dart';
-import '../../../recipes/services/recipe_service.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
+import '../../providers/search_provider.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
@@ -13,9 +13,6 @@ class SearchPage extends ConsumerStatefulWidget {
 
 class _SearchPageState extends ConsumerState<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  List<Recipe> _searchResults = [];
-  bool _isLoading = false;
-  String _errorMessage = '';
 
   @override
   void dispose() {
@@ -23,33 +20,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      setState(() {
-        _searchResults = [];
-        _errorMessage = '';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
-
-    try {
-      final recipeService = RecipeService();
-      final results = await recipeService.searchRecipes(query);
-      setState(() {
-        _searchResults = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to search recipes: $e';
-        _isLoading = false;
-      });
-    }
+  void _performSearch(String query) {
+    ref.read(simpleTextSearchProvider.notifier).searchRecipes(query);
   }
 
   @override
@@ -72,7 +44,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         icon: const Icon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
-                          _performSearch('');
+                          ref
+                              .read(simpleTextSearchProvider.notifier)
+                              .clearSearch();
+                          setState(() {}); // Refresh to hide clear button
                         },
                       )
                     : null,
@@ -98,18 +73,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildSearchResults() {
-    if (_isLoading) {
+    final searchState = ref.watch(simpleTextSearchProvider);
+
+    if (searchState.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage.isNotEmpty) {
+    if (searchState.error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(_errorMessage),
+            Text(searchState.error!),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => _performSearch(_searchController.text),
@@ -141,7 +118,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       );
     }
 
-    if (_searchResults.isEmpty) {
+    if (searchState.results.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -170,9 +147,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
-      itemCount: _searchResults.length,
+      itemCount: searchState.results.length,
       itemBuilder: (context, index) {
-        return RecipeCard(recipe: _searchResults[index]);
+        return RecipeCard(recipe: searchState.results[index]);
       },
     );
   }

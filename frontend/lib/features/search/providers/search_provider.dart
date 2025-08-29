@@ -4,6 +4,8 @@ import '../models/search_filters.dart';
 import '../models/search_response.dart';
 import '../models/filter_options.dart';
 import '../../recipes/models/recipe.dart';
+import '../../recipes/repositories/recipe_repository.dart';
+import '../../recipes/repositories/api_recipe_repository.dart';
 
 // Search Service Provider
 final searchServiceProvider = Provider<AdvancedSearchService>((ref) {
@@ -62,7 +64,7 @@ class SearchNotifier extends StateNotifier<SearchState> {
     bool append = false,
   }) async {
     final searchFilters = filters ?? state.filters;
-    
+
     if (!append) {
       state = state.copyWith(
         isLoading: true,
@@ -83,7 +85,7 @@ class SearchNotifier extends StateNotifier<SearchState> {
         // Append new recipes to existing ones
         final existingRecipes = state.searchResponse!.recipes;
         final newRecipes = [...existingRecipes, ...response.recipes];
-        
+
         final updatedResponse = SearchResponse(
           recipes: newRecipes,
           totalCount: response.totalCount,
@@ -138,15 +140,17 @@ class SearchNotifier extends StateNotifier<SearchState> {
   }
 }
 
-final searchProvider = StateNotifierProvider<SearchNotifier, SearchState>((ref) {
+final searchProvider =
+    StateNotifierProvider<SearchNotifier, SearchState>((ref) {
   final searchService = ref.watch(searchServiceProvider);
   return SearchNotifier(searchService);
 });
 
 // Search Suggestions Provider
-final searchSuggestionsProvider = FutureProvider.family<List<String>, String>((ref, query) async {
+final searchSuggestionsProvider =
+    FutureProvider.family<List<String>, String>((ref, query) async {
   if (query.length < 2) return [];
-  
+
   final searchService = ref.watch(searchServiceProvider);
   return await searchService.getSearchSuggestions(query: query);
 });
@@ -164,9 +168,11 @@ final filterOptionsProvider = FutureProvider<FilterOptions>((ref) async {
 });
 
 // Simple Search Provider (for backward compatibility)
-final simpleSearchProvider = FutureProvider.family<List<Recipe>, Map<String, dynamic>>((ref, params) async {
+final simpleSearchProvider =
+    FutureProvider.family<List<Recipe>, Map<String, dynamic>>(
+        (ref, params) async {
   final searchService = ref.watch(searchServiceProvider);
-  
+
   return await searchService.simpleSearch(
     query: params['query'],
     cuisine: params['cuisine'],
@@ -178,9 +184,11 @@ final simpleSearchProvider = FutureProvider.family<List<Recipe>, Map<String, dyn
 });
 
 // Photo Search Provider
-final photoSearchProvider = FutureProvider.family<List<Recipe>, Map<String, dynamic>>((ref, params) async {
+final photoSearchProvider =
+    FutureProvider.family<List<Recipe>, Map<String, dynamic>>(
+        (ref, params) async {
   final searchService = ref.watch(searchServiceProvider);
-  
+
   return await searchService.searchByPhoto(
     base64Image: params['image'],
     chefId: params['chefId'],
@@ -194,17 +202,17 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
 
   void addSearch(String query) {
     if (query.trim().isEmpty) return;
-    
+
     final trimmedQuery = query.trim();
     final updatedHistory = [trimmedQuery];
-    
+
     // Add existing items that don't match the new query
     for (final item in state) {
       if (item != trimmedQuery && updatedHistory.length < 10) {
         updatedHistory.add(item);
       }
     }
-    
+
     state = updatedHistory;
   }
 
@@ -217,6 +225,91 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
   }
 }
 
-final searchHistoryProvider = StateNotifierProvider<SearchHistoryNotifier, List<String>>((ref) {
+final searchHistoryProvider =
+    StateNotifierProvider<SearchHistoryNotifier, List<String>>((ref) {
   return SearchHistoryNotifier();
+});
+
+// Simple Text Search State for basic search functionality
+class SimpleSearchState {
+  final List<Recipe> results;
+  final bool isLoading;
+  final String? error;
+  final String query;
+
+  const SimpleSearchState({
+    this.results = const [],
+    this.isLoading = false,
+    this.error,
+    this.query = '',
+  });
+
+  SimpleSearchState copyWith({
+    List<Recipe>? results,
+    bool? isLoading,
+    String? error,
+    String? query,
+  }) {
+    return SimpleSearchState(
+      results: results ?? this.results,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      query: query ?? this.query,
+    );
+  }
+}
+
+// Recipe Repository Provider
+final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
+  return ApiRecipeRepository();
+});
+
+// Simple Text Search Notifier
+class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
+  final RecipeRepository _recipeRepository;
+
+  SimpleSearchNotifier(this._recipeRepository)
+      : super(const SimpleSearchState());
+
+  Future<void> searchRecipes(String query) async {
+    if (query.trim().isEmpty) {
+      state = const SimpleSearchState();
+      return;
+    }
+
+    state = state.copyWith(
+      isLoading: true,
+      error: null,
+      query: query,
+    );
+
+    try {
+      final results = await _recipeRepository.searchRecipes(query);
+      state = state.copyWith(
+        results: results,
+        isLoading: false,
+      );
+    } on RecipeRepositoryException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.message,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'An unexpected error occurred',
+      );
+    }
+  }
+
+  void clearSearch() {
+    state = const SimpleSearchState();
+  }
+}
+
+// Simple Text Search Provider
+final simpleTextSearchProvider =
+    StateNotifierProvider<SimpleSearchNotifier, SimpleSearchState>((ref) {
+  final repository = ref.watch(recipeRepositoryProvider);
+  return SimpleSearchNotifier(repository);
 });

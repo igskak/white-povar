@@ -2,8 +2,11 @@ from supabase import create_client, Client
 from typing import Optional, List, Dict, Any
 import asyncio
 from functools import wraps
+import logging
 
 from app.core.settings import settings
+
+logger = logging.getLogger(__name__)
 
 class SupabaseService:
     """Service class for Supabase database operations"""
@@ -24,8 +27,8 @@ class SupabaseService:
     
     async def execute_query(self, table: str, operation: str, data: Optional[Dict] = None,
                           filters: Optional[Dict] = None, use_service_key: bool = False) -> Dict[str, Any]:
-        """Execute database query asynchronously"""
-        def _execute():
+        """Execute database query asynchronously with proper error handling"""
+        try:
             client = self.get_client(use_service_key)
             query = client.table(table)
 
@@ -37,90 +40,95 @@ class SupabaseService:
                             query = query.in_(key, value)
                         else:
                             query = query.eq(key, value)
-                return query.execute()
+
+                # Execute synchronously but wrap in try-catch for better error handling
+                result = query.execute()
+                logger.debug(f"Query executed successfully: {table} {operation}")
+                return result
 
             elif operation == "insert":
-                return query.insert(data).execute()
+                result = query.insert(data).execute()
+                logger.debug(f"Insert executed successfully: {table}")
+                return result
 
             elif operation == "update":
                 query = query.update(data)
                 if filters:
                     for key, value in filters.items():
                         query = query.eq(key, value)
-                return query.execute()
+                result = query.execute()
+                logger.debug(f"Update executed successfully: {table}")
+                return result
 
             elif operation == "delete":
                 if filters:
                     for key, value in filters.items():
                         query = query.eq(key, value)
-                return query.delete().execute()
+                result = query.delete().execute()
+                logger.debug(f"Delete executed successfully: {table}")
+                return result
 
             else:
                 raise ValueError(f"Unsupported operation: {operation}")
 
-        # Run in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _execute)
+        except Exception as e:
+            logger.error(f"Database query error: {table} {operation} - {str(e)}")
+            raise e
     
     async def get_recipes(self, filters: Optional[Dict] = None, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Get recipes with optional filtering"""
-        def _execute():
+        try:
             client = self.get_client()
-            try:
-                # Build the query with JOIN to include ingredients
-                query = client.table('recipes').select('''
-                    *,
-                    recipe_ingredients(*)
-                ''')
 
-                # Apply filters if provided
-                if filters:
-                    for key, value in filters.items():
-                        if isinstance(value, list):
-                            query = query.in_(key, value)
-                        else:
-                            query = query.eq(key, value)
+            # Build the query with JOIN to include ingredients
+            query = client.table('recipes').select('''
+                *,
+                recipe_ingredients(*)
+            ''')
 
-                # Apply limit and offset
-                if limit:
-                    query = query.limit(limit)
-                if offset:
-                    query = query.offset(offset)
+            # Apply filters if provided
+            if filters:
+                for key, value in filters.items():
+                    if isinstance(value, list):
+                        query = query.in_(key, value)
+                    else:
+                        query = query.eq(key, value)
 
-                # Execute the query
-                result = query.execute()
+            # Apply limit and offset
+            if limit:
+                query = query.limit(limit)
+            if offset:
+                query = query.offset(offset)
 
-                print(f"Query successful! Result: {result}")
-                return result
+            # Execute the query
+            result = query.execute()
+            logger.debug(f"Get recipes query successful: {len(result.data) if result.data else 0} recipes")
+            return result
 
-            except Exception as e:
-                print(f"Supabase query error: {str(e)}")
-                print(f"Error type: {type(e)}")
-                import traceback
-                traceback.print_exc()
-                raise e
-
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _execute)
+        except Exception as e:
+            logger.error(f"Supabase get_recipes error: {str(e)}")
+            raise e
     
     async def get_recipe_by_id(self, recipe_id: str) -> Dict[str, Any]:
         """Get single recipe by ID"""
-        def _execute():
+        try:
             client = self.get_client()
-            try:
-                # Simple select by ID first
-                recipe_result = client.table('recipes').select('*').eq('id', recipe_id).execute()
-                if not recipe_result.data:
-                    return {"data": None}
 
-                recipe = recipe_result.data[0]
-                return {"data": [recipe]}
-            except Exception as e:
-                print(f"Supabase query error: {str(e)}")
-                raise e
+            # Select recipe with ingredients using JOIN
+            recipe_result = client.table('recipes').select('''
+                *,
+                recipe_ingredients(*)
+            ''').eq('id', recipe_id).execute()
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _execute)
+            if not recipe_result.data:
+                return {"data": None}
+
+            logger.debug(f"Get recipe by ID successful: {recipe_id}")
+            return {"data": recipe_result.data}
+
+        except Exception as e:
+            logger.error(f"Supabase get_recipe_by_id error: {str(e)}")
+            raise e
 
     async def get_recipe_ingredients(self, recipe_id: str) -> Dict[str, Any]:
         """Get ingredients for a specific recipe"""
@@ -140,39 +148,39 @@ class SupabaseService:
     async def search_recipes_by_text(self, query: str, chef_id: Optional[str] = None,
                                    limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Search recipes by text query"""
-        def _execute():
+        try:
             client = self.get_client()
-            try:
-                # Build search query with actual text search
-                search_query = client.table('recipes').select('''
-                    *,
-                    recipe_ingredients(*)
-                ''')
 
-                # Add text search filters - search in title, description, and tags
-                search_query = search_query.or_(
-                    f'title.ilike.%{query}%,'
-                    f'description.ilike.%{query}%,'
-                    f'tags.cs.{{{query}}}'
-                )
+            # Build search query with actual text search
+            search_query = client.table('recipes').select('''
+                *,
+                recipe_ingredients(*)
+            ''')
 
-                # Add chef filter if provided
-                if chef_id:
-                    search_query = search_query.eq('chef_id', chef_id)
+            # Add text search filters - search in title, description, and tags
+            search_query = search_query.or_(
+                f'title.ilike.%{query}%,'
+                f'description.ilike.%{query}%,'
+                f'tags.cs.{{{query}}}'
+            )
 
-                # Apply limit and offset
-                if limit:
-                    search_query = search_query.limit(limit)
-                if offset:
-                    search_query = search_query.offset(offset)
+            # Add chef filter if provided
+            if chef_id:
+                search_query = search_query.eq('chef_id', chef_id)
 
-                return search_query.execute()
-            except Exception as e:
-                print(f"Supabase search error: {str(e)}")
-                raise e
+            # Apply limit and offset
+            if limit:
+                search_query = search_query.limit(limit)
+            if offset:
+                search_query = search_query.offset(offset)
 
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, _execute)
+            result = search_query.execute()
+            logger.debug(f"Search recipes successful: query='{query}', results={len(result.data) if result.data else 0}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Supabase search_recipes_by_text error: {str(e)}")
+            raise e
     
     async def get_chef_config(self, chef_id: str) -> Dict[str, Any]:
         """Get chef configuration"""
