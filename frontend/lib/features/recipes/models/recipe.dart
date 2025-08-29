@@ -43,28 +43,57 @@ class Recipe extends Equatable {
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
     return Recipe(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      chefId: json['chef_id'] as String,
-      cuisine: json['cuisine'] as String,
-      category: json['category'] as String,
-      difficulty: json['difficulty'] as int,
-      prepTimeMinutes: json['prep_time_minutes'] as int,
-      cookTimeMinutes: json['cook_time_minutes'] as int,
-      totalTimeMinutes: json['total_time_minutes'] as int,
-      servings: json['servings'] as int,
+      id: json['id'].toString(), // Handle UUID conversion
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      chefId: json['chef_id'].toString(), // Handle UUID conversion
+      cuisine: json['cuisine']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      difficulty: _parseIntSafely(json['difficulty']) ?? 1,
+      prepTimeMinutes: _parseIntSafely(json['prep_time_minutes']) ?? 0,
+      cookTimeMinutes: _parseIntSafely(json['cook_time_minutes']) ?? 0,
+      totalTimeMinutes: _parseIntSafely(json['total_time_minutes']) ?? 0,
+      servings: _parseIntSafely(json['servings']) ?? 1,
       ingredients: (json['ingredients'] as List<dynamic>?)
               ?.map((e) => Ingredient.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      instructions: List<String>.from(json['instructions'] as List),
-      images: List<String>.from(json['images'] as List? ?? []),
-      tags: List<String>.from(json['tags'] as List? ?? []),
-      isFeatured: json['is_featured'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      instructions: _parseStringList(json['instructions']),
+      images: _parseStringList(json['images']),
+      tags: _parseStringList(json['tags']),
+      isFeatured: json['is_featured'] == true,
+      createdAt: _parseDateTime(json['created_at']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(json['updated_at']) ?? DateTime.now(),
     );
+  }
+
+  // Helper methods for safe parsing
+  static int? _parseIntSafely(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static List<String> _parseStringList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      try {
+        return DateTime.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -134,14 +163,23 @@ class Ingredient extends Equatable {
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
     return Ingredient(
-      id: json['id'] as String,
-      recipeId: json['recipe_id'] as String,
-      name: json['name'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      unit: json['unit'] as String,
-      notes: json['notes'] as String?,
-      order: json['order'] as int,
+      id: json['id'].toString(), // Handle UUID conversion
+      recipeId: json['recipe_id'].toString(), // Handle UUID conversion
+      name: json['name']?.toString() ?? '',
+      amount: _parseDoubleSafely(json['amount']) ?? 0.0,
+      unit: json['unit']?.toString() ?? '',
+      notes: json['notes']?.toString(),
+      order: Recipe._parseIntSafely(json['order']) ?? 0,
     );
+  }
+
+  // Helper method for safe double parsing
+  static double? _parseDoubleSafely(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
