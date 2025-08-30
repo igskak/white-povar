@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
 
@@ -148,7 +149,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       ),
       itemCount: searchState.results.length,
       itemBuilder: (context, index) {
-        return RecipeCard(recipe: searchState.results[index]);
+        final recipe = searchState.results[index];
+        return RecipeCard(
+          recipe: recipe,
+          onTap: () => context.push('/recipes/${recipe.id}'),
+        );
       },
     );
   }
