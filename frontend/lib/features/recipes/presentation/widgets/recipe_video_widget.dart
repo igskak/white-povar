@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import '../../../../core/config/app_config.dart';
 
 class RecipeVideoWidget extends StatefulWidget {
   final String? videoUrl;
@@ -77,11 +78,9 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   }
 
   String _getSupabaseVideoUrl(String filePath) {
-    // This should match your Supabase storage configuration
-    // You might want to get this from your app configuration
-    const supabaseUrl =
-        'https://your-project.supabase.co'; // TODO: Replace with actual URL
-    return '$supabaseUrl/storage/v1/object/public/recipe-videos/$filePath';
+    // Use the actual Supabase URL from app configuration
+    // The filePath already includes the bucket name (recipe-videos/...)
+    return '${AppConfig.supabaseUrl}/storage/v1/object/public/$filePath';
   }
 
   void _handleExternalVideoUrl() {
