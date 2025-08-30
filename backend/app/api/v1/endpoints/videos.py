@@ -91,7 +91,7 @@ async def upload_video(
         # Upload to Supabase storage
         try:
             client = supabase_service.get_client(use_service_key=True)
-            
+
             # Upload file to storage
             upload_result = client.storage.from_("recipe-videos").upload(
                 storage_path,
@@ -101,17 +101,13 @@ async def upload_video(
                     "cache-control": "3600"
                 }
             )
-            
-            if upload_result.error:
-                logger.error(f"Supabase storage upload error: {upload_result.error}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to upload video file"
-                )
-            
+
+            logger.info(f"Upload result: {upload_result}")
+
             # Get public URL
             public_url = client.storage.from_("recipe-videos").get_public_url(storage_path)
-            
+            logger.info(f"Public URL: {public_url}")
+
         except Exception as e:
             logger.error(f"Video upload error: {str(e)}")
             raise HTTPException(
@@ -223,15 +219,11 @@ async def upload_video_admin(
                 }
             )
 
-            if upload_result.error:
-                logger.error(f"Supabase storage upload error: {upload_result.error}")
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to upload video file"
-                )
+            logger.info(f"Upload result: {upload_result}")
 
             # Get public URL
             public_url = client.storage.from_("recipe-videos").get_public_url(storage_path)
+            logger.info(f"Public URL: {public_url}")
 
         except Exception as e:
             logger.error(f"Video upload error: {str(e)}")
