@@ -2,8 +2,7 @@ import openai
 from typing import Dict, List, Any, Optional
 import logging
 import json
-import asyncio
-from functools import wraps
+import re
 
 from app.core.settings import settings
 
@@ -94,33 +93,52 @@ class OpenAIService:
             
             # Parse the response
             content = response.choices[0].message.content
-            
+
+            # Some models wrap JSON in ```json code fences or prepend text; extract JSON block if present
+            def _extract_json_block(text: str) -> str:
+                # Try to find JSON within code fences
+                fence_match = re.search(r"```(?:json)?\s*({[\s\S]*?})\s*```", text)
+                if fence_match:
+                    return fence_match.group(1)
+                # Fallback: find first { ... } block heuristically
+                brace_start = text.find('{')
+                brace_end = text.rfind('}')
+                if brace_start != -1 and brace_end != -1 and brace_end > brace_start:
+                    return text[brace_start:brace_end+1]
+                return text
+
+            content_json = _extract_json_block(content)
+
             try:
                 # Try to parse as JSON
-                result = json.loads(content)
-                
+                result = json.loads(content_json)
+
                 # Validate the response structure
                 if not isinstance(result, dict):
                     raise ValueError("Response is not a dictionary")
-                
+
                 ingredients = result.get('ingredients', [])
                 confidence = result.get('confidence', 0.0)
                 notes = result.get('notes', '')
-                
+
                 # Validate ingredients list
                 if not isinstance(ingredients, list):
                     ingredients = []
-                
+
                 # Clean up ingredient names (OpenAI handles deduplication)
                 cleaned_ingredients = []
+                seen = set()
                 for ingredient in ingredients:
                     if isinstance(ingredient, str) and ingredient.strip():
-                        cleaned_ingredients.append(ingredient.strip().lower())
-                
+                        name = ingredient.strip().lower()
+                        if name not in seen:
+                            seen.add(name)
+                            cleaned_ingredients.append(name)
+
                 # Validate confidence score
                 if not isinstance(confidence, (int, float)) or confidence < 0 or confidence > 1:
                     confidence = 0.5  # Default confidence
-                
+
                 return {
                     'ingredients': cleaned_ingredients,
                     'confidence': float(confidence),

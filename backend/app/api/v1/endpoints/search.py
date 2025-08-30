@@ -329,7 +329,7 @@ async def search_by_text(
         )
 
 async def _find_recipes_by_ingredients(
-    ingredients: List[str], 
+    ingredients: List[str],
     chef_id: Optional[str] = None,
     max_results: int = 10
 ) -> List[Recipe]:
@@ -339,42 +339,84 @@ async def _find_recipes_by_ingredients(
         filters = {}
         if chef_id:
             filters['chef_id'] = chef_id
-            
+
+        # Use JOINed query to include recipe_ingredients to avoid N+1
         result = await supabase_service.get_recipes(filters, limit=100, offset=0)
-        
+
         if not result.data:
             return []
-        
+
         # Score recipes based on ingredient matches
         scored_recipes = []
-        
-        for recipe_data in result.data:
-            # Get ingredients for this recipe
-            ingredients_result = await supabase_service.execute_query(
-                'recipe_ingredients', 'select',
-                filters={'recipe_id': recipe_data['id']}
-            )
-            recipe_data['ingredients'] = ingredients_result.data or []
-            
-            # Calculate match score using display_name from recipe_ingredients
-            recipe_ingredients = [ing['display_name'].lower() for ing in recipe_data['ingredients'] if ing.get('display_name')]
-            detected_lower = [ing.lower() for ing in ingredients]
 
-            matches = 0
-            for detected_ing in detected_lower:
-                for recipe_ing in recipe_ingredients:
-                    if detected_ing in recipe_ing or recipe_ing in detected_ing:
-                        matches += 1
-                        break
-            
-            if matches > 0:
-                score = matches / len(recipe_ingredients) if recipe_ingredients else 0
-                scored_recipes.append((score, Recipe(**recipe_data)))
-        
+        for recipe_data in result.data:
+            try:
+                # Ingredients are included via JOIN
+                join_ingredients = recipe_data.pop('recipe_ingredients', []) or []
+
+                recipe_ingredient_names = [
+                    (ing.get('display_name') or '').lower()
+                    for ing in join_ingredients if ing.get('display_name')
+                ]
+                detected_lower = [ing.lower() for ing in ingredients]
+
+                matches = 0
+                for detected_ing in detected_lower:
+                    for recipe_ing in recipe_ingredient_names:
+                        if detected_ing in recipe_ing or recipe_ing in detected_ing:
+                            matches += 1
+                            break
+
+                # Map DB fields to Recipe schema (align with advanced_search path)
+                if 'difficulty_level' in recipe_data:
+                    recipe_data['difficulty'] = recipe_data.pop('difficulty_level', 1)
+
+                if 'category_id' in recipe_data:
+                    category_id = recipe_data.pop('category_id', None)
+                    recipe_data['category'] = await _get_category_name_from_id(category_id) if category_id else "Main Course"
+
+                if 'cuisine' not in recipe_data or not recipe_data['cuisine']:
+                    recipe_data['cuisine'] = "International"
+
+                # Instructions - convert TEXT to List[str]
+                if 'instructions' in recipe_data and isinstance(recipe_data['instructions'], str):
+                    instructions_list = [line.strip() for line in recipe_data['instructions'].split('\n') if line.strip()]
+                    recipe_data['instructions'] = instructions_list if instructions_list else ["No instructions provided"]
+                elif 'instructions' not in recipe_data:
+                    recipe_data['instructions'] = ["No instructions provided"]
+
+                # Process ingredients to match expected format
+                processed_ingredients = []
+                for i, ing in enumerate(join_ingredients):
+                    processed_ingredients.append({
+                        'id': ing.get('id'),
+                        'recipe_id': recipe_data['id'],
+                        'name': ing.get('display_name', 'Unknown ingredient'),
+                        'amount': float(ing.get('amount', 0) or 0),
+                        'unit': await _get_unit_name_from_id(ing.get('unit_id')) if ing.get('unit_id') else 'unit',
+                        'notes': ing.get('preparation_notes', '') or '',
+                        'order': ing.get('sort_order', i) if ing.get('sort_order') is not None else i,
+                    })
+                recipe_data['ingredients'] = processed_ingredients
+
+                # Ensure other required fields have defaults
+                recipe_data.setdefault('images', [])
+                recipe_data.setdefault('tags', [])
+                recipe_data.setdefault('is_featured', False)
+                recipe_data.setdefault('video_url', None)
+                recipe_data.setdefault('video_file_path', None)
+
+                if matches > 0:
+                    score = matches / (len(recipe_ingredient_names) or 1)
+                    scored_recipes.append((score, Recipe(**recipe_data)))
+            except Exception as inner_e:
+                logger.error(f"Error processing recipe {recipe_data.get('id', 'unknown')} in photo search: {str(inner_e)}")
+                continue
+
         # Sort by score (highest first) and return top results
         scored_recipes.sort(key=lambda x: x[0], reverse=True)
         return [recipe for _, recipe in scored_recipes[:max_results]]
-        
+
     except Exception as e:
         logger.error(f"Error finding recipes by ingredients: {str(e)}")
         return []
