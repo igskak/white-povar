@@ -133,25 +133,25 @@ async def upload_video(
         # For now, we'll leave these as None
         
         result = await supabase_service.create_recipe_video(video_data)
-        
-        if not result.get('data'):
+
+        if not result.data:
             # Clean up uploaded file if database insert fails
             try:
                 client.storage.from_("recipe-videos").remove([storage_path])
             except:
                 pass  # Log but don't fail the request
-            
+
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to save video metadata"
             )
-        
+
         # Update recipe with video file path
         await supabase_service.update_recipe(recipe_id, {
             'video_file_path': storage_path
         })
-        
-        return RecipeVideo(**result['data'][0])
+
+        return RecipeVideo(**result.data[0])
 
     except HTTPException:
         raise
@@ -251,7 +251,7 @@ async def upload_video_admin(
 
         result = await supabase_service.create_recipe_video(video_data)
 
-        if not result.get('data'):
+        if not result.data:
             # Clean up uploaded file if database insert fails
             try:
                 client.storage.from_("recipe-videos").remove([storage_path])
@@ -268,7 +268,7 @@ async def upload_video_admin(
             'video_file_path': storage_path
         })
 
-        return RecipeVideo(**result['data'][0])
+        return RecipeVideo(**result.data[0])
 
     except HTTPException:
         raise
