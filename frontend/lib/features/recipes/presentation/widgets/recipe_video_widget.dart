@@ -423,3 +423,70 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     );
   }
 }
+
+class _FullscreenVideoPage extends StatefulWidget {
+  final VideoPlayerController controller;
+  final String? videoUrl;
+
+  const _FullscreenVideoPage({
+    required this.controller,
+    this.videoUrl,
+  });
+
+  @override
+  State<_FullscreenVideoPage> createState() => _FullscreenVideoPageState();
+}
+
+class _FullscreenVideoPageState extends State<_FullscreenVideoPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Ensure controls don't sleep
+    widget.controller.setLooping(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.controller.value.size;
+    final ratio =
+        size.width == 0 || size.height == 0 ? 16 / 9 : size.width / size.height;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: Icon(widget.controller.value.isPlaying
+                ? Icons.pause
+                : Icons.play_arrow),
+            color: Colors.white,
+            onPressed: () {
+              setState(() {
+                if (widget.controller.value.isPlaying) {
+                  widget.controller.pause();
+                } else {
+                  widget.controller.play();
+                }
+              });
+            },
+          )
+        ],
+      ),
+      body: Center(
+        child: AspectRatio(
+          aspectRatio: ratio,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: size.width,
+              height: size.height,
+              child: VideoPlayer(widget.controller),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
