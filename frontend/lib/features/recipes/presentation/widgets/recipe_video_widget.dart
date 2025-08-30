@@ -27,6 +27,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   bool _hasError = false;
   String? _errorMessage;
   bool _triedDoublePrefixFallback = false;
+  String? _currentVideoUrl; // used for fullscreen
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       // For uploaded videos, we need to get the public URL from Supabase storage
       final initialPath = widget.videoFilePath!;
       final videoUrl = _getSupabaseVideoUrl(initialPath);
+      _currentVideoUrl = videoUrl;
       _controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
 
       _controller!.initialize().then((_) {
@@ -78,6 +80,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
             await fallbackController.initialize();
             if (mounted) {
               setState(() {
+                _currentVideoUrl = fallbackUrl;
                 _controller = fallbackController;
                 _isInitialized = true;
               });
@@ -106,7 +109,6 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     // Use the actual Supabase URL from app configuration
     // The filePath already includes the bucket name (recipe-videos/...)
     final url = '${AppConfig.supabaseUrl}/storage/v1/object/public/$filePath';
-    print('Constructed video URL: $url'); // Debug log
     return url;
   }
 
@@ -254,20 +256,38 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   }
 
   Widget _buildVideoPlayer() {
+    final videoSize = _controller!.value.size;
+    final aspectRatio = videoSize.width == 0 || videoSize.height == 0
+        ? 16 / 9
+        : videoSize.width / videoSize.height;
+
     return Stack(
       alignment: Alignment.center,
       children: [
-        SizedBox.expand(
-          child: FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: _controller!.value.size.width,
-              height: _controller!.value.size.height,
-              child: VideoPlayer(_controller!),
+        Positioned.fill(
+          child: Center(
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: FittedBox(
+                fit: BoxFit.contain, // keep full video visible incl. vertical
+                child: SizedBox(
+                  width: videoSize.width,
+                  height: videoSize.height,
+                  child: VideoPlayer(_controller!),
+                ),
+              ),
             ),
           ),
         ),
         _buildVideoControls(),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: IconButton(
+            icon: const Icon(Icons.fullscreen, color: Colors.white),
+            onPressed: _openFullscreen,
+          ),
+        ),
       ],
     );
   }
@@ -300,6 +320,18 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
             color: Colors.white,
             size: 48,
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openFullscreen() {
+    if (_controller == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullscreenVideoPage(
+          controller: _controller!,
+          videoUrl: _currentVideoUrl ?? widget.videoUrl,
         ),
       ),
     );
