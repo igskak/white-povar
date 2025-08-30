@@ -7,6 +7,8 @@ import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/photo_search_provider.dart';
 
+import '../../../ai/widgets/ai_assistant_dialog.dart';
+
 class PhotoSearchResultsPage extends ConsumerWidget {
   const PhotoSearchResultsPage({super.key});
 
@@ -131,6 +133,24 @@ class PhotoSearchResultsPage extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: () => context.pop(),
                   child: const Text('Edit Ingredients'),
+                ),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    final confirmedIngredients = ingredients
+                        .where((i) => i.isConfirmed)
+                        .map((i) => i.name)
+                        .toList();
+                    showDialog(
+                      context: context,
+                      builder: (context) => AIAssistantDialog(
+                        ingredients: confirmedIngredients,
+                        context: 'Generated from photo search',
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.psychology),
+                  label: const Text('Generate a recipe using AI'),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
