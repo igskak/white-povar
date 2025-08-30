@@ -36,6 +36,7 @@ async def upload_video(
     current_user: User = Depends(verify_firebase_token)
 ):
     """Upload a video file for a recipe"""
+    """Upload a video file for a recipe"""
     try:
         # Validate recipe_id format
         try:
@@ -152,7 +153,7 @@ async def upload_video(
         })
         
         return RecipeVideo(**result['data'][0])
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -160,6 +161,124 @@ async def upload_video(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload video"
+        )
+
+@router.post("/upload-admin", response_model=RecipeVideo)
+async def upload_video_admin(
+    recipe_id: str,
+    file: UploadFile = File(...)
+):
+    """Admin upload endpoint - bypasses authentication for admin interface"""
+    try:
+        # Validate recipe_id format
+        try:
+            recipe_uuid = UUID(recipe_id)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid recipe ID format"
+            )
+
+        # Validate file type
+        if file.content_type not in ALLOWED_VIDEO_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported video format: {file.content_type}. Allowed formats: {', '.join(ALLOWED_VIDEO_TYPES)}"
+            )
+
+        # Check file size
+        file_content = await file.read()
+        if len(file_content) > MAX_VIDEO_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Video file too large. Maximum size: {MAX_VIDEO_SIZE // (1024*1024)}MB"
+            )
+
+        # Reset file pointer
+        await file.seek(0)
+
+        # Verify recipe exists (no user permission check for admin)
+        recipe_result = await supabase_service.get_recipe_by_id(recipe_id)
+        if not recipe_result.get('data'):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Recipe not found"
+            )
+
+        # Generate unique filename
+        unique_filename = f"recipe_{recipe_id}_admin_{file.filename}"
+        storage_path = f"recipe-videos/{recipe_id}/{unique_filename}"
+
+        # Upload to Supabase storage
+        try:
+            client = supabase_service.get_client(use_service_key=True)
+
+            # Upload file to storage
+            upload_result = client.storage.from_("recipe-videos").upload(
+                storage_path,
+                file_content,
+                file_options={
+                    "content-type": file.content_type,
+                    "cache-control": "3600"
+                }
+            )
+
+            if upload_result.error:
+                logger.error(f"Supabase storage upload error: {upload_result.error}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to upload video file"
+                )
+
+            # Get public URL
+            public_url = client.storage.from_("recipe-videos").get_public_url(storage_path)
+
+        except Exception as e:
+            logger.error(f"Video upload error: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to upload video file"
+            )
+
+        # Save video metadata to database (use admin as uploader)
+        video_data = {
+            'recipe_id': recipe_id,
+            'filename': file.filename,
+            'file_path': storage_path,
+            'file_size': len(file_content),
+            'mime_type': file.content_type,
+            'uploaded_by': 'admin',  # Admin upload
+            'is_active': True
+        }
+
+        result = await supabase_service.create_recipe_video(video_data)
+
+        if not result.get('data'):
+            # Clean up uploaded file if database insert fails
+            try:
+                client.storage.from_("recipe-videos").remove([storage_path])
+            except:
+                pass  # Log but don't fail the request
+
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save video metadata"
+            )
+
+        # Update recipe with video file path
+        await supabase_service.update_recipe(recipe_id, {
+            'video_file_path': storage_path
+        })
+
+        return RecipeVideo(**result['data'][0])
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in admin video upload: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during video upload"
         )
 
 @router.get("/recipe/{recipe_id}", response_model=List[RecipeVideo])

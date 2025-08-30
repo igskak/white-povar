@@ -350,7 +350,7 @@
                 progressFill.style.width = '30%';
 
                 // Upload via our backend API
-                const uploadResponse = await fetch(`${API_BASE}/videos/upload?recipe_id=${recipeId}`, {
+                const uploadResponse = await fetch(`${API_BASE}/videos/upload-admin?recipe_id=${recipeId}`, {
                     method: 'POST',
                     body: formData
                 });
