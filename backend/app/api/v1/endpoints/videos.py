@@ -5,6 +5,7 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+import time
 
 from app.schemas.recipe import RecipeVideo, RecipeVideoCreate
 from app.services.database import supabase_service
@@ -80,25 +81,27 @@ async def upload_video(
                 detail="You can only upload videos to your own recipes"
             )
         
-        # Generate unique filename
-        file_extension = Path(file.filename).suffix.lower()
+        # Generate unique filename with timestamp to avoid duplicates
+        timestamp = int(time.time())
+        file_extension = Path(file.filename).suffix.lower() if file.filename else '.mp4'
         if not file_extension:
             file_extension = '.mp4'  # Default extension
-        
-        unique_filename = f"recipe_{recipe_id}_{current_user.uid}_{file.filename}"
+
+        unique_filename = f"recipe_{recipe_id}_{current_user.uid}_{timestamp}{file_extension}"
         storage_path = f"recipe-videos/{recipe_id}/{unique_filename}"
         
         # Upload to Supabase storage
         try:
             client = supabase_service.get_client(use_service_key=True)
 
-            # Upload file to storage
+            # Upload file to storage with upsert option to overwrite if exists
             upload_result = client.storage.from_("recipe-videos").upload(
                 storage_path,
                 file_content,
                 file_options={
                     "content-type": file.content_type,
-                    "cache-control": "3600"
+                    "cache-control": "3600",
+                    "upsert": "true"
                 }
             )
 
@@ -201,21 +204,24 @@ async def upload_video_admin(
                 detail="Recipe not found"
             )
 
-        # Generate unique filename
-        unique_filename = f"recipe_{recipe_id}_admin_{file.filename}"
+        # Generate unique filename with timestamp to avoid duplicates
+        timestamp = int(time.time())
+        file_extension = os.path.splitext(file.filename)[1] if file.filename else '.mp4'
+        unique_filename = f"recipe_{recipe_id}_admin_{timestamp}{file_extension}"
         storage_path = f"recipe-videos/{recipe_id}/{unique_filename}"
 
         # Upload to Supabase storage
         try:
             client = supabase_service.get_client(use_service_key=True)
 
-            # Upload file to storage
+            # Upload file to storage with upsert option to overwrite if exists
             upload_result = client.storage.from_("recipe-videos").upload(
                 storage_path,
                 file_content,
                 file_options={
                     "content-type": file.content_type,
-                    "cache-control": "3600"
+                    "cache-control": "3600",
+                    "upsert": "true"
                 }
             )
 
