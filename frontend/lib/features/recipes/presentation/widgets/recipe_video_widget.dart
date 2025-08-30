@@ -80,7 +80,9 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   String _getSupabaseVideoUrl(String filePath) {
     // Use the actual Supabase URL from app configuration
     // The filePath already includes the bucket name (recipe-videos/...)
-    return '${AppConfig.supabaseUrl}/storage/v1/object/public/$filePath';
+    final url = '${AppConfig.supabaseUrl}/storage/v1/object/public/$filePath';
+    print('Constructed video URL: $url'); // Debug log
+    return url;
   }
 
   void _handleExternalVideoUrl() {
