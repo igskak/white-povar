@@ -35,29 +35,42 @@ class OpenAIService:
         try:
             # Prepare the prompt for ingredient detection
             prompt = """
-            Analyze this image and identify all cooking ingredients that are visible. 
-            Focus on ingredients that could be used for cooking recipes.
-            
+            You are an expert chef and food recognition specialist. Analyze this image to identify cooking ingredients with high accuracy.
+
+            TASK: Identify all visible cooking ingredients that can be used in recipes.
+
             Return your response as a JSON object with this exact structure:
             {
                 "ingredients": ["ingredient1", "ingredient2", ...],
                 "confidence": 0.85,
                 "notes": "Brief description of what you see"
             }
-            
-            Guidelines:
-            - Only list ingredients you can clearly identify
-            - Use common ingredient names (e.g., "tomatoes" not "cherry tomatoes")
-            - Include fruits, vegetables, proteins, grains, herbs, spices
-            - Exclude non-food items, utensils, or containers
-            - Confidence should be between 0.0 and 1.0
-            - If no ingredients are visible, return empty ingredients array
+
+            CRITICAL RULES:
+            1. NO DUPLICATES: If you see tomatoes, list only "tomato" (not both "tomato" and "tomatoes")
+            2. SINGULAR FORM: Always use singular names ("tomato", "pepper", "egg", "onion")
+            3. STANDARD NAMES: Use common ingredient names ("tomato" not "cherry tomato")
+            4. HIGH CONFIDENCE ONLY: Only include ingredients you can clearly identify
+            5. FOOD ONLY: Exclude utensils, containers, packaging, plates
+
+            CONFIDENCE GUIDELINES:
+            - 0.8-1.0: Very clear, excellent lighting, certain identification
+            - 0.6-0.8: Clear visibility, good confidence
+            - 0.4-0.6: Somewhat visible, moderate confidence
+            - 0.2-0.4: Poor visibility, low confidence
+            - 0.0-0.2: Very unclear, guessing
+
+            Be generous with confidence if you can clearly see the ingredients. The goal is accurate identification, not conservative scoring.
             """
             
-            # Make API call to OpenAI Vision
+            # Make API call to OpenAI Vision with optimized parameters
             response = await self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",  # Use full GPT-4o for better vision capabilities
                 messages=[
+                    {
+                        "role": "system",
+                        "content": "You are an expert chef and food recognition specialist. You excel at identifying cooking ingredients from images with high accuracy."
+                    },
                     {
                         "role": "user",
                         "content": [
@@ -69,14 +82,14 @@ class OpenAIService:
                                 "type": "image_url",
                                 "image_url": {
                                     "url": f"data:image/jpeg;base64,{base64_image}",
-                                    "detail": "high"
+                                    "detail": "high"  # High detail for better recognition
                                 }
                             }
                         ]
                     }
                 ],
-                max_tokens=500,
-                temperature=0.1  # Low temperature for consistent results
+                max_tokens=800,  # More tokens for detailed analysis
+                temperature=0.0  # Zero temperature for maximum consistency
             )
             
             # Parse the response
@@ -98,7 +111,7 @@ class OpenAIService:
                 if not isinstance(ingredients, list):
                     ingredients = []
                 
-                # Clean up ingredient names
+                # Clean up ingredient names (OpenAI handles deduplication)
                 cleaned_ingredients = []
                 for ingredient in ingredients:
                     if isinstance(ingredient, str) and ingredient.strip():
@@ -229,6 +242,8 @@ class OpenAIService:
         except Exception as e:
             logger.error(f"Error generating recipe variations: {str(e)}")
             return []
+
+
 
 # Global service instance
 openai_service = OpenAIService()
