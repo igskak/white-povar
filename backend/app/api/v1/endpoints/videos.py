@@ -88,15 +88,18 @@ async def upload_video(
             file_extension = '.mp4'  # Default extension
 
         unique_filename = f"recipe_{recipe_id}_{current_user.uid}_{timestamp}{file_extension}"
-        storage_path = f"recipe-videos/{recipe_id}/{unique_filename}"
-        
-        # Upload to Supabase storage
+        # Store objects inside the bucket WITHOUT repeating the bucket name in the path
+        relative_path = f"{recipe_id}/{unique_filename}"
+        # Persist in DB with bucket prefix so the frontend can build the public URL as /object/public/<db_path>
+        db_path = f"recipe-videos/{relative_path}"
+
+        # Upload to Supabase storage (path must be relative to the bucket)
         try:
             client = supabase_service.get_client(use_service_key=True)
 
             # Upload file to storage with upsert option to overwrite if exists
             upload_result = client.storage.from_("recipe-videos").upload(
-                storage_path,
+                relative_path,
                 file_content,
                 file_options={
                     "content-type": file.content_type,
@@ -108,7 +111,7 @@ async def upload_video(
             logger.info(f"Upload result: {upload_result}")
 
             # Get public URL
-            public_url = client.storage.from_("recipe-videos").get_public_url(storage_path)
+            public_url = client.storage.from_("recipe-videos").get_public_url(relative_path)
             logger.info(f"Public URL: {public_url}")
 
         except Exception as e:
@@ -122,7 +125,7 @@ async def upload_video(
         video_data = {
             'recipe_id': recipe_id,
             'filename': file.filename,
-            'file_path': storage_path,
+            'file_path': db_path,  # store with bucket prefix for consistency
             'file_size': len(file_content),
             'mime_type': file.content_type,
             'uploaded_by': current_user.uid,
@@ -137,7 +140,7 @@ async def upload_video(
         if not result.data:
             # Clean up uploaded file if database insert fails
             try:
-                client.storage.from_("recipe-videos").remove([storage_path])
+                client.storage.from_("recipe-videos").remove([relative_path])
             except:
                 pass  # Log but don't fail the request
 
@@ -147,9 +150,23 @@ async def upload_video(
             )
 
         # Update recipe with video file path
-        await supabase_service.update_recipe(recipe_id, {
-            'video_file_path': storage_path
-        })
+        try:
+            update_result = await supabase_service.update_recipe(recipe_id, {
+                'video_file_path': db_path
+            })
+            logger.info(f"Successfully updated recipe {recipe_id} with video path: {db_path}")
+        except Exception as e:
+            logger.error(f"Failed to update recipe {recipe_id} with video path {storage_path}: {str(e)}")
+            # Clean up uploaded file if database update fails
+            try:
+                await storage_service.delete_file('recipe-videos', file_path)
+                logger.info(f"Cleaned up uploaded file: {file_path}")
+            except Exception as cleanup_error:
+                logger.error(f"Failed to cleanup file {file_path}: {str(cleanup_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Video uploaded but failed to update recipe: {str(e)}"
+            )
 
         return RecipeVideo(**result.data[0])
 
@@ -208,7 +225,9 @@ async def upload_video_admin(
         timestamp = int(time.time())
         file_extension = os.path.splitext(file.filename)[1] if file.filename else '.mp4'
         unique_filename = f"recipe_{recipe_id}_admin_{timestamp}{file_extension}"
-        storage_path = f"recipe-videos/{recipe_id}/{unique_filename}"
+        # Store object paths relative to the bucket
+        relative_path = f"{recipe_id}/{unique_filename}"
+        db_path = f"recipe-videos/{relative_path}"
 
         # Upload to Supabase storage
         try:
@@ -216,7 +235,7 @@ async def upload_video_admin(
 
             # Upload file to storage with upsert option to overwrite if exists
             upload_result = client.storage.from_("recipe-videos").upload(
-                storage_path,
+                relative_path,
                 file_content,
                 file_options={
                     "content-type": file.content_type,
@@ -228,7 +247,7 @@ async def upload_video_admin(
             logger.info(f"Upload result: {upload_result}")
 
             # Get public URL
-            public_url = client.storage.from_("recipe-videos").get_public_url(storage_path)
+            public_url = client.storage.from_("recipe-videos").get_public_url(relative_path)
             logger.info(f"Public URL: {public_url}")
 
         except Exception as e:
@@ -242,7 +261,7 @@ async def upload_video_admin(
         video_data = {
             'recipe_id': recipe_id,
             'filename': file.filename,
-            'file_path': storage_path,
+            'file_path': db_path,
             'file_size': len(file_content),
             'mime_type': file.content_type,
             'uploaded_by': None,  # Admin upload - no specific user
@@ -254,7 +273,7 @@ async def upload_video_admin(
         if not result.data:
             # Clean up uploaded file if database insert fails
             try:
-                client.storage.from_("recipe-videos").remove([storage_path])
+                client.storage.from_("recipe-videos").remove([relative_path])
             except:
                 pass  # Log but don't fail the request
 
@@ -265,7 +284,7 @@ async def upload_video_admin(
 
         # Update recipe with video file path
         await supabase_service.update_recipe(recipe_id, {
-            'video_file_path': storage_path
+            'video_file_path': db_path
         })
 
         return RecipeVideo(**result.data[0])

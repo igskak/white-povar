@@ -24,3 +24,7 @@ FOR UPDATE USING (bucket_id = 'recipe-videos');
 -- Create storage policy to allow public deletes from recipe-videos
 CREATE POLICY "Allow public deletes from recipe-videos bucket" ON storage.objects
 FOR DELETE USING (bucket_id = 'recipe-videos');
+
+-- Normalize existing video paths (prefer double-prefix for legacy uploads)
+-- Run comprehensive fixer instead of single hard-coded update
+-- See: sql/fix_video_paths.sql

@@ -26,6 +26,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   bool _isInitialized = false;
   bool _hasError = false;
   String? _errorMessage;
+  bool _triedDoublePrefixFallback = false;
 
   @override
   void initState() {
@@ -52,7 +53,8 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   void _initializeUploadedVideo() {
     try {
       // For uploaded videos, we need to get the public URL from Supabase storage
-      final videoUrl = _getSupabaseVideoUrl(widget.videoFilePath!);
+      final initialPath = widget.videoFilePath!;
+      final videoUrl = _getSupabaseVideoUrl(initialPath);
       _controller = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
 
       _controller!.initialize().then((_) {
@@ -61,7 +63,30 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
             _isInitialized = true;
           });
         }
-      }).catchError((error) {
+      }).catchError((error) async {
+        // Fallback: historical records might be missing a duplicated 'recipe-videos/' segment
+        if (!_triedDoublePrefixFallback &&
+            initialPath.startsWith('recipe-videos/') &&
+            !initialPath.startsWith('recipe-videos/recipe-videos/')) {
+          _triedDoublePrefixFallback = true;
+          final fallbackPath =
+              'recipe-videos/$initialPath'; // insert extra bucket segment
+          final fallbackUrl = _getSupabaseVideoUrl(fallbackPath);
+          try {
+            final fallbackController =
+                VideoPlayerController.networkUrl(Uri.parse(fallbackUrl));
+            await fallbackController.initialize();
+            if (mounted) {
+              setState(() {
+                _controller = fallbackController;
+                _isInitialized = true;
+              });
+            }
+            return;
+          } catch (fallbackError) {
+            // continue to error state below
+          }
+        }
         if (mounted) {
           setState(() {
             _hasError = true;

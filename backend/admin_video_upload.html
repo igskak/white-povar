@@ -284,7 +284,7 @@
                         <div class="current-video">
                             <strong>Current video:</strong><br>
                             ${recipe.video_url ? `<a href="${recipe.video_url}" target="_blank">External Link</a>` : ''}
-                            ${recipe.video_file_path ? `<a href="${SUPABASE_URL}/storage/v1/object/public/recipe-videos/${recipe.video_file_path}" target="_blank">Uploaded File</a>` : ''}
+                            ${recipe.video_file_path ? `<a href="${SUPABASE_URL}/storage/v1/object/public/${recipe.video_file_path}" target="_blank">Uploaded File</a>` : ''}
                         </div>
                     ` : ''}
                     
