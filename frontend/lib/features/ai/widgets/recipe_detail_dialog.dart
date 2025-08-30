@@ -88,23 +88,34 @@ class RecipeDetailDialog extends StatelessWidget {
                       ),
                     ],
 
-                    // Basic Instructions
+                    // Cooking Steps
                     const SizedBox(height: 24),
-                    _buildDetailSection(
-                      'Basic Instructions',
-                      [
-                        _buildInstructionStep(1,
-                            'Gather all ingredients and prepare your workspace.'),
-                        _buildInstructionStep(2,
-                            'Follow the cooking techniques suggested for this ${suggestion.difficulty.toLowerCase()} recipe.'),
-                        _buildInstructionStep(3,
-                            'Cook according to the estimated prep time of ${suggestion.prepTime} minutes and cook time of ${suggestion.cookTime} minutes.'),
-                        _buildInstructionStep(
-                            4, 'Adjust seasoning to taste and serve hot.'),
-                        _buildInstructionStep(
-                            5, 'Enjoy your AI-generated ${suggestion.title}!'),
-                      ],
-                    ),
+                    if (suggestion.detailedInstructions.isNotEmpty)
+                      _buildDetailSection(
+                        'Cooking Steps',
+                        suggestion.detailedInstructions
+                            .asMap()
+                            .entries
+                            .map((e) =>
+                                _buildInstructionStep(e.key + 1, e.value))
+                            .toList(),
+                      )
+                    else
+                      _buildDetailSection(
+                        'Basic Instructions',
+                        [
+                          _buildInstructionStep(1,
+                              'Gather all ingredients and prepare your workspace.'),
+                          _buildInstructionStep(2,
+                              'Follow the cooking techniques suggested for this ${suggestion.difficulty.toLowerCase()} recipe.'),
+                          _buildInstructionStep(3,
+                              'Cook according to the estimated prep time of ${suggestion.prepTime} minutes and cook time of ${suggestion.cookTime} minutes.'),
+                          _buildInstructionStep(
+                              4, 'Adjust seasoning to taste and serve hot.'),
+                          _buildInstructionStep(5,
+                              'Enjoy your AI-generated ${suggestion.title}!'),
+                        ],
+                      ),
                   ],
                 ),
               ),

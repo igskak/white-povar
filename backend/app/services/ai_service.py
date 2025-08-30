@@ -160,40 +160,27 @@ class AIService:
         ])
 
         prompt = f"""
-        You are a master chef and culinary instructor. Transform these basic cooking instructions for "{recipe_title}" into inspiring, detailed steps that will guide and motivate a home cook.
+        You are a master chef and culinary instructor. Transform these basic cooking instructions for "{recipe_title}" into concrete, actionable cooking steps that a home cook can follow.
 
         Current instructions:
         {instructions_text}
 
-        Create improved instructions that:
-
-        STORYTELLING & INSPIRATION:
-        - Use sensory language (sizzling, golden, fragrant, tender)
-        - Explain WHY each step matters for the final result
-        - Build excitement and confidence throughout
-        - Paint a picture of what success looks like
-
-        TECHNICAL EXCELLENCE:
-        - Include specific temperatures, times, and visual cues
-        - Explain techniques clearly with helpful tips
-        - Mention what to listen for, smell for, and look for
-        - Add professional chef secrets and shortcuts
-
-        CONFIDENCE BUILDING:
-        - Use encouraging, supportive language
-        - Explain what's normal vs. what to watch out for
-        - Give reassurance about timing and technique
-        - Include recovery tips if something goes wrong
+        RULES FOR THE OUTPUT STEPS:
+        - Only write real cooking actions (no meta-advice like "follow techniques" or "cook according to time")
+        - Use specific amounts, pan sizes, heat levels, times, and temperatures when relevant
+        - Include visual/sensory cues (e.g., "until onions are translucent")
+        - Order logically from prep to cooking to serving
+        - Keep each step concise but actionable
 
         EXAMPLE TRANSFORMATION:
         Basic: "Cook the onions until soft"
-        Enhanced: "Heat your pan over medium heat and add the onions. Listen for that gentle sizzle - that's your cue that the temperature is perfect. Stir occasionally and watch as they transform from sharp and white to golden and sweet, about 5-7 minutes. The kitchen will fill with an irresistible aroma that promises great things ahead!"
+        Better: "Heat 1 tbsp oil in a 10-inch skillet over medium heat. Add 1 diced onion and a pinch of salt; cook, stirring, until translucent and lightly golden, 5–7 minutes."
 
-        Return as JSON array of detailed, inspiring steps: ["step1", "step2", ...]
+        Return as JSON array of concrete steps: ["step1", "step2", ...]
         """
 
         try:
-            response = await self._call_openai(prompt, max_tokens=1500)
+            response = await self._call_openai(prompt, max_tokens=1000)
             return self._parse_improved_instructions(response)
         except Exception as e:
             logger.error(f"Error improving instructions: {e}")
@@ -222,26 +209,26 @@ Available ingredients: {', '.join(ingredients)}
             base_prompt += f"Preferred difficulty level: {difficulty}\n"
 
         base_prompt += """
-Create 3-5 inspiring recipes that will make the user excited to cook. Each recipe should tell a story and make the dish irresistible.
+Create 3-5 inspiring recipes that will make the user excited to cook. Each recipe must include REAL, ACTIONABLE COOKING STEPS that a home cook can follow to cook the dish from start to finish.
 
-CRITICAL REQUIREMENTS:
-1. INSPIRING DESCRIPTIONS: Write descriptions that paint a picture of the final dish - mention aromas, textures, colors, and the experience of eating it
-2. DETAILED COOKING STEPS: Provide specific, encouraging instructions that guide the user confidently through each step
-3. SENSORY LANGUAGE: Use words that engage the senses (sizzling, golden, fragrant, tender, crispy)
-4. CONFIDENCE BUILDING: Include helpful tips and reassuring language that makes cooking feel achievable
-5. STORY TELLING: Give context about why this dish is special or where it comes from
+STRICT REQUIREMENTS FOR STEPS:
+- Each step must be a concrete command that advances the recipe (no meta-advice)
+- Include pan/pot sizes, heat levels, amounts, times, and temperatures when relevant
+- Include sensory/visual cues (e.g., "until golden", "until onions are translucent")
+- Order the steps logically from prep to cooking to serving
+- Avoid generic sentences like "follow techniques" or "adjust as needed"
 
 Format as JSON:
 [
     {
         "title": "Compelling recipe name that sounds delicious",
-        "description": "2-3 sentences that make the dish irresistible. Describe the final result - how it looks, smells, tastes. Paint a picture that makes someone hungry and excited to cook.",
+        "description": "2-3 sentences that make the dish irresistible. Describe the final result - how it looks, smells, tastes.",
         "detailed_instructions": [
-            "Step 1: Detailed instruction with specific techniques, temperatures, visual cues, and encouraging language",
-            "Step 2: Continue with sensory details and helpful tips",
-            "Step 3: Build confidence with clear guidance and what to expect",
-            "Step 4: Include timing, technique tips, and reassuring language",
-            "Step 5: Finish with presentation tips and serving suggestions"
+            "Finely dice 1 onion and mince 2 cloves of garlic. Zest 1 lemon and set aside.",
+            "Heat 1 tbsp olive oil in a medium saucepan over medium heat. Add diced onion with a pinch of salt and cook, stirring, until translucent, 5–7 minutes.",
+            "Add 1 cup arborio rice and stir for 1 minute to toast until edges look translucent. Pour in 1/2 cup white wine (optional) and stir until absorbed.",
+            "Add warm stock 1/2 cup at a time, stirring frequently, allowing each addition to absorb before adding more, 15–18 minutes total until rice is al dente.",
+            "Stir in 1 tbsp butter, 1/3 cup grated Parmesan, and lemon zest. Season to taste and serve immediately."
         ],
         "prep_time": minutes,
         "cook_time": minutes,
@@ -257,12 +244,7 @@ Format as JSON:
     }
 ]
 
-EXAMPLE STYLE:
-Instead of: "Cook the chicken until done"
-Write: "Sear the chicken pieces until they develop a beautiful golden-brown crust, about 4-5 minutes per side. You'll hear that satisfying sizzle - that's the Maillard reaction creating incredible flavor!"
-
-Instead of: "A simple pasta dish"
-Write: "Silky strands of pasta embrace a rich, aromatic sauce that fills your kitchen with the warm scents of garlic and herbs. Each bite delivers comfort and satisfaction that will have you coming back for seconds."
+DO NOT write meta-instructions such as "follow techniques" or "cook according to the prep time". Only write concrete, step-by-step actions that cook the dish.
 """
 
         return base_prompt

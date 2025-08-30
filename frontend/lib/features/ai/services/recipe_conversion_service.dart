@@ -187,9 +187,13 @@ class RecipeConversionService {
     return 'International';
   }
 
-  /// Build basic instructions list
+  /// Build instructions list preferring AI-provided detailed instructions
   List<String> _buildInstructionsList(RecipeSuggestion suggestion) {
-    // Generate basic instructions based on suggestion
+    if (suggestion.detailedInstructions.isNotEmpty) {
+      return suggestion.detailedInstructions;
+    }
+
+    // Fallback basic instructions
     return [
       'Gather all ingredients and prepare your workspace.',
       'Follow the cooking techniques suggested for this ${suggestion.difficulty.toLowerCase()} recipe.',
