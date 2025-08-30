@@ -16,6 +16,39 @@ from app.schemas.chef import Chef
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Helper functions for data mapping
+async def _get_category_name_from_id(category_id: str) -> str:
+    """Get category name from category_id"""
+    if not category_id:
+        return "Main Course"
+
+    try:
+        result = await supabase_service.execute_query(
+            'recipe_categories', 'select', filters={'id': category_id}
+        )
+        if result.data and len(result.data) > 0:
+            return result.data[0].get('name_en', 'Main Course')
+        return "Main Course"
+    except Exception as e:
+        logger.error(f"Error getting category name for {category_id}: {str(e)}")
+        return "Main Course"
+
+async def _get_unit_name_from_id(unit_id: str) -> str:
+    """Get unit name from unit_id"""
+    if not unit_id:
+        return "unit"
+
+    try:
+        result = await supabase_service.execute_query(
+            'units', 'select', filters={'id': unit_id}
+        )
+        if result.data and len(result.data) > 0:
+            return result.data[0].get('name_en', 'unit')
+        return "unit"
+    except Exception as e:
+        logger.error(f"Error getting unit name for {unit_id}: {str(e)}")
+        return "unit"
+
 # Advanced Search Models
 class AdvancedSearchFilters(BaseModel):
     query: Optional[str] = None
@@ -223,13 +256,62 @@ async def search_by_text(
         
         recipes = []
         for recipe_data in result.data:
-            # Ingredients are now included via JOIN, no need for separate query
-            # Extract ingredients from the nested structure
-            ingredients = recipe_data.pop('recipe_ingredients', [])
-            recipe_data['ingredients'] = ingredients
+            try:
+                # Ingredients are now included via JOIN, no need for separate query
+                # Extract ingredients from the nested structure
+                ingredients = recipe_data.pop('recipe_ingredients', [])
 
-            recipe = Recipe(**recipe_data)
-            recipes.append(recipe)
+                # Map database fields to Recipe model fields
+                # Handle difficulty_level -> difficulty
+                if 'difficulty_level' in recipe_data:
+                    recipe_data['difficulty'] = recipe_data.pop('difficulty_level', 1)
+
+                # Handle category_id -> category (get category name)
+                if 'category_id' in recipe_data:
+                    category_id = recipe_data.pop('category_id', None)
+                    recipe_data['category'] = await _get_category_name_from_id(category_id) if category_id else "Main Course"
+
+                # Add missing required fields with defaults
+                if 'cuisine' not in recipe_data or not recipe_data['cuisine']:
+                    recipe_data['cuisine'] = "International"
+
+                # Handle instructions - convert TEXT to List[str]
+                if 'instructions' in recipe_data and isinstance(recipe_data['instructions'], str):
+                    # Split by newlines and filter out empty lines
+                    instructions_list = [line.strip() for line in recipe_data['instructions'].split('\n') if line.strip()]
+                    recipe_data['instructions'] = instructions_list if instructions_list else ["No instructions provided"]
+                elif 'instructions' not in recipe_data:
+                    recipe_data['instructions'] = ["No instructions provided"]
+
+                # Process ingredients to match expected format
+                processed_ingredients = []
+                for i, ingredient in enumerate(ingredients):
+                    processed_ingredient = {
+                        'id': ingredient.get('id'),
+                        'recipe_id': recipe_data['id'],
+                        'name': ingredient.get('display_name', 'Unknown ingredient'),
+                        'amount': float(ingredient.get('amount', 0)),
+                        'unit': await _get_unit_name_from_id(ingredient.get('unit_id')) if ingredient.get('unit_id') else 'unit',
+                        'notes': ingredient.get('preparation_notes', ''),
+                        'order': ingredient.get('sort_order', i)
+                    }
+                    processed_ingredients.append(processed_ingredient)
+
+                recipe_data['ingredients'] = processed_ingredients
+
+                # Ensure other required fields have defaults
+                recipe_data.setdefault('images', [])
+                recipe_data.setdefault('tags', [])
+                recipe_data.setdefault('is_featured', False)
+                recipe_data.setdefault('video_url', None)
+                recipe_data.setdefault('video_file_path', None)
+
+                recipe = Recipe(**recipe_data)
+                recipes.append(recipe)
+
+            except Exception as e:
+                logger.error(f"Error processing recipe {recipe_data.get('id', 'unknown')}: {str(e)}")
+                continue
         
         return TextSearchResponse(
             recipes=recipes,
@@ -387,46 +469,95 @@ async def advanced_search(
         recipes = []
         if result.data:
             for recipe_data in result.data:
-                # Ingredients are now included via JOIN, no need for separate query
-                ingredients = recipe_data.pop('recipe_ingredients', [])
-                recipe_data['ingredients'] = ingredients
+                try:
+                    # Ingredients are now included via JOIN, no need for separate query
+                    ingredients = recipe_data.pop('recipe_ingredients', [])
 
-                # Apply text search filter if provided
-                if filters.query:
-                    query_lower = filters.query.lower()
-                    title_match = query_lower in recipe_data.get('title', '').lower()
-                    desc_match = query_lower in recipe_data.get('description', '').lower()
-                    ingredient_match = any(
-                        query_lower in ing.get('display_name', '').lower()
-                        for ing in recipe_data['ingredients']
-                    )
+                    # Map database fields to Recipe model fields (same as text search)
+                    # Handle difficulty_level -> difficulty
+                    if 'difficulty_level' in recipe_data:
+                        recipe_data['difficulty'] = recipe_data.pop('difficulty_level', 1)
 
-                    if not (title_match or desc_match or ingredient_match):
-                        continue
+                    # Handle category_id -> category (get category name)
+                    if 'category_id' in recipe_data:
+                        category_id = recipe_data.pop('category_id', None)
+                        recipe_data['category'] = await _get_category_name_from_id(category_id) if category_id else "Main Course"
 
-                # Apply dietary restrictions filter
-                if filters.dietary_restrictions:
-                    recipe_tags = recipe_data.get('tags', []) or []
-                    if not any(restriction in recipe_tags for restriction in filters.dietary_restrictions):
-                        continue
+                    # Add missing required fields with defaults
+                    if 'cuisine' not in recipe_data or not recipe_data['cuisine']:
+                        recipe_data['cuisine'] = "International"
 
-                # Apply tags filter
-                if filters.tags:
-                    recipe_tags = recipe_data.get('tags', []) or []
-                    if not any(tag in recipe_tags for tag in filters.tags):
-                        continue
+                    # Handle instructions - convert TEXT to List[str]
+                    if 'instructions' in recipe_data and isinstance(recipe_data['instructions'], str):
+                        # Split by newlines and filter out empty lines
+                        instructions_list = [line.strip() for line in recipe_data['instructions'].split('\n') if line.strip()]
+                        recipe_data['instructions'] = instructions_list if instructions_list else ["No instructions provided"]
+                    elif 'instructions' not in recipe_data:
+                        recipe_data['instructions'] = ["No instructions provided"]
 
-                # Apply ingredients filter
-                if filters.ingredients:
-                    recipe_ingredients = [ing.get('name', '').lower() for ing in recipe_data['ingredients']]
-                    if not any(
-                        any(filter_ing.lower() in recipe_ing for recipe_ing in recipe_ingredients)
-                        for filter_ing in filters.ingredients
-                    ):
-                        continue
+                    # Process ingredients to match expected format
+                    processed_ingredients = []
+                    for i, ingredient in enumerate(ingredients):
+                        processed_ingredient = {
+                            'id': ingredient.get('id'),
+                            'recipe_id': recipe_data['id'],
+                            'name': ingredient.get('display_name', 'Unknown ingredient'),
+                            'amount': float(ingredient.get('amount', 0)),
+                            'unit': await _get_unit_name_from_id(ingredient.get('unit_id')) if ingredient.get('unit_id') else 'unit',
+                            'notes': ingredient.get('preparation_notes', ''),
+                            'order': ingredient.get('sort_order', i)
+                        }
+                        processed_ingredients.append(processed_ingredient)
 
-                recipe = Recipe(**recipe_data)
-                recipes.append(recipe)
+                    recipe_data['ingredients'] = processed_ingredients
+
+                    # Ensure other required fields have defaults
+                    recipe_data.setdefault('images', [])
+                    recipe_data.setdefault('tags', [])
+                    recipe_data.setdefault('is_featured', False)
+                    recipe_data.setdefault('video_url', None)
+                    recipe_data.setdefault('video_file_path', None)
+
+                    # Apply text search filter if provided
+                    if filters.query:
+                        query_lower = filters.query.lower()
+                        title_match = query_lower in recipe_data.get('title', '').lower()
+                        desc_match = query_lower in recipe_data.get('description', '').lower()
+                        ingredient_match = any(
+                            query_lower in ing.get('name', '').lower()
+                            for ing in recipe_data['ingredients']
+                        )
+
+                        if not (title_match or desc_match or ingredient_match):
+                            continue
+
+                    # Apply dietary restrictions filter
+                    if filters.dietary_restrictions:
+                        recipe_tags = recipe_data.get('tags', []) or []
+                        if not any(restriction in recipe_tags for restriction in filters.dietary_restrictions):
+                            continue
+
+                    # Apply tags filter
+                    if filters.tags:
+                        recipe_tags = recipe_data.get('tags', []) or []
+                        if not any(tag in recipe_tags for tag in filters.tags):
+                            continue
+
+                    # Apply ingredients filter
+                    if filters.ingredients:
+                        recipe_ingredients = [ing.get('name', '').lower() for ing in recipe_data['ingredients']]
+                        if not any(
+                            any(filter_ing.lower() in recipe_ing for recipe_ing in recipe_ingredients)
+                            for filter_ing in filters.ingredients
+                        ):
+                            continue
+
+                    recipe = Recipe(**recipe_data)
+                    recipes.append(recipe)
+
+                except Exception as e:
+                    logger.error(f"Error processing recipe {recipe_data.get('id', 'unknown')} in advanced search: {str(e)}")
+                    continue
 
         # Get total count (simplified - in production you'd do a separate count query)
         total_count = len(recipes)
