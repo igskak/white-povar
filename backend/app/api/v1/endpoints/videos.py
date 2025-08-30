@@ -238,14 +238,14 @@ async def upload_video_admin(
                 detail="Failed to upload video file"
             )
 
-        # Save video metadata to database (use admin as uploader)
+        # Save video metadata to database (use None for admin uploads)
         video_data = {
             'recipe_id': recipe_id,
             'filename': file.filename,
             'file_path': storage_path,
             'file_size': len(file_content),
             'mime_type': file.content_type,
-            'uploaded_by': 'admin',  # Admin upload
+            'uploaded_by': None,  # Admin upload - no specific user
             'is_active': True
         }
 
