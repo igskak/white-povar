@@ -96,6 +96,18 @@ def _normalize_images(images_data):
     else:
         return []
 
+def _normalize_video_url(video_url_data):
+    """Normalize video URL data"""
+    if isinstance(video_url_data, str) and video_url_data.strip():
+        return video_url_data.strip()
+    return None
+
+def _normalize_video_file_path(video_file_path_data):
+    """Normalize video file path data"""
+    if isinstance(video_file_path_data, str) and video_file_path_data.strip():
+        return video_file_path_data.strip()
+    return None
+
 @router.get("/", response_model=RecipeList)
 async def get_recipes(
     cuisine: Optional[str] = Query(None, description="Filter by cuisine type"),
@@ -159,6 +171,8 @@ async def get_recipes(
                     'servings': recipe_data.get('servings', 1),
                     'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
                     'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+                    'video_url': _normalize_video_url(recipe_data.get('video_url')),
+                    'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
                     'tags': recipe_data.get('tags', []),
                     'is_featured': recipe_data.get('is_featured', False),
                     'created_at': recipe_data.get('created_at'),
@@ -260,6 +274,8 @@ async def get_featured_recipes(
                     'servings': recipe_data.get('servings', 1),
                     'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
                     'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+                    'video_url': _normalize_video_url(recipe_data.get('video_url')),
+                    'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
                     'tags': recipe_data.get('tags', []),
                     'is_featured': recipe_data.get('is_featured', False),
                     'created_at': recipe_data.get('created_at'),
@@ -356,6 +372,8 @@ async def get_recipe(recipe_id: str):
             'servings': recipe_data.get('servings', 1),
             'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
             'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
+            'video_url': _normalize_video_url(recipe_data.get('video_url')),
+            'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
             'tags': recipe_data.get('tags', []),
             'is_featured': recipe_data.get('is_featured', False),
             'created_at': recipe_data.get('created_at'),

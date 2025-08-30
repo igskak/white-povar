@@ -58,6 +58,24 @@ class RecipeCard extends StatelessWidget {
                           ),
                         ),
                 ),
+                // Video indicator
+                if (recipe.videoUrl != null || recipe.videoFilePath != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 if (showMatchIndicator && matchedIngredients > 0)
                   Positioned(
                     top: 8,

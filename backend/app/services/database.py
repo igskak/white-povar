@@ -185,6 +185,62 @@ class SupabaseService:
     async def get_chef_config(self, chef_id: str) -> Dict[str, Any]:
         """Get chef configuration"""
         return await self.execute_query('chefs', 'select', filters={'id': chef_id})
+
+    # Video-related methods
+    async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a new recipe video record"""
+        try:
+            client = self.get_client(use_service_key=True)
+            result = client.table('recipe_videos').insert(video_data).execute()
+            logger.debug(f"Create recipe video successful: {video_data.get('filename')}")
+            return result
+        except Exception as e:
+            logger.error(f"Supabase create_recipe_video error: {str(e)}")
+            raise e
+
+    async def get_recipe_videos(self, recipe_id: str) -> Dict[str, Any]:
+        """Get all active videos for a recipe"""
+        try:
+            client = self.get_client()
+            result = client.table('recipe_videos').select('*').eq('recipe_id', recipe_id).eq('is_active', True).order('uploaded_at', desc=True).execute()
+            logger.debug(f"Get recipe videos successful: {recipe_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Supabase get_recipe_videos error: {str(e)}")
+            raise e
+
+    async def get_recipe_video_by_id(self, video_id: str) -> Dict[str, Any]:
+        """Get a specific video by ID"""
+        try:
+            client = self.get_client()
+            result = client.table('recipe_videos').select('*').eq('id', video_id).execute()
+            logger.debug(f"Get recipe video by ID successful: {video_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Supabase get_recipe_video_by_id error: {str(e)}")
+            raise e
+
+    async def update_recipe_video(self, video_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a recipe video"""
+        try:
+            client = self.get_client(use_service_key=True)
+            result = client.table('recipe_videos').update(update_data).eq('id', video_id).execute()
+            logger.debug(f"Update recipe video successful: {video_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Supabase update_recipe_video error: {str(e)}")
+            raise e
+
+    async def update_recipe(self, recipe_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a recipe"""
+        try:
+            client = self.get_client(use_service_key=True)
+            result = client.table('recipes').update(update_data).eq('id', recipe_id).execute()
+            logger.debug(f"Update recipe successful: {recipe_id}")
+            return result
+        except Exception as e:
+            logger.error(f"Supabase update_recipe error: {str(e)}")
+            raise e
     
     async def create_recipe(self, recipe_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create new recipe with ingredients"""

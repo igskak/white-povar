@@ -192,6 +192,7 @@ CREATE TABLE recipes (
     -- Media
     image_url TEXT,
     video_url TEXT,
+    video_file_path TEXT, -- For uploaded video files stored in Supabase storage
     
     -- Metadata
     source_url TEXT,
@@ -259,6 +260,33 @@ CREATE TABLE recipe_nutrition (
     UNIQUE(recipe_id)
 );
 
+-- Recipe videos table for uploaded video files
+CREATE TABLE recipe_videos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+
+    -- File info
+    filename VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL, -- Path in Supabase storage
+    file_size BIGINT NOT NULL, -- Size in bytes
+    mime_type VARCHAR(100) NOT NULL,
+
+    -- Video metadata
+    duration_seconds INTEGER, -- Video duration if available
+    width INTEGER, -- Video width if available
+    height INTEGER, -- Video height if available
+
+    -- Upload info
+    uploaded_by UUID, -- User who uploaded (optional)
+    uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+    -- Status
+    is_active BOOLEAN DEFAULT TRUE,
+
+    CONSTRAINT valid_file_size CHECK (file_size > 0),
+    CONSTRAINT valid_duration CHECK (duration_seconds IS NULL OR duration_seconds > 0)
+);
+
 -- =====================================================
 -- INDEXES FOR PERFORMANCE
 -- =====================================================
@@ -280,6 +308,11 @@ CREATE INDEX idx_recipe_ingredients_sort_order ON recipe_ingredients(recipe_id, 
 -- Base ingredient search
 CREATE INDEX idx_base_ingredients_name_search ON base_ingredients USING gin(to_tsvector('english', name_en));
 CREATE INDEX idx_base_ingredients_category_id ON base_ingredients(category_id);
+
+-- Video indexes
+CREATE INDEX idx_recipe_videos_recipe_id ON recipe_videos(recipe_id);
+CREATE INDEX idx_recipe_videos_uploaded_at ON recipe_videos(uploaded_at);
+CREATE INDEX idx_recipe_videos_is_active ON recipe_videos(is_active);
 
 -- =====================================================
 -- TRIGGERS FOR UPDATED_AT

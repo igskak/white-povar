@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../providers/recipe_provider.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
+import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerWidget {
   final String recipeId;
@@ -101,6 +102,23 @@ class RecipeDetailPage extends ConsumerWidget {
                     ),
 
                     const SizedBox(height: 24),
+
+                    // Video Section
+                    if (recipe.videoUrl != null ||
+                        recipe.videoFilePath != null) ...[
+                      Text(
+                        'Recipe Video',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 12),
+                      RecipeVideoWidget(
+                        videoUrl: recipe.videoUrl,
+                        videoFilePath: recipe.videoFilePath,
+                        height: 200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Ingredients Section
                     Text(

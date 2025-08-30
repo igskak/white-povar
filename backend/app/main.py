@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from app.core.settings import settings
-from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion
+from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion, videos
 from app.middleware.localization import LocalizationMiddleware
 from app.ingestion.service import startup_ingestion, shutdown_ingestion
 
@@ -46,6 +46,7 @@ app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])
 app.include_router(config.router, prefix="/api/v1/config", tags=["configuration"])
 app.include_router(ingestion.router, prefix="/api/v1/ingestion", tags=["ingestion"])
+app.include_router(videos.router, prefix="/api/v1/videos", tags=["videos"])
 
 @app.get("/")
 async def root():

@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
 import uuid
+import re
 
 class IngredientBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -48,6 +49,8 @@ class RecipeBase(BaseModel):
     servings: int = Field(..., ge=1)
     instructions: List[str] = Field(..., min_items=1)
     images: List[str] = Field(default_factory=list)
+    video_url: Optional[str] = Field(None, description="External video URL (YouTube, TikTok, etc.)")
+    video_file_path: Optional[str] = Field(None, description="Path to uploaded video file in storage")
     tags: List[str] = Field(default_factory=list)
     is_featured: bool = Field(default=False)
     
@@ -63,6 +66,26 @@ class RecipeBase(BaseModel):
     @validator('tags')
     def validate_tags(cls, v):
         return [tag.strip().lower() for tag in v if tag.strip()]
+
+    @validator('video_url')
+    def validate_video_url(cls, v):
+        if v is None:
+            return v
+
+        # Supported video platforms
+        supported_patterns = [
+            r'https?://(www\.)?(youtube\.com/watch\?v=|youtu\.be/)',  # YouTube
+            r'https?://(www\.)?tiktok\.com/',  # TikTok
+            r'https?://(www\.)?instagram\.com/(p|reel)/',  # Instagram
+            r'https?://(www\.)?vimeo\.com/',  # Vimeo
+            r'https?://(www\.)?facebook\.com/.*/videos/',  # Facebook
+            r'https?://(www\.)?dailymotion\.com/video/',  # Dailymotion
+        ]
+
+        if not any(re.match(pattern, v) for pattern in supported_patterns):
+            raise ValueError('Video URL must be from a supported platform (YouTube, TikTok, Instagram, Vimeo, Facebook, Dailymotion)')
+
+        return v
 
 class RecipeCreate(RecipeBase):
     chef_id: UUID
@@ -80,6 +103,8 @@ class RecipeUpdate(BaseModel):
     servings: Optional[int] = Field(None, ge=1)
     instructions: Optional[List[str]] = None
     images: Optional[List[str]] = None
+    video_url: Optional[str] = None
+    video_file_path: Optional[str] = None
     tags: Optional[List[str]] = None
     is_featured: Optional[bool] = None
 
@@ -105,6 +130,39 @@ class RecipeList(BaseModel):
     recipes: List[Recipe]
     total_count: int
     has_more: bool
+
+class RecipeVideoBase(BaseModel):
+    filename: str = Field(..., min_length=1, max_length=255)
+    file_path: str = Field(..., min_length=1)
+    file_size: int = Field(..., gt=0)
+    mime_type: str = Field(..., min_length=1, max_length=100)
+    duration_seconds: Optional[int] = Field(None, gt=0)
+    width: Optional[int] = Field(None, gt=0)
+    height: Optional[int] = Field(None, gt=0)
+
+    @validator('mime_type')
+    def validate_mime_type(cls, v):
+        allowed_types = [
+            'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo',
+            'video/webm', 'video/ogg', 'video/3gpp', 'video/x-flv'
+        ]
+        if v not in allowed_types:
+            raise ValueError(f'Unsupported video format. Allowed: {", ".join(allowed_types)}')
+        return v
+
+class RecipeVideoCreate(RecipeVideoBase):
+    recipe_id: UUID
+    uploaded_by: Optional[UUID] = None
+
+class RecipeVideo(RecipeVideoBase):
+    id: UUID = Field(default_factory=uuid.uuid4)
+    recipe_id: UUID
+    uploaded_by: Optional[UUID] = None
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    is_active: bool = Field(default=True)
+
+    class Config:
+        from_attributes = True
     
 class RecipeFilters(BaseModel):
     cuisine: Optional[str] = None
