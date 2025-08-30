@@ -35,7 +35,7 @@ class _EnhancedRecipeFilterBarState
   static const List<int> availableDifficulties = [1, 2, 3, 4, 5];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currentFilter = ref.watch(recipeFilterProvider);
     final theme = Theme.of(context);
 
