@@ -39,11 +39,14 @@ class ImproveInstructionsRequest(BaseModel):
 class RecipeSuggestion(BaseModel):
     title: str
     description: str
+    detailed_instructions: List[str] = []
     prep_time: int
     cook_time: int
     difficulty: str
     missing_ingredients: List[str]
     key_techniques: List[str]
+    chef_tips: List[str] = []
+    why_youll_love_it: str = ""
 
 class IngredientSubstitution(BaseModel):
     substitute: str

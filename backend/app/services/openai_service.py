@@ -210,26 +210,35 @@ class OpenAIService:
     
     async def generate_recipe_description(self, title: str, ingredients: List[str]) -> str:
         """
-        Generate a recipe description based on title and ingredients
+        Generate an inspiring, sensory-rich recipe description
         """
         try:
             prompt = f"""
-            Create a brief, appetizing description for a recipe called "{title}" 
-            that uses these ingredients: {', '.join(ingredients)}.
-            
-            The description should be 2-3 sentences, highlight the key flavors,
-            and make the dish sound delicious. Keep it under 200 characters.
+            You are a passionate food writer who makes every dish sound irresistible. Create a captivating description for "{title}" using these ingredients: {', '.join(ingredients)}.
+
+            Write a description that:
+            - Engages the senses (aromas, textures, colors, sounds)
+            - Paints a picture of the final dish
+            - Makes the reader hungry and excited to cook
+            - Uses vivid, appetizing language
+            - Captures the essence and appeal of the dish
+
+            Keep it 2-3 sentences and under 200 characters. Make every word count!
+
+            EXAMPLE STYLE:
+            Instead of: "A simple pasta with tomatoes and basil"
+            Write: "Silky pasta ribbons dance with sun-ripened tomatoes and fragrant basil in this soul-warming dish that brings the essence of summer to your table."
             """
-            
+
             response = await self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=100,
-                temperature=0.7
+                max_tokens=120,
+                temperature=0.8
             )
-            
+
             return response.choices[0].message.content.strip()
-            
+
         except Exception as e:
             logger.error(f"Error generating recipe description: {str(e)}")
             return f"A delicious recipe featuring {', '.join(ingredients[:3])}."
