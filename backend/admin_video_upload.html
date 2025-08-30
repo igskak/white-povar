@@ -331,66 +331,48 @@
             const uploadBtn = document.getElementById(`upload-${recipeId}`);
             const progressBar = document.getElementById(`progress-${recipeId}`);
             const progressFill = document.getElementById(`progress-fill-${recipeId}`);
-            
+
             if (!fileInput.files.length) return;
-            
+
             const file = fileInput.files[0];
-            
+
             // Disable upload button and show progress
             uploadBtn.disabled = true;
             uploadBtn.textContent = 'Uploading...';
             progressBar.style.display = 'block';
             hideStatus(recipeId);
-            
+
             try {
-                // Upload to Supabase Storage
-                const fileName = `${recipeId}-${Date.now()}-${file.name}`;
+                // Use our backend API endpoint for video upload
                 const formData = new FormData();
                 formData.append('file', file);
-                
-                // Upload file to Supabase storage
-                const uploadResponse = await fetch(`${SUPABASE_URL}/storage/v1/object/recipe-videos/${fileName}`, {
+
+                progressFill.style.width = '30%';
+
+                // Upload via our backend API
+                const uploadResponse = await fetch(`${API_BASE}/videos/upload?recipe_id=${recipeId}`, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    },
-                    body: file
+                    body: formData
                 });
-                
+
+                progressFill.style.width = '80%';
+
                 if (!uploadResponse.ok) {
-                    throw new Error('Failed to upload file to storage');
+                    const errorData = await uploadResponse.json();
+                    throw new Error(errorData.detail || 'Failed to upload video');
                 }
-                
-                progressFill.style.width = '70%';
-                
-                // Update recipe with video file path
-                const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/recipes?id=eq.${recipeId}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify({
-                        video_file_path: fileName
-                    })
-                });
-                
-                if (!updateResponse.ok) {
-                    throw new Error('Failed to update recipe');
-                }
-                
+
+                const result = await uploadResponse.json();
                 progressFill.style.width = '100%';
-                
+
                 // Success
                 showStatus(recipeId, 'Video uploaded successfully!', 'success');
-                
+
                 // Reload recipes to show updated status
                 setTimeout(() => {
                     loadRecipes();
                 }, 1000);
-                
+
             } catch (error) {
                 console.error('Upload error:', error);
                 showStatus(recipeId, `Upload failed: ${error.message}`, 'error');
