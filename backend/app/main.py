@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from contextlib import asynccontextmanager
 import uvicorn
+import os
 
 from app.core.settings import settings
 from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion, videos
@@ -61,6 +62,15 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "environment": settings.environment}
+
+@app.get("/admin_video_upload.html")
+async def admin_video_upload():
+    """Serve the admin video upload interface"""
+    file_path = os.path.join(os.path.dirname(__file__), "..", "admin_video_upload.html")
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="text/html")
+    else:
+        raise HTTPException(status_code=404, detail="Admin interface not found")
 
 # Import standardized exceptions
 from app.core.exceptions import (
