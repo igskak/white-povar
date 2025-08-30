@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../recipes/models/recipe.dart';
 import '../models/detected_ingredient.dart';
 import '../services/photo_search_service.dart';
 

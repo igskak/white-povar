@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
 

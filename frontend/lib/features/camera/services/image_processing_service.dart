@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
 
 class ImageProcessingService {
@@ -108,7 +107,7 @@ class ImageProcessingService {
     try {
       // This is a basic implementation
       // For more accurate dimensions, you might want to use a package like 'image'
-      final bytes = await image.readAsBytes();
+      // final bytes = await image.readAsBytes();
 
       // For now, return null as we don't have image package
       // In a real implementation, you would decode the image and get actual dimensions
