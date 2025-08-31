@@ -284,26 +284,26 @@ class RecipeConversionService {
     }
   }
 
-  /// Estimate amount for ingredient
+  /// Estimate amount for ingredient (metric defaults)
   String _estimateAmount(String ingredient) {
     final lower = ingredient.toLowerCase();
 
     if (lower.contains('salt') ||
         lower.contains('pepper') ||
         lower.contains('spice')) {
-      return '1 tsp';
+      return '5 g';
     } else if (lower.contains('oil') || lower.contains('vinegar')) {
-      return '2 tbsp';
+      return '30 ml';
     } else if (lower.contains('onion') || lower.contains('tomato')) {
       return '1 medium';
     } else if (lower.contains('meat') ||
         lower.contains('chicken') ||
         lower.contains('fish')) {
-      return '1 lb';
+      return '450 g';
     } else if (lower.contains('milk') || lower.contains('cream')) {
-      return '1 cup';
+      return '240 ml';
     } else if (lower.contains('cheese')) {
-      return '1/2 cup';
+      return '60 g';
     } else {
       return '1 piece';
     }

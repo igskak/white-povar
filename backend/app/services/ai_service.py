@@ -167,6 +167,7 @@ class AIService:
 
         RULES FOR THE OUTPUT STEPS:
         - Only write real cooking actions (no meta-advice like "follow techniques" or "cook according to time")
+        - Use METRIC units by default (g, ml, °C); avoid cups/oz/lb/°F unless explicitly requested
         - Use specific amounts, pan sizes, heat levels, times, and temperatures when relevant
         - Include visual/sensory cues (e.g., "until onions are translucent")
         - Order logically from prep to cooking to serving
@@ -213,6 +214,7 @@ Create 3-5 inspiring recipes that will make the user excited to cook. Each recip
 
 STRICT REQUIREMENTS FOR STEPS:
 - Each step must be a concrete command that advances the recipe (no meta-advice)
+- Use METRIC units by default (g, ml, °C); avoid cups/oz/lb/°F unless explicitly requested
 - Include pan/pot sizes, heat levels, amounts, times, and temperatures when relevant
 - Include sensory/visual cues (e.g., "until golden", "until onions are translucent")
 - Order the steps logically from prep to cooking to serving
@@ -225,10 +227,10 @@ Format as JSON:
         "description": "2-3 sentences that make the dish irresistible. Describe the final result - how it looks, smells, tastes.",
         "detailed_instructions": [
             "Finely dice 1 onion and mince 2 cloves of garlic. Zest 1 lemon and set aside.",
-            "Heat 1 tbsp olive oil in a medium saucepan over medium heat. Add diced onion with a pinch of salt and cook, stirring, until translucent, 5–7 minutes.",
-            "Add 1 cup arborio rice and stir for 1 minute to toast until edges look translucent. Pour in 1/2 cup white wine (optional) and stir until absorbed.",
-            "Add warm stock 1/2 cup at a time, stirring frequently, allowing each addition to absorb before adding more, 15–18 minutes total until rice is al dente.",
-            "Stir in 1 tbsp butter, 1/3 cup grated Parmesan, and lemon zest. Season to taste and serve immediately."
+            "Heat 1 tbsp (15 ml) olive oil in a medium saucepan over medium heat. Add diced onion with a pinch of salt and cook, stirring, until translucent, 5–7 minutes.",
+            "Add 200 g arborio rice and stir for 1 minute to toast until edges look translucent. Pour in 120 ml dry white wine (optional) and stir until absorbed.",
+            "Add warm stock 120 ml at a time, stirring frequently, allowing each addition to absorb before adding more, 15–18 minutes total until rice is al dente.",
+            "Stir in 15 g butter, 30 g grated Parmesan, and lemon zest. Season to taste and serve immediately."
         ],
         "prep_time": minutes,
         "cook_time": minutes,
@@ -261,7 +263,9 @@ DO NOT write meta-instructions such as "follow techniques" or "cook according to
 
 You have the gift of transforming simple ingredients into compelling culinary stories. When you describe food, you engage all the senses. When you give instructions, you build confidence. When you share tips, you reveal professional secrets that make a real difference.
 
-Always respond with valid JSON when requested. Make every word count in creating an inspiring cooking experience."""
+Always respond with valid JSON when requested. Make every word count in creating an inspiring cooking experience.
+
+Use METRIC units by default (grams, milliliters, Celsius, centimeters). Do NOT use cups, ounces, pounds, or Fahrenheit unless the user explicitly requests otherwise."""
                 },
                 {"role": "user", "content": prompt}
             ],
