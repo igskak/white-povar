@@ -83,6 +83,7 @@ dependencies:
   # Video and Media
   video_player: ^2.8.1
   url_launcher: ^6.2.2
+  chewie: ^1.10.0
 
 dev_dependencies:
   flutter_test:
