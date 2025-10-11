@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from app.services.ai_service import ai_service
 from app.core.security import get_current_user
 from app.schemas.chef import Chef
+from app.core.premium_access import require_ai_access
+from app.api.v1.endpoints.auth import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,10 +68,10 @@ class NutritionInfo(BaseModel):
 @router.post("/recipe-suggestions", response_model=List[RecipeSuggestion])
 async def get_recipe_suggestions(
     request: RecipeSuggestionRequest,
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
-    """Get AI-powered recipe suggestions based on available ingredients"""
-    
+    """Get AI-powered recipe suggestions based on available ingredients (Premium Only)"""
+
     try:
         suggestions = await ai_service.generate_recipe_suggestions(
             ingredients=request.ingredients,
@@ -77,103 +79,103 @@ async def get_recipe_suggestions(
             dietary_restrictions=request.dietary_restrictions,
             difficulty_level=request.difficulty_level
         )
-        
+
         return suggestions
-        
+
     except Exception as e:
         logger.error(f"Error getting recipe suggestions: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to generate recipe suggestions"
         )
 
 @router.post("/ingredient-substitutions", response_model=List[IngredientSubstitution])
 async def get_ingredient_substitutions(
     request: IngredientSubstitutionRequest,
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
-    """Get AI-powered ingredient substitution suggestions"""
-    
+    """Get AI-powered ingredient substitution suggestions (Premium Only)"""
+
     try:
         substitutions = await ai_service.suggest_ingredient_substitutions(
             original_ingredient=request.original_ingredient,
             recipe_context=request.recipe_context,
             dietary_restrictions=request.dietary_restrictions
         )
-        
+
         return substitutions
-        
+
     except Exception as e:
         logger.error(f"Error getting ingredient substitutions: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to generate ingredient substitutions"
         )
 
 @router.post("/cooking-tips", response_model=List[str])
 async def get_cooking_tips(
     request: CookingTipsRequest,
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
-    """Get AI-powered cooking tips for a recipe"""
-    
+    """Get AI-powered cooking tips for a recipe (Premium Only)"""
+
     try:
         tips = await ai_service.generate_cooking_tips(
             recipe_title=request.recipe_title,
             cooking_method=request.cooking_method,
             difficulty_level=request.difficulty_level
         )
-        
+
         return tips
-        
+
     except Exception as e:
         logger.error(f"Error getting cooking tips: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to generate cooking tips"
         )
 
 @router.post("/nutrition-analysis", response_model=NutritionInfo)
 async def analyze_nutrition(
     request: NutritionAnalysisRequest,
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
-    """Get AI-powered nutritional analysis of a recipe"""
-    
+    """Get AI-powered nutritional analysis of a recipe (Premium Only)"""
+
     try:
         nutrition = await ai_service.analyze_recipe_nutrition(
             ingredients=request.ingredients,
             servings=request.servings
         )
-        
+
         return nutrition
-        
+
     except Exception as e:
         logger.error(f"Error analyzing nutrition: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to analyze recipe nutrition"
         )
 
 @router.post("/improve-instructions", response_model=List[str])
 async def improve_instructions(
     request: ImproveInstructionsRequest,
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
-    """Get AI-improved recipe instructions"""
-    
+    """Get AI-improved recipe instructions (Premium Only)"""
+
     try:
         improved = await ai_service.improve_recipe_instructions(
             current_instructions=request.current_instructions,
             recipe_title=request.recipe_title
         )
-        
+
         return improved
-        
+
     except Exception as e:
         logger.error(f"Error improving instructions: {e}")
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Failed to improve recipe instructions"
         )
 

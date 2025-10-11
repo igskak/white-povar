@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/recipe.dart';
+import '../../../subscription/widgets/premium_badge.dart';
 
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
@@ -58,6 +59,13 @@ class RecipeCard extends StatelessWidget {
                           ),
                         ),
                 ),
+                // Premium badge
+                if (recipe.isPremium)
+                  const Positioned(
+                    top: 8,
+                    left: 8,
+                    child: PremiumBadge(size: 24),
+                  ),
                 // Video indicator
                 if (recipe.videoUrl != null || recipe.videoFilePath != null)
                   Positioned(

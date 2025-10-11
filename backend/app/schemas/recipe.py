@@ -53,6 +53,7 @@ class RecipeBase(BaseModel):
     video_file_path: Optional[str] = Field(None, description="Path to uploaded video file in storage")
     tags: List[str] = Field(default_factory=list)
     is_featured: bool = Field(default=False)
+    is_premium: bool = Field(default=False, description="Whether this recipe requires premium subscription")
     
     @validator('instructions')
     def validate_instructions(cls, v):
@@ -107,6 +108,7 @@ class RecipeUpdate(BaseModel):
     video_file_path: Optional[str] = None
     tags: Optional[List[str]] = None
     is_featured: Optional[bool] = None
+    is_premium: Optional[bool] = None
 
 class Recipe(RecipeBase):
     id: UUID = Field(default_factory=uuid.uuid4)

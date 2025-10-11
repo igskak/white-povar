@@ -12,6 +12,7 @@ import '../../features/auth/presentation/pages/auth_callback_page.dart';
 import '../../features/camera/presentation/pages/camera_capture_page.dart';
 import '../../features/camera/presentation/pages/ingredient_review_page.dart';
 import '../../features/camera/presentation/pages/photo_search_results_page.dart';
+import '../../features/subscription/screens/subscription_screen.dart';
 
 // Route names
 class AppRoutes {
@@ -24,6 +25,7 @@ class AppRoutes {
   static const String camera = '/camera';
   static const String cameraReview = '/camera/review';
   static const String cameraResults = '/camera/results';
+  static const String subscription = '/subscription';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -101,6 +103,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PhotoSearchResultsPage(),
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.subscription,
+        name: 'subscription',
+        builder: (context, state) => const SubscriptionScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

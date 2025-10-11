@@ -19,6 +19,7 @@ class Recipe extends Equatable {
   final String? videoFilePath;
   final List<String> tags;
   final bool isFeatured;
+  final bool isPremium;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,6 +42,7 @@ class Recipe extends Equatable {
     this.videoFilePath,
     required this.tags,
     required this.isFeatured,
+    this.isPremium = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -68,6 +70,7 @@ class Recipe extends Equatable {
       videoFilePath: json['video_file_path']?.toString(),
       tags: _parseStringList(json['tags']),
       isFeatured: json['is_featured'] == true,
+      isPremium: json['is_premium'] == true,
       createdAt: _parseDateTime(json['created_at']) ?? DateTime.now(),
       updatedAt: _parseDateTime(json['updated_at']) ?? DateTime.now(),
     );
@@ -122,6 +125,7 @@ class Recipe extends Equatable {
       'video_file_path': videoFilePath,
       'tags': tags,
       'is_featured': isFeatured,
+      'is_premium': isPremium,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -147,6 +151,7 @@ class Recipe extends Equatable {
         videoFilePath,
         tags,
         isFeatured,
+        isPremium,
         createdAt,
         updatedAt,
       ];

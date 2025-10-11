@@ -7,6 +7,8 @@ from app.schemas.recipe import Recipe, RecipeList, RecipeFilters, RecipeCreate
 from app.schemas.chef import ChefConfig
 from app.services.database import supabase_service
 from app.api.v1.endpoints.auth import verify_firebase_token, User
+from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
+from app.services.subscription_service import subscription_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -118,9 +120,10 @@ async def get_recipes(
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
     is_featured: Optional[bool] = Query(None, description="Filter featured recipes"),
     limit: int = Query(20, ge=1, le=100, description="Number of recipes to return"),
-    offset: int = Query(0, ge=0, description="Number of recipes to skip")
+    offset: int = Query(0, ge=0, description="Number of recipes to skip"),
+    current_user: Optional[User] = Depends(verify_firebase_token)
 ):
-    """Get recipes with optional filtering"""
+    """Get recipes with optional filtering (respects user subscription tier)"""
     try:
         # Build filters dictionary
         filters = {}
@@ -136,7 +139,7 @@ async def get_recipes(
             filters['chef_id'] = chef_id
         if is_featured is not None:
             filters['is_featured'] = is_featured
-        
+
         # Get recipes from database
         result = await supabase_service.get_recipes(filters, limit, offset)
         
@@ -175,6 +178,7 @@ async def get_recipes(
                     'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
                     'tags': recipe_data.get('tags', []),
                     'is_featured': recipe_data.get('is_featured', False),
+                    'is_premium': recipe_data.get('is_premium', False),
                     'created_at': recipe_data.get('created_at'),
                     'updated_at': recipe_data.get('updated_at'),
                     'ingredients': []  # Will be populated below
@@ -211,11 +215,26 @@ async def get_recipes(
                 logger.error(f"Recipe data: {recipe_data}")
                 # Skip this recipe and continue with others
                 continue
-        
+
+        # Filter recipes based on user subscription tier
+        if current_user:
+            # Convert recipes to dict for filtering
+            recipes_dict = [recipe.dict() for recipe in recipes]
+            filtered_recipes_dict = await filter_recipes_by_subscription(
+                recipes_dict,
+                current_user.id,
+                include_premium=False  # Don't show premium recipes to free users
+            )
+            # Convert back to Recipe objects
+            recipes = [Recipe(**r) for r in filtered_recipes_dict]
+        else:
+            # If no user (shouldn't happen with auth), filter out premium recipes
+            recipes = [r for r in recipes if not r.is_premium]
+
         # Calculate total count and has_more
-        total_count = len(result.data)
+        total_count = len(recipes)
         has_more = len(result.data) == limit
-        
+
         return RecipeList(
             recipes=recipes,
             total_count=total_count,
@@ -278,6 +297,7 @@ async def get_featured_recipes(
                     'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
                     'tags': recipe_data.get('tags', []),
                     'is_featured': recipe_data.get('is_featured', False),
+                    'is_premium': recipe_data.get('is_premium', False),
                     'created_at': recipe_data.get('created_at'),
                     'updated_at': recipe_data.get('updated_at'),
                     'ingredients': []  # Will be populated below
@@ -324,8 +344,11 @@ async def get_featured_recipes(
         )
 
 @router.get("/{recipe_id}", response_model=Recipe)
-async def get_recipe(recipe_id: str):
-    """Get a single recipe by ID"""
+async def get_recipe(
+    recipe_id: str,
+    current_user: User = Depends(verify_firebase_token)
+):
+    """Get a single recipe by ID (checks premium access for premium recipes)"""
     try:
         # Validate UUID format
         try:
@@ -345,6 +368,11 @@ async def get_recipe(recipe_id: str):
             )
 
         recipe_data = result['data'][0]
+
+        # Check if recipe is premium and validate access
+        is_premium = recipe_data.get('is_premium', False)
+        if is_premium:
+            await check_recipe_access(recipe_id, is_premium, current_user)
 
         # Get ingredients for this recipe
         ingredients_result = await supabase_service.get_recipe_ingredients(recipe_id)
@@ -376,6 +404,7 @@ async def get_recipe(recipe_id: str):
             'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
             'tags': recipe_data.get('tags', []),
             'is_featured': recipe_data.get('is_featured', False),
+            'is_premium': recipe_data.get('is_premium', False),
             'created_at': recipe_data.get('created_at'),
             'updated_at': recipe_data.get('updated_at'),
             'ingredients': []  # Will be populated below

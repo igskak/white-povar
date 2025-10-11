@@ -4,6 +4,8 @@ from datetime import datetime
 from uuid import UUID
 import uuid
 
+from .subscription import UserSubscriptionInfo, SubscriptionTier, SubscriptionStatus
+
 class UserBase(BaseModel):
     email: EmailStr
     chef_id: Optional[UUID] = None
@@ -30,9 +32,10 @@ class UserUpdate(BaseModel):
 class User(UserBase):
     id: UUID = Field(default_factory=uuid.uuid4)
     favorites: List[UUID] = Field(default_factory=list)  # Recipe IDs
+    subscription: Optional[UserSubscriptionInfo] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         from_attributes = True
 

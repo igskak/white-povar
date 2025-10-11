@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_assistant_dialog.dart';
+import '../../subscription/providers/subscription_provider.dart';
+import '../../subscription/widgets/upgrade_prompt_dialog.dart';
 
 class AIAssistantButton extends ConsumerWidget {
   final String? recipeTitle;
@@ -19,7 +21,7 @@ class AIAssistantButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return FloatingActionButton.extended(
-      onPressed: () => _showAIAssistant(context),
+      onPressed: () => _showAIAssistant(context, ref),
       icon: const Icon(Icons.psychology),
       label: const Text('AI Assistant'),
       backgroundColor: Theme.of(context).colorScheme.secondary,
@@ -27,7 +29,14 @@ class AIAssistantButton extends ConsumerWidget {
     );
   }
 
-  void _showAIAssistant(BuildContext context) {
+  void _showAIAssistant(BuildContext context, WidgetRef ref) async {
+    // Check premium access
+    final features = ref.read(subscriptionFeaturesProvider);
+    if (!features.aiRecipeGeneration) {
+      await UpgradePromptDialog.showAIFeaturePrompt(context);
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AIAssistantDialog(
@@ -57,13 +66,20 @@ class AIAssistantIconButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton(
-      onPressed: () => _showAIAssistant(context),
+      onPressed: () => _showAIAssistant(context, ref),
       icon: const Icon(Icons.psychology),
       tooltip: 'AI Assistant',
     );
   }
 
-  void _showAIAssistant(BuildContext context) {
+  void _showAIAssistant(BuildContext context, WidgetRef ref) async {
+    // Check premium access
+    final features = ref.read(subscriptionFeaturesProvider);
+    if (!features.aiRecipeGeneration) {
+      await UpgradePromptDialog.showAIFeaturePrompt(context);
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AIAssistantDialog(

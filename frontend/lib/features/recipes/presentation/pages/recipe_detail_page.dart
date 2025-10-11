@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/recipe_provider.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
 import '../widgets/recipe_video_widget.dart';
+import '../../../subscription/widgets/premium_badge.dart';
 
 class RecipeDetailPage extends ConsumerWidget {
   final String recipeId;
@@ -27,33 +28,45 @@ class RecipeDetailPage extends ConsumerWidget {
               expandedHeight: 300,
               pinned: true,
               flexibleSpace: FlexibleSpaceBar(
-                background: recipe.images.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: recipe.images.first,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    recipe.images.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: recipe.images.first,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(
+                                Icons.restaurant_menu,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Icon(
+                              Icons.restaurant_menu,
+                              size: 64,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.restaurant_menu,
-                            size: 64,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
+                    // Premium badge
+                    if (recipe.isPremium)
+                      const Positioned(
+                        top: 60,
+                        right: 16,
+                        child: PremiumBadge(size: 32, showLabel: true),
                       ),
+                  ],
+                ),
               ),
             ),
 

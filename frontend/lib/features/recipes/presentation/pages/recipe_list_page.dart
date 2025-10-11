@@ -7,6 +7,8 @@ import '../widgets/recipe_card.dart';
 import '../widgets/smart_recipe_filter_bar.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
+import '../../../subscription/providers/subscription_provider.dart';
+import '../../../subscription/widgets/premium_badge.dart';
 
 class RecipeListPage extends ConsumerStatefulWidget {
   const RecipeListPage({super.key});
@@ -50,6 +52,9 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
           PopupMenuButton<String>(
             onSelected: (value) {
               switch (value) {
+                case 'subscription':
+                  context.push('/subscription');
+                  break;
                 case 'profile':
                   // TODO: Navigate to profile
                   break;
@@ -58,28 +63,43 @@ class _RecipeListPageState extends ConsumerState<RecipeListPage> {
                   break;
               }
             },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    const Icon(Icons.person),
-                    const SizedBox(width: 8),
-                    Text(currentUser?.email ?? 'Profile'),
-                  ],
+            itemBuilder: (context) {
+              final isPremium = ref.watch(isPremiumProvider);
+              return [
+                PopupMenuItem(
+                  value: 'subscription',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.workspace_premium),
+                      const SizedBox(width: 8),
+                      const Text('Subscription'),
+                      const SizedBox(width: 8),
+                      if (isPremium) const PremiumBadge(size: 16),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    SizedBox(width: 8),
-                    Text('Sign Out'),
-                  ],
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person),
+                      const SizedBox(width: 8),
+                      Text(currentUser?.email ?? 'Profile'),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout),
+                      SizedBox(width: 8),
+                      Text('Sign Out'),
+                    ],
+                  ),
+                ),
+              ];
+            },
           ),
         ],
       ),

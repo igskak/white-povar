@@ -6,7 +6,7 @@ import uvicorn
 import os
 
 from app.core.settings import settings
-from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion, videos
+from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion, videos, subscription
 from app.middleware.localization import LocalizationMiddleware
 from app.ingestion.service import startup_ingestion, shutdown_ingestion
 
@@ -48,6 +48,7 @@ app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])
 app.include_router(config.router, prefix="/api/v1/config", tags=["configuration"])
 app.include_router(ingestion.router, prefix="/api/v1/ingestion", tags=["ingestion"])
 app.include_router(videos.router, prefix="/api/v1/videos", tags=["videos"])
+app.include_router(subscription.router, prefix="/api/v1/subscription", tags=["subscription"])
 
 @app.get("/")
 async def root():
@@ -85,12 +86,32 @@ from app.core.exceptions import (
     RateLimitException,
     InternalServerException,
 )
+from app.core.premium_access import PremiumAccessDenied
 from pydantic import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
 
 # Standardized exception handlers
+@app.exception_handler(PremiumAccessDenied)
+async def premium_access_denied_handler(request, exc: PremiumAccessDenied):
+    """Handle premium access denied exceptions with upgrade prompt"""
+    content = {
+        "detail": exc.detail,
+        "error_code": "PREMIUM_ACCESS_REQUIRED",
+        "type": "premium_access_denied"
+    }
+
+    # Add upgrade prompt if available
+    if exc.upgrade_prompt:
+        content["upgrade_prompt"] = exc.upgrade_prompt.dict()
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content,
+        headers=exc.headers
+    )
+
 @app.exception_handler(BaseAPIException)
 async def base_api_exception_handler(request, exc: BaseAPIException):
     """Handle custom API exceptions with consistent structure"""
