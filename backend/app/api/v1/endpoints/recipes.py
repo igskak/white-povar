@@ -124,6 +124,7 @@ async def get_recipes(
     current_user: User = Depends(verify_firebase_token)
 ):
     """Get recipes with optional filtering (respects user subscription tier)"""
+    logger.info(f"📋 GET /recipes/ called by user: {current_user.id}")
     try:
         # Build filters dictionary
         filters = {}
@@ -141,9 +142,12 @@ async def get_recipes(
             filters['is_featured'] = is_featured
 
         # Get recipes from database
+        logger.info(f"🔍 Fetching recipes with filters: {filters}")
         result = await supabase_service.get_recipes(filters, limit, offset)
-        
+        logger.info(f"📦 Got {len(result.data) if result.data else 0} recipes from database")
+
         if not result.data:
+            logger.info("📭 No recipes found, returning empty list")
             return RecipeList(recipes=[], total_count=0, has_more=False)
         
         recipes = []
@@ -218,12 +222,14 @@ async def get_recipes(
 
         # Filter recipes based on user subscription tier
         # Convert recipes to dict for filtering
+        logger.info(f"🔐 Filtering {len(recipes)} recipes for user subscription")
         recipes_dict = [recipe.dict() for recipe in recipes]
         filtered_recipes_dict = await filter_recipes_by_subscription(
             recipes_dict,
             current_user.id,
             include_premium=True  # Show premium recipes with badges for free users
         )
+        logger.info(f"✅ Filtered to {len(filtered_recipes_dict)} recipes")
         # Convert back to Recipe objects
         recipes = [Recipe(**r) for r in filtered_recipes_dict]
 
@@ -231,14 +237,15 @@ async def get_recipes(
         total_count = len(recipes)
         has_more = len(result.data) == limit
 
+        logger.info(f"🎉 Returning {len(recipes)} recipes to client")
         return RecipeList(
             recipes=recipes,
             total_count=total_count,
             has_more=has_more
         )
-        
+
     except Exception as e:
-        logger.error(f"Error fetching recipes: {str(e)}")
+        logger.error(f"❌ Error fetching recipes: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch recipes"

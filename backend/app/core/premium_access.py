@@ -174,28 +174,32 @@ async def filter_recipes_by_subscription(
 ) -> list:
     """
     Filter recipes based on user's subscription tier
-    
+
     Args:
         recipes: List of recipe dictionaries
         user_id: User UUID as string
         include_premium: Whether to include premium recipes in results
-        
+
     Returns:
         Filtered list of recipes
     """
+    logger.info(f"🔍 filter_recipes_by_subscription called for user: {user_id}")
     # Check if user has premium access
     access_check = await subscription_service.check_premium_access(user_id)
     has_premium = access_check.has_access
+    logger.info(f"🔐 User premium access: {has_premium}, tier: {access_check.tier}")
     
     # If user has premium access, return all recipes
     if has_premium:
+        logger.info(f"✅ User has premium, returning all {len(recipes)} recipes")
         return recipes
-    
+
     # Filter out premium recipes for free users
+    logger.info(f"🆓 User is free tier, filtering recipes (include_premium={include_premium})")
     filtered_recipes = []
     for recipe in recipes:
         is_premium = recipe.get('is_premium', False)
-        
+
         # Free users can only see non-premium recipes
         if not is_premium:
             filtered_recipes.append(recipe)
@@ -204,7 +208,8 @@ async def filter_recipes_by_subscription(
             recipe['_locked'] = True
             recipe['_requires_upgrade'] = True
             filtered_recipes.append(recipe)
-    
+
+    logger.info(f"📋 Filtered to {len(filtered_recipes)} recipes for free user")
     return filtered_recipes
 
 

@@ -92,17 +92,19 @@ class SubscriptionService:
     async def check_premium_access(self, user_id: str, feature: Optional[str] = None) -> PremiumAccessCheck:
         """
         Check if user has premium access
-        
+
         Args:
             user_id: User UUID as string
             feature: Optional specific feature to check (e.g., 'ai_recipe_generation')
-            
+
         Returns:
             PremiumAccessCheck with access status and details
         """
+        logger.info(f"🔍 Checking premium access for user: {user_id}, feature: {feature}")
         subscription = await self.get_user_subscription(user_id)
-        
+
         if not subscription:
+            logger.warning(f"⚠️ No subscription found for user: {user_id}")
             return PremiumAccessCheck(
                 has_access=False,
                 tier=SubscriptionTier.FREE,
@@ -110,24 +112,29 @@ class SubscriptionService:
             )
         
         has_access = self._check_premium_access(subscription)
-        
+        logger.info(f"📊 Subscription tier: {subscription.tier}, status: {subscription.status}, has_access: {has_access}")
+
         # If checking specific feature, verify it's available
         if feature and has_access:
             features = SubscriptionFeatures.get_features(subscription.tier)
             has_access = features.get(feature, False)
-            
+            logger.info(f"🎯 Feature '{feature}' check: {has_access}")
+
             if not has_access:
+                logger.warning(f"⚠️ Feature '{feature}' not available in {subscription.tier.value} tier")
                 return PremiumAccessCheck(
                     has_access=False,
                     tier=subscription.tier,
                     reason=f"Feature '{feature}' not available in {subscription.tier.value} tier",
                 )
-        
-        return PremiumAccessCheck(
+
+        result = PremiumAccessCheck(
             has_access=has_access,
             tier=subscription.tier,
             reason=None if has_access else self._get_access_denial_reason(subscription),
         )
+        logger.info(f"✅ Premium access check result: {result.has_access}")
+        return result
     
     async def update_subscription(
         self,
