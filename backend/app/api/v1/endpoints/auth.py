@@ -54,17 +54,20 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
         )
 
         if not user_result.data:
-            # Create new user in our database
+            # Create new user in our database with default free tier subscription
             user_data = {
                 'id': user_id,
                 'email': email,
                 'chef_id': None,
-                'favorites': []
+                'favorites': [],
+                'subscription_tier': 'free',  # Default to free tier
+                'subscription_status': 'active'  # Active free tier
             }
             await supabase_service.execute_query(
                 'users', 'insert', data=user_data, use_service_key=True
             )
             chef_id = None
+            logger.info(f"✅ Created new user with free tier: {user_id}")
         else:
             chef_id = user_result.data[0].get('chef_id')
 
@@ -109,17 +112,20 @@ async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] 
         )
 
         if not user_result.data:
-            # Create new user in our database
+            # Create new user in our database with default free tier subscription
             user_data = {
                 'id': user_id,
                 'email': email,
                 'chef_id': None,
-                'favorites': []
+                'favorites': [],
+                'subscription_tier': 'free',  # Default to free tier
+                'subscription_status': 'active'  # Active free tier
             }
             await supabase_service.execute_query(
                 'users', 'insert', data=user_data, use_service_key=True
             )
             chef_id = None
+            logger.info(f"✅ Created new user with free tier: {user_id}")
         else:
             chef_id = user_result.data[0].get('chef_id')
 
