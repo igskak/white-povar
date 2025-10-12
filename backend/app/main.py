@@ -96,6 +96,7 @@ logger = logging.getLogger(__name__)
 @app.exception_handler(PremiumAccessDenied)
 async def premium_access_denied_handler(request, exc: PremiumAccessDenied):
     """Handle premium access denied exceptions with upgrade prompt"""
+    logger.warning(f"🚨 PremiumAccessDenied: {exc.detail} - Path: {request.url.path}")
     content = {
         "detail": exc.detail,
         "error_code": "PREMIUM_ACCESS_REQUIRED",
@@ -142,6 +143,7 @@ async def validation_exception_handler(request, exc: ValidationError):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc: HTTPException):
     """Handle FastAPI HTTP exceptions"""
+    logger.warning(f"🚨 HTTPException: {exc.status_code} - {exc.detail} - Path: {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
         content={

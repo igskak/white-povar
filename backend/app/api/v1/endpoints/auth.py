@@ -35,25 +35,31 @@ class User(BaseModel):
 async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     """Verify Supabase JWT token and return user info"""
     token = credentials.credentials
+    logger.info(f"🔐 verify_firebase_token called with token: {token[:20]}...")
 
     try:
         # Get auth service (Supabase or Mock for development)
         auth_service = get_auth_service()
 
         # Verify the token
+        logger.info("🔍 Verifying token...")
         decoded_token = await auth_service.verify_token(token)
+        logger.info(f"✅ Token verified successfully")
 
         # Extract user information from token
         # Supabase uses 'sub' for user ID, not 'uid'
         user_id = decoded_token.get('sub') or decoded_token.get('user_id', 'unknown')
         email = decoded_token.get('email', 'unknown@example.com')
+        logger.info(f"👤 User ID: {user_id}, Email: {email}")
 
         # Check if user exists in our database, create if not
+        logger.info(f"🔍 Checking if user exists in database...")
         user_result = await supabase_service.execute_query(
             'users', 'select', filters={'id': user_id}
         )
 
         if not user_result.data:
+            logger.info(f"➕ User not found, creating new user...")
             # Create new user in our database with default free tier subscription
             user_data = {
                 'id': user_id,
@@ -65,18 +71,21 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
                 'users', 'insert', data=user_data, use_service_key=True
             )
             logger.info(f"✅ Created new user with free tier: {user_id}")
+        else:
+            logger.info(f"✅ User found in database: {user_id}")
 
+        logger.info(f"🎉 Authentication successful for user: {user_id}")
         return User(id=user_id, email=email, chef_id=None)
 
     except ValueError as e:
-        logger.warning(f"Token verification failed: {str(e)}")
+        logger.warning(f"❌ Token verification failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
     except Exception as e:
-        logger.error(f"Authentication error: {str(e)}")
+        logger.error(f"❌ Authentication error: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
