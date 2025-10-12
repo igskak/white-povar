@@ -6,7 +6,7 @@ import logging
 from app.schemas.recipe import Recipe, RecipeList, RecipeFilters, RecipeCreate
 from app.schemas.chef import ChefConfig
 from app.services.database import supabase_service
-from app.api.v1.endpoints.auth import verify_firebase_token, User
+from app.api.v1.endpoints.auth import verify_firebase_token, get_optional_user, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
 
@@ -121,7 +121,7 @@ async def get_recipes(
     is_featured: Optional[bool] = Query(None, description="Filter featured recipes"),
     limit: int = Query(20, ge=1, le=100, description="Number of recipes to return"),
     offset: int = Query(0, ge=0, description="Number of recipes to skip"),
-    current_user: Optional[User] = Depends(verify_firebase_token)
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """Get recipes with optional filtering (respects user subscription tier)"""
     try:

@@ -10,6 +10,7 @@ from app.services.database import supabase_service
 
 router = APIRouter()
 security = HTTPBearer()
+optional_security = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
 
 class LoginRequest(BaseModel):
@@ -82,6 +83,49 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security)) -> Optional[User]:
+    """Verify Firebase ID token and return user info, or None if not authenticated"""
+    if credentials is None:
+        return None
+
+    try:
+        token = credentials.credentials
+        # Get auth service (Firebase or Mock for development)
+        auth_service = get_auth_service()
+
+        # Verify the token
+        decoded_token = await auth_service.verify_token(token)
+
+        # Extract user information from token
+        user_id = decoded_token.get('uid') or decoded_token.get('user_id', 'unknown')
+        email = decoded_token.get('email', 'unknown@example.com')
+
+        # Check if user exists in our database, create if not
+        user_result = await supabase_service.execute_query(
+            'users', 'select', filters={'id': user_id}
+        )
+
+        if not user_result.data:
+            # Create new user in our database
+            user_data = {
+                'id': user_id,
+                'email': email,
+                'chef_id': None,
+                'favorites': []
+            }
+            await supabase_service.execute_query(
+                'users', 'insert', data=user_data, use_service_key=True
+            )
+            chef_id = None
+        else:
+            chef_id = user_result.data[0].get('chef_id')
+
+        return User(id=user_id, email=email, chef_id=chef_id)
+
+    except Exception as e:
+        logger.warning(f"Optional authentication failed: {str(e)}")
+        return None
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
