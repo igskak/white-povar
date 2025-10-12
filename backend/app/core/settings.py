@@ -24,8 +24,9 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
 
-    # Firebase
-    firebase_project_id: str
+    # Firebase (deprecated - now using Supabase Auth)
+    # Kept for backward compatibility, but no longer required
+    firebase_project_id: Optional[str] = None
 
     # CORS - Production ready origins
     allowed_origins: str = "https://white-povar.web.app,https://white-povar.firebaseapp.com,http://localhost:3000,http://localhost:8080"

@@ -9,106 +9,70 @@ from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
 
-class FirebaseAuth:
-    """Firebase Authentication service for token verification"""
-    
+class SupabaseAuth:
+    """Supabase Authentication service for token verification"""
+
     def __init__(self):
-        self.project_id = settings.firebase_project_id
-        self.public_keys_url = f"https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
-        self.issuer = f"https://securetoken.google.com/{self.project_id}"
-        self.audience = self.project_id
-        self._public_keys = {}
-        self._keys_last_updated = None
+        # Extract the Supabase project URL for issuer validation
+        self.supabase_url = settings.supabase_url
+        # Supabase JWT secret is the same as the service key secret
+        self.jwt_secret = settings.supabase_service_key
     
     async def verify_token(self, token: str) -> Dict[str, Any]:
         """
-        Verify Firebase ID token and return user claims
-        
+        Verify Supabase JWT token and return user claims
+
         Args:
-            token: Firebase ID token
-            
+            token: Supabase JWT token
+
         Returns:
-            Dict containing user claims
-            
+            Dict containing user claims (sub, email, role, etc.)
+
         Raises:
             ValueError: If token is invalid
         """
         try:
-            # Get public keys for verification
-            await self._update_public_keys()
-            
-            # Decode token header to get key ID
-            unverified_header = jwt.get_unverified_header(token)
-            key_id = unverified_header.get('kid')
-            
-            if not key_id or key_id not in self._public_keys:
-                raise ValueError("Invalid token: key ID not found")
-            
-            # Get the public key
-            public_key = self._public_keys[key_id]
-            
-            # Verify and decode the token
+            # Decode and verify the token using Supabase JWT secret
+            # Supabase uses HS256 algorithm (symmetric key)
             decoded_token = jwt.decode(
                 token,
-                public_key,
-                algorithms=['RS256'],
-                audience=self.audience,
-                issuer=self.issuer,
+                self.jwt_secret,
+                algorithms=['HS256'],
                 options={
                     'verify_exp': True,
                     'verify_iat': True,
-                    'verify_aud': True,
-                    'verify_iss': True
+                    'verify_signature': True
                 }
             )
-            
-            # Additional validation
+
+            # Validate token claims
             now = datetime.utcnow().timestamp()
-            
+
             # Check if token is expired
             if decoded_token.get('exp', 0) < now:
                 raise ValueError("Token has expired")
-            
+
             # Check if token was issued in the future
             if decoded_token.get('iat', 0) > now + 300:  # 5 minute tolerance
                 raise ValueError("Token issued in the future")
-            
-            # Check auth_time if present
-            auth_time = decoded_token.get('auth_time')
-            if auth_time and auth_time > now + 300:
-                raise ValueError("Authentication time in the future")
-            
+
+            # Supabase tokens should have 'sub' (user ID) and 'role'
+            if not decoded_token.get('sub'):
+                raise ValueError("Token missing user ID (sub)")
+
+            logger.info(f"✅ Token verified successfully for user: {decoded_token.get('sub')}")
             return decoded_token
-            
+
         except jwt.ExpiredSignatureError:
             raise ValueError("Token has expired")
-        except jwt.InvalidTokenError as e:
+        except jwt.JWTClaimsError as e:
+            raise ValueError(f"Invalid token claims: {str(e)}")
+        except jwt.JWTError as e:
             raise ValueError(f"Invalid token: {str(e)}")
         except Exception as e:
             logger.error(f"Token verification error: {str(e)}")
             raise ValueError(f"Token verification failed: {str(e)}")
-    
-    async def _update_public_keys(self):
-        """Update Firebase public keys for token verification"""
-        try:
-            # Check if keys need updating (cache for 1 hour)
-            if (self._keys_last_updated and 
-                datetime.utcnow() - self._keys_last_updated < timedelta(hours=1)):
-                return
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.get(self.public_keys_url)
-                response.raise_for_status()
-                
-                self._public_keys = response.json()
-                self._keys_last_updated = datetime.utcnow()
-                
-                logger.info("Firebase public keys updated successfully")
-                
-        except Exception as e:
-            logger.error(f"Failed to update Firebase public keys: {str(e)}")
-            if not self._public_keys:
-                raise ValueError("No public keys available for token verification")
+
 
 class JWTAuth:
     """JWT token management for internal API authentication"""
@@ -143,25 +107,25 @@ class JWTAuth:
             raise ValueError("Invalid token")
 
 # Global instances
-firebase_auth = FirebaseAuth()
+supabase_auth = SupabaseAuth()
 jwt_auth = JWTAuth()
 
 # Development mode helpers
 class MockAuth:
     """Mock authentication for development/testing"""
-    
+
     @staticmethod
     async def verify_token(token: str) -> Dict[str, Any]:
         """Mock token verification for development"""
         if settings.environment == "development":
             # Return mock user data for development
+            # Use 'sub' instead of 'uid' to match Supabase token format
             return {
-                "uid": "dev_user_123",
+                "sub": "dev_user_123",
                 "email": "dev@example.com",
                 "email_verified": True,
                 "name": "Development User",
-                "iss": "mock",
-                "aud": "mock",
+                "role": "authenticated",
                 "exp": datetime.utcnow().timestamp() + 3600,
                 "iat": datetime.utcnow().timestamp()
             }
@@ -174,7 +138,7 @@ def get_auth_service():
     if settings.environment == "development" and settings.debug:
         return MockAuth()
     else:
-        return firebase_auth
+        return supabase_auth  # Changed from firebase_auth
 
 # FastAPI Dependencies  
 async def get_current_user():

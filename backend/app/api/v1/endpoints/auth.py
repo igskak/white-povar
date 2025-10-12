@@ -33,18 +33,19 @@ class User(BaseModel):
     chef_id: Optional[str] = None
 
 async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
-    """Verify Firebase ID token and return user info"""
+    """Verify Supabase JWT token and return user info"""
     token = credentials.credentials
 
     try:
-        # Get auth service (Firebase or Mock for development)
+        # Get auth service (Supabase or Mock for development)
         auth_service = get_auth_service()
 
         # Verify the token
         decoded_token = await auth_service.verify_token(token)
 
         # Extract user information from token
-        user_id = decoded_token.get('uid') or decoded_token.get('user_id', 'unknown')
+        # Supabase uses 'sub' for user ID, not 'uid'
+        user_id = decoded_token.get('sub') or decoded_token.get('user_id', 'unknown')
         email = decoded_token.get('email', 'unknown@example.com')
 
         # Check if user exists in our database, create if not
@@ -85,20 +86,21 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
         )
 
 async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security)) -> Optional[User]:
-    """Verify Firebase ID token and return user info, or None if not authenticated"""
+    """Verify Supabase JWT token and return user info, or None if not authenticated"""
     if credentials is None:
         return None
 
     try:
         token = credentials.credentials
-        # Get auth service (Firebase or Mock for development)
+        # Get auth service (Supabase or Mock for development)
         auth_service = get_auth_service()
 
         # Verify the token
         decoded_token = await auth_service.verify_token(token)
 
         # Extract user information from token
-        user_id = decoded_token.get('uid') or decoded_token.get('user_id', 'unknown')
+        # Supabase uses 'sub' for user ID, not 'uid'
+        user_id = decoded_token.get('sub') or decoded_token.get('user_id', 'unknown')
         email = decoded_token.get('email', 'unknown@example.com')
 
         # Check if user exists in our database, create if not
