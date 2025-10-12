@@ -58,20 +58,15 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
             user_data = {
                 'id': user_id,
                 'email': email,
-                'chef_id': None,
-                'favorites': [],
                 'subscription_tier': 'free',  # Default to free tier
                 'subscription_status': 'active'  # Active free tier
             }
             await supabase_service.execute_query(
                 'users', 'insert', data=user_data, use_service_key=True
             )
-            chef_id = None
             logger.info(f"✅ Created new user with free tier: {user_id}")
-        else:
-            chef_id = user_result.data[0].get('chef_id')
 
-        return User(id=user_id, email=email, chef_id=chef_id)
+        return User(id=user_id, email=email, chef_id=None)
 
     except ValueError as e:
         logger.warning(f"Token verification failed: {str(e)}")
@@ -116,20 +111,15 @@ async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] 
             user_data = {
                 'id': user_id,
                 'email': email,
-                'chef_id': None,
-                'favorites': [],
                 'subscription_tier': 'free',  # Default to free tier
                 'subscription_status': 'active'  # Active free tier
             }
             await supabase_service.execute_query(
                 'users', 'insert', data=user_data, use_service_key=True
             )
-            chef_id = None
             logger.info(f"✅ Created new user with free tier: {user_id}")
-        else:
-            chef_id = user_result.data[0].get('chef_id')
 
-        return User(id=user_id, email=email, chef_id=chef_id)
+        return User(id=user_id, email=email, chef_id=None)
 
     except Exception as e:
         logger.warning(f"Optional authentication failed: {str(e)}")
