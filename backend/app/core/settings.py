@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_key: str
     supabase_service_key: str
+    supabase_jwt_secret: Optional[str] = None  # JWT secret for token verification
 
     # OpenAI
     openai_api_key: str

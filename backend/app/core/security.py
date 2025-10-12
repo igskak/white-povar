@@ -15,8 +15,10 @@ class SupabaseAuth:
     def __init__(self):
         # Extract the Supabase project URL for issuer validation
         self.supabase_url = settings.supabase_url
-        # Supabase JWT secret is the same as the service key secret
-        self.jwt_secret = settings.supabase_service_key
+        # Use dedicated JWT secret if available, otherwise fall back to service key
+        # The JWT secret is found in Supabase Dashboard -> Settings -> API -> JWT Secret
+        self.jwt_secret = settings.supabase_jwt_secret or settings.supabase_service_key
+        logger.info(f"🔐 SupabaseAuth initialized with JWT secret: {'custom' if settings.supabase_jwt_secret else 'service_key'}")
     
     async def verify_token(self, token: str) -> Dict[str, Any]:
         """
@@ -32,6 +34,13 @@ class SupabaseAuth:
             ValueError: If token is invalid
         """
         try:
+            # Log token info for debugging (first 20 chars only)
+            logger.info(f"🔍 Verifying token: {token[:20]}...")
+            logger.info(f"🔑 Using JWT secret: {self.jwt_secret[:10]}..." if self.jwt_secret else "❌ NO JWT SECRET SET!")
+
+            if not self.jwt_secret:
+                raise ValueError("JWT secret not configured. Set SUPABASE_JWT_SECRET environment variable.")
+
             # Decode and verify the token using Supabase JWT secret
             # Supabase uses HS256 algorithm (symmetric key)
             decoded_token = jwt.decode(
@@ -64,13 +73,16 @@ class SupabaseAuth:
             return decoded_token
 
         except jwt.ExpiredSignatureError:
+            logger.error("❌ Token has expired")
             raise ValueError("Token has expired")
         except jwt.JWTClaimsError as e:
+            logger.error(f"❌ Invalid token claims: {str(e)}")
             raise ValueError(f"Invalid token claims: {str(e)}")
         except jwt.JWTError as e:
+            logger.error(f"❌ JWT Error: {str(e)}")
             raise ValueError(f"Invalid token: {str(e)}")
         except Exception as e:
-            logger.error(f"Token verification error: {str(e)}")
+            logger.error(f"❌ Token verification error: {str(e)}")
             raise ValueError(f"Token verification failed: {str(e)}")
 
 
