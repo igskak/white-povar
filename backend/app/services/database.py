@@ -78,7 +78,7 @@ class SupabaseService:
     async def get_recipes(self, filters: Optional[Dict] = None, limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Get recipes with optional filtering"""
         try:
-            client = self.get_client()
+            client = self.get_client(use_service_key=True)
 
             # Build the query with JOIN to include ingredients
             query = client.table('recipes').select('''
@@ -112,7 +112,7 @@ class SupabaseService:
     async def get_recipe_by_id(self, recipe_id: str) -> Dict[str, Any]:
         """Get single recipe by ID"""
         try:
-            client = self.get_client()
+            client = self.get_client(use_service_key=True)
 
             # Select recipe with ingredients using JOIN
             recipe_result = client.table('recipes').select('''
@@ -133,7 +133,7 @@ class SupabaseService:
     async def get_recipe_ingredients(self, recipe_id: str) -> Dict[str, Any]:
         """Get ingredients for a specific recipe"""
         def _execute():
-            client = self.get_client()
+            client = self.get_client(use_service_key=True)
             try:
                 # Get ingredients ordered by their order field
                 ingredients_result = client.table('recipe_ingredients').select('*').eq('recipe_id', recipe_id).order('sort_order').execute()
@@ -149,7 +149,7 @@ class SupabaseService:
                                    limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Search recipes by text query"""
         try:
-            client = self.get_client()
+            client = self.get_client(use_service_key=True)
 
             # Build search query with actual text search
             search_query = client.table('recipes').select('''
