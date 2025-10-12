@@ -6,7 +6,7 @@ import logging
 from app.schemas.recipe import Recipe, RecipeList, RecipeFilters, RecipeCreate
 from app.schemas.chef import ChefConfig
 from app.services.database import supabase_service
-from app.api.v1.endpoints.auth import verify_firebase_token, get_optional_user, User
+from app.api.v1.endpoints.auth import verify_firebase_token, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
 
@@ -121,7 +121,7 @@ async def get_recipes(
     is_featured: Optional[bool] = Query(None, description="Filter featured recipes"),
     limit: int = Query(20, ge=1, le=100, description="Number of recipes to return"),
     offset: int = Query(0, ge=0, description="Number of recipes to skip"),
-    current_user: Optional[User] = Depends(get_optional_user)
+    current_user: User = Depends(verify_firebase_token)
 ):
     """Get recipes with optional filtering (respects user subscription tier)"""
     try:
@@ -217,20 +217,15 @@ async def get_recipes(
                 continue
 
         # Filter recipes based on user subscription tier
-        if current_user:
-            # Convert recipes to dict for filtering
-            recipes_dict = [recipe.dict() for recipe in recipes]
-            filtered_recipes_dict = await filter_recipes_by_subscription(
-                recipes_dict,
-                current_user.id,
-                include_premium=True  # Show premium recipes with badges
-            )
-            # Convert back to Recipe objects
-            recipes = [Recipe(**r) for r in filtered_recipes_dict]
-        else:
-            # If no user, show all recipes (premium will have badges in frontend)
-            # Don't filter - let frontend handle premium badges
-            pass
+        # Convert recipes to dict for filtering
+        recipes_dict = [recipe.dict() for recipe in recipes]
+        filtered_recipes_dict = await filter_recipes_by_subscription(
+            recipes_dict,
+            current_user.id,
+            include_premium=True  # Show premium recipes with badges for free users
+        )
+        # Convert back to Recipe objects
+        recipes = [Recipe(**r) for r in filtered_recipes_dict]
 
         # Calculate total count and has_more
         total_count = len(recipes)
@@ -347,7 +342,7 @@ async def get_featured_recipes(
 @router.get("/{recipe_id}", response_model=Recipe)
 async def get_recipe(
     recipe_id: str,
-    current_user: Optional[User] = Depends(get_optional_user)
+    current_user: User = Depends(verify_firebase_token)
 ):
     """Get a single recipe by ID (checks premium access for premium recipes)"""
     try:
@@ -372,9 +367,7 @@ async def get_recipe(
 
         # Check if recipe is premium and validate access
         is_premium = recipe_data.get('is_premium', False)
-        if is_premium and current_user:
-            # Only check access if user is logged in
-            # If not logged in, still return recipe data (frontend will show paywall)
+        if is_premium:
             await check_recipe_access(recipe_id, is_premium, current_user)
 
         # Get ingredients for this recipe
