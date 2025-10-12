@@ -97,19 +97,12 @@ logger = logging.getLogger(__name__)
 async def premium_access_denied_handler(request, exc: PremiumAccessDenied):
     """Handle premium access denied exceptions with upgrade prompt"""
     logger.warning(f"🚨 PremiumAccessDenied: {exc.detail} - Path: {request.url.path}")
-    content = {
-        "detail": exc.detail,
-        "error_code": "PREMIUM_ACCESS_REQUIRED",
-        "type": "premium_access_denied"
-    }
 
-    # Add upgrade prompt if available
-    if exc.upgrade_prompt:
-        content["upgrade_prompt"] = exc.upgrade_prompt.dict()
-
+    # The detail is already a dict with error, message, and upgrade_prompt
+    # Just return it as-is with the proper status code
     return JSONResponse(
         status_code=exc.status_code,
-        content=content,
+        content=exc.detail,
         headers=exc.headers
     )
 
