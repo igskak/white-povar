@@ -7,10 +7,15 @@ import '../../auth/services/auth_service.dart';
 
 class RecipeService {
   final AuthService _authService = AuthService();
-  
+
   // Get auth headers for API calls
   Future<Map<String, String>> _getAuthHeaders() async {
     final token = await _authService.getIdToken();
+    print(
+        '🔑 RecipeService: Got token: ${token != null ? "${token.substring(0, 20)}..." : "NULL"}');
+    if (token == null) {
+      print('⚠️ RecipeService: No auth token available!');
+    }
     return {
       'Content-Type': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
@@ -28,7 +33,8 @@ class RecipeService {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        final List<dynamic> recipesData = responseData['recipes'] as List<dynamic>;
+        final List<dynamic> recipesData =
+            responseData['recipes'] as List<dynamic>;
         return recipesData.map((json) => Recipe.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load recipes: ${response.statusCode}');
@@ -51,7 +57,8 @@ class RecipeService {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Recipe.fromJson(json)).toList();
       } else {
-        throw Exception('Failed to load featured recipes: ${response.statusCode}');
+        throw Exception(
+            'Failed to load featured recipes: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Failed to load featured recipes: $e');
@@ -142,7 +149,8 @@ class RecipeService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.get(
-        Uri.parse('${AppConfig.searchEndpoint}/text?q=${Uri.encodeComponent(query)}'),
+        Uri.parse(
+            '${AppConfig.searchEndpoint}/text?q=${Uri.encodeComponent(query)}'),
         headers: headers,
       );
 

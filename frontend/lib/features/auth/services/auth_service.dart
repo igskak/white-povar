@@ -6,6 +6,11 @@ import 'dart:convert';
 import '../../../core/config/app_config.dart';
 
 class AuthService {
+  // Singleton pattern
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+
   final SupabaseClient _supabase = Supabase.instance.client;
   final StreamController<User?> _authStateController =
       StreamController<User?>.broadcast();
@@ -21,7 +26,7 @@ class AuthService {
   void initialize() {
     _currentUser = _supabase.auth.currentUser;
     _authStateController.add(_currentUser);
-    
+
     // Listen to Supabase auth state changes
     _supabase.auth.onAuthStateChange.listen((data) {
       _currentUser = data.session?.user;
@@ -36,15 +41,15 @@ class AuthService {
         email: email,
         password: password,
       );
-      
+
       if (response.user != null) {
         _currentUser = response.user;
         _authStateController.add(response.user);
-        
+
         // Sync with backend
         await _syncUserWithBackend(response.user!);
       }
-      
+
       return response;
     } catch (e) {
       throw Exception('Sign in failed: $e');
@@ -57,17 +62,18 @@ class AuthService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo: kIsWeb ? 'https://white-povar.web.app/auth/callback' : null,
+        emailRedirectTo:
+            kIsWeb ? 'https://white-povar.web.app/auth/callback' : null,
       );
-      
+
       if (response.user != null) {
         _currentUser = response.user;
         _authStateController.add(response.user);
-        
+
         // Sync with backend
         await _syncUserWithBackend(response.user!);
       }
-      
+
       return response;
     } catch (e) {
       throw Exception('Sign up failed: $e');
@@ -79,9 +85,11 @@ class AuthService {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb ? 'https://qnlfvpqmkmbvzmzqgjpo.supabase.co/auth/v1/callback' : 'io.supabase.cookingapp://login-callback',
+        redirectTo: kIsWeb
+            ? 'https://qnlfvpqmkmbvzmzqgjpo.supabase.co/auth/v1/callback'
+            : 'io.supabase.cookingapp://login-callback',
       );
-      
+
       // For OAuth, we need to wait for the redirect to complete
       // The user will be updated via the auth state listener
     } catch (e) {
@@ -100,7 +108,7 @@ class AuthService {
         OAuthProvider.apple,
         redirectTo: 'io.supabase.cookingapp://login-callback',
       );
-      
+
       // For OAuth, we need to wait for the redirect to complete
       // The user will be updated via the auth state listener
     } catch (e) {
@@ -132,8 +140,17 @@ class AuthService {
   Future<String?> getIdToken() async {
     try {
       final session = _supabase.auth.currentSession;
+      debugPrint(
+          '🔑 AuthService: Getting token, session exists: ${session != null}');
+      if (session == null) {
+        debugPrint('⚠️ AuthService: No session available!');
+      } else {
+        debugPrint(
+            '🔑 AuthService: Token: ${session.accessToken.substring(0, 20)}...');
+      }
       return session?.accessToken;
     } catch (e) {
+      debugPrint('❌ AuthService: Error getting token: $e');
       return null;
     }
   }
@@ -153,14 +170,16 @@ class AuthService {
         body: jsonEncode({
           'id': user.id,
           'email': user.email,
-          'display_name': user.userMetadata?['full_name'] ?? user.userMetadata?['name'],
+          'display_name':
+              user.userMetadata?['full_name'] ?? user.userMetadata?['name'],
           'avatar_url': user.userMetadata?['avatar_url'],
         }),
       );
 
       if (response.statusCode != 200) {
         // Log warning for debugging
-        debugPrint('Warning: Failed to sync user with backend: ${response.statusCode}');
+        debugPrint(
+            'Warning: Failed to sync user with backend: ${response.statusCode}');
       }
     } catch (e) {
       // Log error for debugging
