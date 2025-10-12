@@ -43,6 +43,7 @@ class SupabaseAuth:
 
             # Decode and verify the token using Supabase JWT secret
             # Supabase uses HS256 algorithm (symmetric key)
+            # Skip audience verification for Supabase tokens
             decoded_token = jwt.decode(
                 token,
                 self.jwt_secret,
@@ -50,7 +51,8 @@ class SupabaseAuth:
                 options={
                     'verify_exp': True,
                     'verify_iat': True,
-                    'verify_signature': True
+                    'verify_signature': True,
+                    'verify_aud': False  # Skip audience verification for Supabase
                 }
             )
 
