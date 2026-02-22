@@ -2,8 +2,6 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.services.ai_service import ai_service
-from app.core.security import get_current_user
-from app.schemas.chef import Chef
 from app.core.premium_access import require_ai_access
 from app.api.v1.endpoints.auth import User
 import logging
@@ -182,7 +180,7 @@ async def improve_instructions(
 @router.get("/suggestions/quick")
 async def get_quick_suggestions(
     ingredients: str,  # Comma-separated ingredients
-    current_user: Chef = Depends(get_current_user)
+    current_user: User = Depends(require_ai_access)
 ):
     """Get quick recipe suggestions (simplified endpoint)"""
     

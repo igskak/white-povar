@@ -430,7 +430,13 @@ async def get_search_suggestions(
     """Get search suggestions based on partial query"""
     try:
         if len(q.strip()) < 2:
-            return {"suggestions": []}
+            return {
+                "suggestions": [],
+                "recipes": [],
+                "cuisines": [],
+                "ingredients": [],
+                "tags": []
+            }
         
         # Simple implementation - search recipe titles and return unique suggestions
         result = await supabase_service.search_recipes_by_text(q, chef_id, limit * 2, 0)
@@ -447,11 +453,23 @@ async def get_search_suggestions(
             if len(suggestions) >= limit:
                 break
         
-        return {"suggestions": suggestions}
+        return {
+            "suggestions": suggestions,
+            "recipes": suggestions,  # Backward-compatible alias
+            "cuisines": [],
+            "ingredients": [],
+            "tags": []
+        }
 
     except Exception as e:
         logger.error(f"Error getting search suggestions: {str(e)}")
-        return {"suggestions": []}
+        return {
+            "suggestions": [],
+            "recipes": [],
+            "cuisines": [],
+            "ingredients": [],
+            "tags": []
+        }
 
 @router.post("/advanced", response_model=AdvancedSearchResponse)
 async def advanced_search(

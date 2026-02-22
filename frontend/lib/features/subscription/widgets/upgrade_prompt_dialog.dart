@@ -65,7 +65,7 @@ class UpgradePromptDialog extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
@@ -166,10 +166,10 @@ class UpgradePromptDialog extends StatelessWidget {
 
   /// Show upgrade prompt for AI features
   static Future<void> showAIFeaturePrompt(BuildContext context) {
-    final prompt = UpgradePrompt(
+    final prompt = const UpgradePrompt(
       title: 'Unlock AI Features',
       message: 'Get access to AI-powered recipe generation, cooking tips, and more with Premium!',
-      features: const [
+      features: [
         'AI Recipe Generation',
         'Smart Ingredient Substitutions',
         'Personalized Cooking Tips',
@@ -183,10 +183,10 @@ class UpgradePromptDialog extends StatelessWidget {
 
   /// Show upgrade prompt for premium recipes
   static Future<void> showPremiumRecipePrompt(BuildContext context) {
-    final prompt = UpgradePrompt(
+    final prompt = const UpgradePrompt(
       title: 'Premium Recipe',
       message: 'This recipe is exclusive to Premium members. Upgrade to access premium author recipes!',
-      features: const [
+      features: [
         'Access to Premium Recipes',
         'Exclusive Chef Content',
         'Advanced Search & Filters',
@@ -200,10 +200,10 @@ class UpgradePromptDialog extends StatelessWidget {
 
   /// Show upgrade prompt for advanced search
   static Future<void> showAdvancedSearchPrompt(BuildContext context) {
-    final prompt = UpgradePrompt(
+    final prompt = const UpgradePrompt(
       title: 'Advanced Search',
       message: 'Unlock advanced search features to find exactly what you\'re looking for!',
-      features: const [
+      features: [
         'Search Premium Recipes',
         'Advanced Filters',
         'Save Search Preferences',

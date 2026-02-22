@@ -23,6 +23,8 @@ White Povar/
 └── README.md
 ```
 
+Note: the canonical Flutter app lives in `frontend/`. The root `lib/main.dart` is a legacy entrypoint notice only.
+
 ## Features
 
 ### Backend (FastAPI)
@@ -439,4 +441,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support and questions, please open an issue in the GitHub repository.
 # Test deployment Mon Aug 11 20:52:12 CEST 2025
-

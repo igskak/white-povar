@@ -6,13 +6,13 @@ import '../../../core/config/app_config.dart';
 import '../models/subscription.dart';
 
 class SubscriptionService {
-  final String baseUrl = AppConfig.apiBaseUrl;
+  final String baseUrl = '${AppConfig.apiBaseUrl}/api/v1/subscription';
 
   /// Get current user's subscription status
   Future<SubscriptionStatusResponse> getSubscriptionStatus(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/subscription/status'),
+        Uri.parse('$baseUrl/status'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -23,7 +23,8 @@ class SubscriptionService {
         final data = jsonDecode(response.body);
         return SubscriptionStatusResponse.fromJson(data);
       } else {
-        throw Exception('Failed to get subscription status: ${response.statusCode}');
+        throw Exception(
+            'Failed to get subscription status: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error getting subscription status: $e');
@@ -38,8 +39,8 @@ class SubscriptionService {
   }) async {
     try {
       final uri = feature != null
-          ? Uri.parse('$baseUrl/subscription/check-access?feature=$feature')
-          : Uri.parse('$baseUrl/subscription/check-access');
+          ? Uri.parse('$baseUrl/check-access?feature=$feature')
+          : Uri.parse('$baseUrl/check-access');
 
       final response = await http.get(
         uri,
@@ -53,7 +54,8 @@ class SubscriptionService {
         final data = jsonDecode(response.body);
         return PremiumAccessCheck.fromJson(data);
       } else {
-        throw Exception('Failed to check premium access: ${response.statusCode}');
+        throw Exception(
+            'Failed to check premium access: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error checking premium access: $e');
@@ -65,7 +67,7 @@ class SubscriptionService {
   Future<Map<String, dynamic>> getAvailableFeatures(String token) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/subscription/features'),
+        Uri.parse('$baseUrl/features'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -75,7 +77,8 @@ class SubscriptionService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to get available features: ${response.statusCode}');
+        throw Exception(
+            'Failed to get available features: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error getting available features: $e');
@@ -87,7 +90,7 @@ class SubscriptionService {
   Future<UpgradePrompt> getUpgradePrompt(String promptType) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/subscription/upgrade-prompts/$promptType'),
+        Uri.parse('$baseUrl/upgrade-prompts/$promptType'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -109,7 +112,7 @@ class SubscriptionService {
   Future<Map<String, dynamic>> getSubscriptionTiers() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/subscription/tiers'),
+        Uri.parse('$baseUrl/tiers'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -118,7 +121,8 @@ class SubscriptionService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to get subscription tiers: ${response.statusCode}');
+        throw Exception(
+            'Failed to get subscription tiers: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error getting subscription tiers: $e');
@@ -130,7 +134,7 @@ class SubscriptionService {
   Future<void> grantPremiumAccess(String token, {int durationDays = 30}) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/subscription/grant-premium?duration_days=$durationDays'),
+        Uri.parse('$baseUrl/grant-premium?duration_days=$durationDays'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -138,7 +142,8 @@ class SubscriptionService {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to grant premium access: ${response.statusCode}');
+        throw Exception(
+            'Failed to grant premium access: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error granting premium access: $e');
@@ -150,7 +155,7 @@ class SubscriptionService {
   Future<void> revokePremiumAccess(String token) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/subscription/revoke-premium'),
+        Uri.parse('$baseUrl/revoke-premium'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -158,7 +163,8 @@ class SubscriptionService {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to revoke premium access: ${response.statusCode}');
+        throw Exception(
+            'Failed to revoke premium access: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error revoking premium access: $e');
@@ -180,7 +186,7 @@ class SubscriptionService {
       if (endDate != null) body['end_date'] = endDate.toIso8601String();
 
       final response = await http.put(
-        Uri.parse('$baseUrl/subscription/update'),
+        Uri.parse('$baseUrl/update'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -189,7 +195,8 @@ class SubscriptionService {
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to update subscription: ${response.statusCode}');
+        throw Exception(
+            'Failed to update subscription: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error updating subscription: $e');
@@ -197,4 +204,3 @@ class SubscriptionService {
     }
   }
 }
-

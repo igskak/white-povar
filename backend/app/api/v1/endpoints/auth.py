@@ -136,28 +136,18 @@ async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
-    """Login with email and password"""
-    # TODO: Implement actual authentication logic
-    # For now, return mock response
-    if request.email == "test@example.com" and request.password == "password":
-        return TokenResponse(
-            access_token="mock_access_token",
-            user_id="mock_user_id"
-        )
-    
+    """Deprecated: use Supabase Auth client-side flow instead."""
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect email or password"
+        status_code=status.HTTP_410_GONE,
+        detail="Deprecated endpoint. Use Supabase auth flow from client SDK."
     )
 
 @router.post("/register", response_model=TokenResponse)
 async def register(request: RegisterRequest):
-    """Register new user"""
-    # TODO: Implement actual registration logic
-    # For now, return mock response
-    return TokenResponse(
-        access_token="mock_access_token",
-        user_id="new_user_id"
+    """Deprecated: use Supabase Auth client-side flow instead."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Deprecated endpoint. Use Supabase auth flow from client SDK."
     )
 
 @router.get("/me", response_model=User)
@@ -167,9 +157,11 @@ async def get_current_user(current_user: User = Depends(verify_firebase_token)):
 
 @router.post("/refresh")
 async def refresh_token():
-    """Refresh access token"""
-    # TODO: Implement token refresh logic
-    return {"access_token": "new_mock_token", "token_type": "bearer"}
+    """Deprecated: use Supabase session refresh in the client SDK."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Deprecated endpoint. Refresh Supabase sessions via client SDK."
+    )
 
 class UserSyncRequest(BaseModel):
     id: str

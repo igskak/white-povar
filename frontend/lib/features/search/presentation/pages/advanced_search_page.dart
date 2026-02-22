@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/search_provider.dart';
 import '../../models/search_filters.dart';
 import '../widgets/search_bar_widget.dart';
 import '../widgets/search_suggestions_widget.dart';
+import '../../../recipes/presentation/widgets/recipe_card.dart';
 
 class AdvancedSearchPage extends ConsumerStatefulWidget {
   final String? initialQuery;
@@ -32,7 +34,7 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
         _performSearch();
       });
     }
-    
+
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onFocusChanged);
   }
@@ -53,7 +55,8 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
 
   void _onFocusChanged() {
     setState(() {
-      _showSuggestions = _searchController.text.isNotEmpty && _searchFocusNode.hasFocus;
+      _showSuggestions =
+          _searchController.text.isNotEmpty && _searchFocusNode.hasFocus;
     });
   }
 
@@ -63,9 +66,9 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
 
     final searchState = ref.read(searchProvider);
     final filters = searchState.filters.copyWith(query: query);
-    
+
     ref.read(searchProvider.notifier).search(filters: filters);
-    
+
     _searchFocusNode.unfocus();
     setState(() {
       _showSuggestions = false;
@@ -83,6 +86,154 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
     setState(() {
       _showSuggestions = false;
     });
+  }
+
+  bool _onScrollNotification(
+    ScrollNotification notification,
+    SearchState searchState,
+  ) {
+    if (!searchState.hasMore || searchState.isLoading) {
+      return false;
+    }
+
+    final metrics = notification.metrics;
+    final reachedLoadMoreThreshold =
+        metrics.pixels >= metrics.maxScrollExtent - 300;
+    if (reachedLoadMoreThreshold) {
+      ref.read(searchProvider.notifier).loadMore();
+    }
+
+    return false;
+  }
+
+  Widget _buildSearchContent(SearchState searchState) {
+    final hasQuery = _searchController.text.trim().isNotEmpty;
+    final recipes = searchState.recipes;
+
+    if (searchState.isLoading && recipes.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (searchState.error != null && recipes.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline,
+                  size: 56, color: Colors.redAccent),
+              const SizedBox(height: 12),
+              Text(
+                'Search failed',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                searchState.error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _performSearch,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!hasQuery) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Search for recipes',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Use the search bar above to find recipes',
+              style: TextStyle(color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (recipes.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No recipes found',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey[700],
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try a different keyword or remove some filters',
+              style: TextStyle(color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth >= 1100
+            ? 4
+            : constraints.maxWidth >= 800
+                ? 3
+                : 2;
+
+        return NotificationListener<ScrollNotification>(
+          onNotification: (notification) =>
+              _onScrollNotification(notification, searchState),
+          child: GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            itemCount: recipes.length + (searchState.isLoading ? 1 : 0),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 0.78,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemBuilder: (context, index) {
+              if (index >= recipes.length) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final recipe = recipes[index];
+              return RecipeCard(
+                recipe: recipe,
+                onTap: () => context.push('/recipes/${recipe.id}'),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -122,7 +273,7 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
               onClear: _clearSearch,
             ),
           ),
-          
+
           // Active Filters Indicator
           if (searchState.filters.activeFiltersCount > 0)
             Container(
@@ -146,45 +297,21 @@ class _AdvancedSearchPageState extends ConsumerState<AdvancedSearchPage> {
                   TextButton(
                     onPressed: () {
                       ref.read(searchProvider.notifier).updateFilters(
-                        const SearchFilters(),
-                      );
+                            const SearchFilters(),
+                          );
                     },
                     child: const Text('Clear all'),
                   ),
                 ],
               ),
             ),
-          
+
           // Content Area
           Expanded(
             child: Stack(
               children: [
-                // Search Results Placeholder
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Search for recipes',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Use the search bar above to find recipes',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
-                ),
-                
+                _buildSearchContent(searchState),
+
                 // Search Suggestions Overlay
                 if (_showSuggestions)
                   Positioned(

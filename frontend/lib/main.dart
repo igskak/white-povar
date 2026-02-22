@@ -10,6 +10,7 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppConfig.validateRequiredConfig();
 
   // Initialize Supabase first
   await Supabase.initialize(

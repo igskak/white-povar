@@ -123,19 +123,19 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       errorBuilder: (context, errorMessage) {
         return Container(
           color: Colors.black,
-          child: Center(
+          child: const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.error,
                   color: Colors.white,
                   size: 42,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Error loading video',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white),
                 ),
               ],
             ),

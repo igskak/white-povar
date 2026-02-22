@@ -112,10 +112,10 @@ class PhotoSearchResultsPage extends ConsumerWidget {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'We couldn\'t find recipes matching your ingredients:',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 8),
             Wrap(

@@ -55,26 +55,26 @@ class RecipeRepositoryException implements Exception {
 /// Network-related repository exceptions
 class NetworkRecipeRepositoryException extends RecipeRepositoryException {
   const NetworkRecipeRepositoryException(
-    String message, {
-    String? code,
-    dynamic originalError,
-  }) : super(message, code: code, originalError: originalError);
+    super.message, {
+    super.code,
+    super.originalError,
+  });
 }
 
 /// Authentication-related repository exceptions
 class AuthRecipeRepositoryException extends RecipeRepositoryException {
   const AuthRecipeRepositoryException(
-    String message, {
-    String? code,
-    dynamic originalError,
-  }) : super(message, code: code, originalError: originalError);
+    super.message, {
+    super.code,
+    super.originalError,
+  });
 }
 
 /// Not found repository exceptions
 class NotFoundRecipeRepositoryException extends RecipeRepositoryException {
   const NotFoundRecipeRepositoryException(
-    String message, {
-    String? code,
-    dynamic originalError,
-  }) : super(message, code: code, originalError: originalError);
+    super.message, {
+    super.code,
+    super.originalError,
+  });
 }
