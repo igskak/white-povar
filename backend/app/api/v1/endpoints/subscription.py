@@ -6,6 +6,7 @@ from typing import Optional
 import logging
 
 from app.api.v1.endpoints.auth import verify_firebase_token, User
+from app.core.settings import settings
 from app.services.subscription_service import subscription_service
 from app.schemas.subscription import (
     SubscriptionStatusResponse,
@@ -137,6 +138,11 @@ async def update_subscription(
     
     Note: In production, this should be called by payment webhooks, not directly by users
     """
+    if settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Subscription changes must come from a trusted billing webhook",
+        )
     try:
         success = await subscription_service.update_subscription(
             user_id=current_user.id,
@@ -181,6 +187,11 @@ async def grant_premium(
     Query Parameters:
         duration_days: Number of days to grant premium access (default: 30)
     """
+    if settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Premium access can only be granted by a trusted billing service",
+        )
     try:
         success = await subscription_service.grant_premium_access(
             user_id=current_user.id,
@@ -216,6 +227,11 @@ async def revoke_premium(
     """
     Revoke premium access from user (for testing/admin purposes)
     """
+    if settings.environment != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Premium access can only be changed by a trusted billing service",
+        )
     try:
         success = await subscription_service.revoke_premium_access(current_user.id)
         
@@ -271,4 +287,3 @@ async def get_subscription_tiers():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get subscription tiers"
         )
-

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -88,7 +89,7 @@ class PhotoSearchService {
             return Recipe.fromJson(data);
           } catch (e) {
             // Log error and skip invalid recipe
-            print('Failed to parse recipe: $e');
+            debugPrint('Failed to parse recipe: $e');
             return null;
           }
         })

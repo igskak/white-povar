@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../providers/recipe_provider.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
@@ -207,6 +208,7 @@ class RecipeDetailPage extends ConsumerWidget {
                         ),
                       );
                     }),
+                    const SizedBox(height: 104),
                   ],
                 ),
               ),
@@ -243,6 +245,32 @@ class RecipeDetailPage extends ConsumerWidget {
           ingredients: recipe.ingredients.map((ing) => ing.name).toList(),
           instructions: recipe.instructions,
           context: 'Recipe: ${recipe.title}',
+        ),
+        loading: () => null,
+        error: (_, __) => null,
+      ),
+      bottomNavigationBar: recipeAsync.when(
+        data: (recipe) => SafeArea(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x14000000),
+                  blurRadius: 16,
+                  offset: Offset(0, -4),
+                ),
+              ],
+            ),
+            child: FilledButton.icon(
+              onPressed: recipe.instructions.isEmpty
+                  ? null
+                  : () => context.push('/recipes/$recipeId/cook'),
+              icon: const Icon(Icons.soup_kitchen_outlined),
+              label: const Text('Start cooking'),
+            ),
+          ),
         ),
         loading: () => null,
         error: (_, __) => null,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -5,14 +7,17 @@ import '../models/auth_state.dart';
 import '../services/auth_service.dart';
 
 class AuthNotifier extends StateNotifier<AppAuthState> {
-  final AuthService _authService;
-
-  AuthNotifier(this._authService) : super(const AppAuthState.initial()) {
-    // Initialize auth service
+  AuthNotifier(this._authService) : super(const AppAuthState.loading()) {
     _authService.initialize();
-    
-    // Listen to auth state changes
-    _authService.authStateChanges.listen((user) {
+
+    final existingUser = _authService.currentUser;
+    if (existingUser != null) {
+      state = AppAuthState.authenticated(existingUser);
+    } else {
+      state = const AppAuthState.unauthenticated();
+    }
+
+    _subscription = _authService.authStateChanges.listen((user) {
       if (user != null) {
         state = AppAuthState.authenticated(user);
       } else {
@@ -21,11 +26,13 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     });
   }
 
+  final AuthService _authService;
+  StreamSubscription<User?>? _subscription;
+
   Future<void> signInWithEmail(String email, String password) async {
     state = const AppAuthState.loading();
     try {
       await _authService.signInWithEmail(email, password);
-      // State will be updated by the auth state listener
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -35,7 +42,6 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     state = const AppAuthState.loading();
     try {
       await _authService.signUpWithEmail(email, password);
-      // State will be updated by the auth state listener
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -45,7 +51,6 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     state = const AppAuthState.loading();
     try {
       await _authService.signInWithGoogle();
-      // State will be updated by the auth state listener
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -55,7 +60,6 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     state = const AppAuthState.loading();
     try {
       await _authService.signInWithApple();
-      // State will be updated by the auth state listener
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -64,7 +68,6 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
   Future<void> signOut() async {
     try {
       await _authService.signOut();
-      // State will be updated by the auth state listener
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -72,12 +75,20 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
 
   void clearError() {
     if (state.hasError) {
-      state = const AppAuthState.unauthenticated();
+      final user = _authService.currentUser;
+      state = user == null
+          ? const AppAuthState.unauthenticated()
+          : AppAuthState.authenticated(user);
     }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 
-// Providers
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
@@ -87,7 +98,6 @@ final authProvider = StateNotifierProvider<AuthNotifier, AppAuthState>((ref) {
   return AuthNotifier(authService);
 });
 
-// Convenience provider for current user
 final currentUserProvider = Provider<User?>((ref) {
   final authState = ref.watch(authProvider);
   return authState.user;

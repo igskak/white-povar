@@ -84,9 +84,8 @@ class UserSubscriptionInfo extends Equatable {
       startDate: json['start_date'] != null
           ? DateTime.tryParse(json['start_date'])
           : null,
-      endDate: json['end_date'] != null
-          ? DateTime.tryParse(json['end_date'])
-          : null,
+      endDate:
+          json['end_date'] != null ? DateTime.tryParse(json['end_date']) : null,
       isActive: json['is_active'] == true,
     );
   }
@@ -205,8 +204,7 @@ class SubscriptionStatusResponse extends Equatable {
   factory SubscriptionStatusResponse.fromJson(Map<String, dynamic> json) {
     return SubscriptionStatusResponse(
       userId: json['user_id']?.toString() ?? '',
-      subscription: UserSubscriptionInfo.fromJson(
-          json['subscription'] ?? {}),
+      subscription: UserSubscriptionInfo.fromJson(json['subscription'] ?? {}),
       hasPremiumAccess: json['has_premium_access'] == true,
       features: SubscriptionFeatures.fromJson(json['features'] ?? {}),
     );
@@ -275,4 +273,3 @@ class PremiumAccessCheck extends Equatable {
   @override
   List<Object?> get props => [hasAccess, tier, reason, upgradeRequired];
 }
-

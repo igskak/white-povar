@@ -64,13 +64,15 @@ async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "environment": settings.environment}
 
-@app.get("/admin_video_upload.html")
-async def admin_video_upload():
-    """Serve the admin video upload interface"""
-    file_path = os.path.join(os.path.dirname(__file__), "..", "admin_video_upload.html")
-    if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="text/html")
-    else:
+if settings.environment == "development":
+    @app.get("/admin_video_upload.html", include_in_schema=False)
+    async def admin_video_upload():
+        """Serve the local-only video upload interface."""
+        file_path = os.path.join(
+            os.path.dirname(__file__), "..", "admin_video_upload.html"
+        )
+        if os.path.exists(file_path):
+            return FileResponse(file_path, media_type="text/html")
         raise HTTPException(status_code=404, detail="Admin interface not found")
 
 # Import standardized exceptions

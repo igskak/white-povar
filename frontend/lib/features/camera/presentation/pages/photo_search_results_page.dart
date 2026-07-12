@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/widgets/state_views.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/photo_search_provider.dart';
-
-import '../../../ai/widgets/ai_assistant_dialog.dart';
+import '../widgets/camera_flow_scaffold.dart';
 
 class PhotoSearchResultsPage extends ConsumerWidget {
   const PhotoSearchResultsPage({super.key});
@@ -16,197 +16,113 @@ class PhotoSearchResultsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final photoSearchState = ref.watch(photoSearchProvider);
     final ingredients = ref.watch(ingredientEditProvider);
+    final confirmedIngredients = ingredients
+        .where((item) => item.isConfirmed)
+        .map((item) => item.name.toLowerCase())
+        .toSet();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recipe Suggestions'),
-        actions: [
-          IconButton(
-            onPressed: () => _showIngredientSummary(context, ingredients),
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'View ingredients used',
-          ),
-        ],
+    return CameraFlowScaffold(
+      title: 'Recipe Results',
+      step: CameraFlowStep.results,
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Back to review'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => context.go('/camera'),
+                icon: const Icon(Icons.camera_alt_outlined),
+                label: const Text('Start over'),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: _buildBody(context, photoSearchState, ingredients),
+      child: _buildBody(
+        context: context,
+        state: photoSearchState,
+        confirmedIngredients: confirmedIngredients,
+      ),
     );
   }
 
-  Widget _buildBody(BuildContext context, PhotoSearchState state, ingredients) {
+  Widget _buildBody({
+    required BuildContext context,
+    required PhotoSearchState state,
+    required Set<String> confirmedIngredients,
+  }) {
     if (state.isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Finding recipes with your ingredients...'),
-          ],
-        ),
+      return const CameraFlowStatusView.loading(
+        title: 'Loading recipe matches',
+        subtitle: 'This usually takes only a moment.',
       );
     }
 
     if (state.error != null) {
-      return _buildErrorView(context, state.error!);
+      return CameraFlowStatusView.error(
+        title: 'Could not load results',
+        subtitle: state.error,
+        onRetry: () => context.pop(),
+      );
     }
 
     if (state.suggestedRecipes.isEmpty) {
-      return _buildEmptyState(context, ingredients);
+      return StateView.empty(
+        title: 'No recipe matches found',
+        subtitle:
+            'Try adjusting ingredients in the previous step or take another photo.',
+        icon: Icons.search_off,
+        onRetry: () => context.pop(),
+        actionLabel: 'Back to review',
+      );
     }
-
-    return _buildRecipeResults(context, state.suggestedRecipes, ingredients);
-  }
-
-  Widget _buildErrorView(BuildContext context, String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Search Failed',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.pop(),
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context, ingredients) {
-    final confirmedIngredients =
-        ingredients.where((i) => i.isConfirmed).map((i) => i.name).toList();
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Recipes Found',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'We couldn\'t find recipes matching your ingredients:',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: confirmedIngredients.map((ingredient) {
-                return Chip(
-                  label: Text(ingredient),
-                  backgroundColor: Theme.of(context).colorScheme.surface,
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            Column(
-              children: [
-                ElevatedButton(
-                  onPressed: () => context.pop(),
-                  child: const Text('Edit Ingredients'),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    final confirmedIngredients = ingredients
-                        .where((i) => i.isConfirmed)
-                        .map((i) => i.name)
-                        .toList();
-                    showDialog(
-                      context: context,
-                      builder: (context) => AIAssistantDialog(
-                        ingredients: confirmedIngredients,
-                        context: 'Generated from photo search',
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.psychology),
-                  label: const Text('Generate a recipe using AI'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => context.go('/search'),
-                  child: const Text('Browse All Recipes'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecipeResults(
-    BuildContext context,
-    List<Map<String, dynamic>> recipesData,
-    ingredients,
-  ) {
-    final confirmedIngredients = ingredients
-        .where((i) => i.isConfirmed)
-        .map((i) => i.name.toLowerCase())
-        .toSet();
 
     return Column(
       children: [
-        _buildResultsHeader(context, recipesData.length, confirmedIngredients),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Text(
+            '${state.suggestedRecipes.length} recipes based on ${confirmedIngredients.length} ingredients',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.8,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              childAspectRatio: 0.78,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
-            itemCount: recipesData.length,
+            itemCount: state.suggestedRecipes.length,
             itemBuilder: (context, index) {
+              final recipeJson = state.suggestedRecipes[index];
+
               try {
-                final recipe = Recipe.fromJson(recipesData[index]);
+                final recipe = Recipe.fromJson(recipeJson);
                 return RecipeCard(
                   recipe: recipe,
                   onTap: () => context.push('/recipes/${recipe.id}'),
                   showMatchIndicator: true,
                   matchedIngredients: _calculateMatchedIngredients(
-                    recipe,
-                    confirmedIngredients,
-                  ),
+                      recipe, confirmedIngredients),
                 );
-              } catch (e) {
-                // Handle invalid recipe data
-                return Card(
+              } catch (_) {
+                return const Card(
                   child: Center(
-                    child: Text(
-                      'Invalid recipe data',
-                      style: TextStyle(color: Colors.grey[600]),
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text('Invalid recipe payload'),
                     ),
                   ),
                 );
@@ -218,113 +134,10 @@ class PhotoSearchResultsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildResultsHeader(
-    BuildContext context,
-    int recipeCount,
-    Set<String> ingredients,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[300]!,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.restaurant_menu,
-                color: Theme.of(context).primaryColor,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '$recipeCount Recipe${recipeCount != 1 ? 's' : ''} Found',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Based on ${ingredients.length} ingredient${ingredients.length != 1 ? 's' : ''}:',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: ingredients.map((ingredient) {
-              return Chip(
-                label: Text(
-                  ingredient,
-                  style: const TextStyle(fontSize: 12),
-                ),
-                backgroundColor:
-                    Theme.of(context).primaryColor.withOpacity(0.1),
-                side: BorderSide(
-                  color: Theme.of(context).primaryColor.withOpacity(0.3),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   int _calculateMatchedIngredients(Recipe recipe, Set<String> userIngredients) {
     final recipeIngredients =
-        recipe.ingredients.map((ing) => ing.name.toLowerCase()).toSet();
+        recipe.ingredients.map((item) => item.name.toLowerCase()).toSet();
 
     return userIngredients.intersection(recipeIngredients).length;
-  }
-
-  void _showIngredientSummary(BuildContext context, ingredients) {
-    final confirmedIngredients =
-        ingredients.where((i) => i.isConfirmed).toList();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Ingredients Used'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${confirmedIngredients.length} ingredient${confirmedIngredients.length != 1 ? 's' : ''} used for search:',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            ...confirmedIngredients.map((ingredient) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    const Icon(Icons.check, size: 16, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(ingredient.name)),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
   }
 }

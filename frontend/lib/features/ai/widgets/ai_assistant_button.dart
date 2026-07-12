@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'ai_assistant_dialog.dart';
+import '../../subscription/models/subscription.dart';
 import '../../subscription/providers/subscription_provider.dart';
 import '../../subscription/widgets/upgrade_prompt_dialog.dart';
 
@@ -33,7 +34,10 @@ class AIAssistantButton extends ConsumerWidget {
     // Check premium access
     final features = ref.read(subscriptionFeaturesProvider);
     if (!features.aiRecipeGeneration) {
-      await UpgradePromptDialog.showAIFeaturePrompt(context);
+      final prompt = await _loadUpgradePrompt(ref);
+      if (context.mounted) {
+        await UpgradePromptDialog.show(context, prompt);
+      }
       return;
     }
 
@@ -76,7 +80,10 @@ class AIAssistantIconButton extends ConsumerWidget {
     // Check premium access
     final features = ref.read(subscriptionFeaturesProvider);
     if (!features.aiRecipeGeneration) {
-      await UpgradePromptDialog.showAIFeaturePrompt(context);
+      final prompt = await _loadUpgradePrompt(ref);
+      if (context.mounted) {
+        await UpgradePromptDialog.show(context, prompt);
+      }
       return;
     }
 
@@ -88,6 +95,28 @@ class AIAssistantIconButton extends ConsumerWidget {
         instructions: instructions,
         context: this.context,
       ),
+    );
+  }
+}
+
+Future<UpgradePrompt> _loadUpgradePrompt(WidgetRef ref) async {
+  try {
+    return await ref
+        .read(subscriptionProvider.notifier)
+        .getUpgradePrompt('ai_feature');
+  } catch (_) {
+    return const UpgradePrompt(
+      title: 'Unlock AI Features',
+      message:
+          'Get access to AI-powered recipe generation, cooking tips, and more with Premium.',
+      features: [
+        'AI Recipe Generation',
+        'Smart Ingredient Substitutions',
+        'Personalized Cooking Tips',
+        'Nutrition Analysis',
+      ],
+      ctaText: 'Upgrade to Premium',
+      ctaAction: 'navigate_to_subscription',
     );
   }
 }

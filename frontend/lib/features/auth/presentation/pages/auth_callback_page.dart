@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/widgets/state_views.dart';
+import '../../providers/auth_provider.dart';
 
 class AuthCallbackPage extends ConsumerStatefulWidget {
   const AuthCallbackPage({super.key});
@@ -10,51 +15,52 @@ class AuthCallbackPage extends ConsumerStatefulWidget {
 }
 
 class _AuthCallbackPageState extends ConsumerState<AuthCallbackPage> {
+  Timer? _timeoutTimer;
+  bool _isTimedOut = false;
+
   @override
   void initState() {
     super.initState();
-    // Handle the OAuth callback
-    _handleCallback();
+    _timeoutTimer = Timer(const Duration(seconds: 8), () {
+      if (mounted) {
+        setState(() => _isTimedOut = true);
+      }
+    });
   }
 
-  Future<void> _handleCallback() async {
-    try {
-      // The Supabase auth state listener should handle the authentication
-      // We just need to wait a moment and then redirect
-      await Future.delayed(const Duration(seconds: 2));
-      
-      if (mounted) {
-        // Redirect to home page after successful authentication
-        context.go('/');
-      }
-    } catch (e) {
-      if (mounted) {
-        // If there's an error, redirect to login
-        context.go('/login');
-      }
-    }
+  @override
+  void dispose() {
+    _timeoutTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Completing authentication...',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Please wait while we log you in',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ],
+    final authState = ref.watch(authProvider);
+
+    ref.listen(authProvider, (_, next) {
+      if (next.isAuthenticated && mounted) {
+        _timeoutTimer?.cancel();
+        context.go('/home');
+      }
+    });
+
+    if (!_isTimedOut && (authState.isLoading || authState.isAuthenticated)) {
+      return const Scaffold(
+        body: StateView.loading(
+          title: 'Completing sign-in',
+          subtitle: 'Waiting for the authentication callback...',
         ),
+      );
+    }
+
+    return Scaffold(
+      body: StateView.error(
+        title: 'Authentication did not complete',
+        subtitle: authState.error ??
+            'The callback took too long. Try signing in again.',
+        onRetry: () => context.go('/login'),
+        actionLabel: 'Back to login',
       ),
     );
   }

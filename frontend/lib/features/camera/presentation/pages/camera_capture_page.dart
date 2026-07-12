@@ -1,23 +1,25 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/state_views.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/camera_provider.dart';
 import '../../providers/photo_search_provider.dart';
-import '../widgets/loading_overlay.dart';
+import '../widgets/camera_flow_scaffold.dart';
 
-class CameraCaptureePage extends ConsumerStatefulWidget {
-  const CameraCaptureePage({super.key});
+class CameraCapturePage extends ConsumerStatefulWidget {
+  const CameraCapturePage({super.key});
 
   @override
-  ConsumerState<CameraCaptureePage> createState() => _CameraCapturePageState();
+  ConsumerState<CameraCapturePage> createState() => _CameraCapturePageState();
 }
 
-class _CameraCapturePageState extends ConsumerState<CameraCaptureePage> {
+class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
   XFile? _capturedImage;
 
   @override
@@ -25,6 +27,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCaptureePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(cameraProvider.notifier).initialize();
+      ref.read(photoSearchProvider.notifier).clearResults();
+      ref.read(ingredientEditProvider.notifier).clear();
     });
   }
 
@@ -33,287 +37,72 @@ class _CameraCapturePageState extends ConsumerState<CameraCaptureePage> {
     final cameraState = ref.watch(cameraProvider);
     final photoSearchState = ref.watch(photoSearchProvider);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          'Capture Ingredients',
-          style: TextStyle(color: Colors.white),
-        ),
-      ),
-      body: Stack(
-        children: [
-          _buildMainContent(cameraState),
-          if (cameraState.isLoading || photoSearchState.isLoading)
-            LoadingOverlay(
-              message: photoSearchState.isLoading
-                  ? 'Analyzing ingredients...'
-                  : 'Preparing camera...',
-            ),
-        ],
-      ),
+    return CameraFlowScaffold(
+      title: 'Camera Search',
+      step: CameraFlowStep.capture,
+      child: _buildContent(cameraState, photoSearchState),
     );
   }
 
-  Widget _buildMainContent(CameraState cameraState) {
-    if (cameraState.error != null) {
-      return _buildErrorView(cameraState.error!);
+  Widget _buildContent(CameraState cameraState, PhotoSearchState searchState) {
+    if (searchState.error != null) {
+      return CameraFlowStatusView.error(
+        title: 'Could not analyze photo',
+        subtitle: searchState.error,
+        onRetry: _analyzeImage,
+      );
     }
 
-    if (!cameraState.isInitialized) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+    if (cameraState.error != null) {
+      return CameraFlowStatusView.error(
+        title: 'Camera unavailable',
+        subtitle: cameraState.error,
+        onRetry: () {
+          ref.read(cameraProvider.notifier).clearError();
+          ref.read(cameraProvider.notifier).initialize();
+        },
+      );
+    }
+
+    if (cameraState.isLoading || searchState.isLoading) {
+      return CameraFlowStatusView.loading(
+        title: searchState.isLoading ? 'Analyzing photo' : 'Preparing camera',
+        subtitle: searchState.isLoading
+            ? 'Detecting ingredients...'
+            : 'Checking permission and camera access.',
       );
     }
 
     if (!cameraState.hasPermission) {
-      return _buildPermissionView();
+      return _PermissionView(
+        onGrant: _requestPermission,
+        onGallery: _pickFromGallery,
+      );
     }
 
     if (_capturedImage != null) {
-      return _buildImagePreview();
+      return _CapturedPreview(
+        image: _capturedImage!,
+        onRetake: () => setState(() => _capturedImage = null),
+        onAnalyze: _analyzeImage,
+      );
     }
 
-    return _buildCameraInterface();
-  }
-
-  Widget _buildErrorView(String error) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Camera Error',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                ref.read(cameraProvider.notifier).clearError();
-                ref.read(cameraProvider.notifier).initialize();
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+    return _CameraActionView(
+      onCapture: _capturePhoto,
+      onGallery: _pickFromGallery,
     );
   }
 
-  Widget _buildPermissionView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.camera_alt,
-              size: 64,
-              color: Colors.white70,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Camera Permission Required',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'We need camera access to help you identify ingredients in your photos.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                final granted =
-                    await ref.read(cameraProvider.notifier).requestPermission();
-                if (!granted) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Camera permission is required for this feature'),
-                      ),
-                    );
-                  }
-                }
-              },
-              child: const Text('Grant Permission'),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () => _pickFromGallery(),
-              child: const Text(
-                'Choose from Gallery Instead',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCameraInterface() {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            color: Colors.grey[900],
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.camera_alt,
-                    size: 80,
-                    color: Colors.white54,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Point camera at your ingredients',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Make sure ingredients are well-lit and clearly visible',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        _buildCameraControls(),
-      ],
-    );
-  }
-
-  Widget _buildCameraControls() {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Gallery button
-          IconButton(
-            onPressed: _pickFromGallery,
-            icon: const Icon(
-              Icons.photo_library,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-          // Capture button
-          GestureDetector(
-            onTap: _capturePhoto,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-              ),
-              child: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          // Placeholder for symmetry
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImagePreview() {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: kIsWeb
-                  ? Image.network(
-                      _capturedImage!.path,
-                      fit: BoxFit.contain,
-                    )
-                  : Image.file(
-                      File(_capturedImage!.path),
-                      fit: BoxFit.contain,
-                    ),
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.all(24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _capturedImage = null;
-                  });
-                },
-                child: const Text(
-                  'Retake',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _analyzeImage,
-                child: const Text('Analyze Ingredients'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  Future<void> _requestPermission() async {
+    ref.read(photoSearchProvider.notifier).clearError();
+    await ref.read(cameraProvider.notifier).requestPermission();
   }
 
   Future<void> _capturePhoto() async {
+    ref.read(photoSearchProvider.notifier).clearError();
     final image = await ref.read(cameraProvider.notifier).captureFromCamera();
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() {
         _capturedImage = image;
       });
@@ -321,8 +110,9 @@ class _CameraCapturePageState extends ConsumerState<CameraCaptureePage> {
   }
 
   Future<void> _pickFromGallery() async {
+    ref.read(photoSearchProvider.notifier).clearError();
     final image = await ref.read(cameraProvider.notifier).pickFromGallery();
-    if (image != null) {
+    if (image != null && mounted) {
       setState(() {
         _capturedImage = image;
       });
@@ -330,24 +120,180 @@ class _CameraCapturePageState extends ConsumerState<CameraCaptureePage> {
   }
 
   Future<void> _analyzeImage() async {
-    if (_capturedImage == null) return;
+    final capturedImage = _capturedImage;
+    if (capturedImage == null) {
+      return;
+    }
 
+    ref.read(photoSearchProvider.notifier).clearError();
     await ref.read(photoSearchProvider.notifier).analyzeImage(
-          image: _capturedImage!,
+          image: capturedImage,
         );
+
+    if (!mounted) {
+      return;
+    }
 
     final photoSearchState = ref.read(photoSearchProvider);
     if (photoSearchState.error != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(photoSearchState.error!)),
-        );
-      }
-    } else {
-      // Navigate to ingredient review page
-      if (mounted) {
-        context.push('/camera/review', extra: _capturedImage);
-      }
+      return;
     }
+
+    context.push('/camera/review', extra: capturedImage);
+  }
+}
+
+class _PermissionView extends StatelessWidget {
+  const _PermissionView({
+    required this.onGrant,
+    required this.onGallery,
+  });
+
+  final VoidCallback onGrant;
+  final VoidCallback onGallery;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const StateView.empty(
+            title: 'Camera permission required',
+            subtitle:
+                'Allow camera access to detect ingredients from photos, or choose an existing image.',
+            icon: Icons.photo_camera_outlined,
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            label: 'Grant camera permission',
+            button: true,
+            child: ElevatedButton(
+              onPressed: onGrant,
+              child: const Text('Grant camera access'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onGallery,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Choose from gallery'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraActionView extends StatelessWidget {
+  const _CameraActionView({
+    required this.onCapture,
+    required this.onGallery,
+  });
+
+  final VoidCallback onCapture;
+  final VoidCallback onGallery;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 220,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.camera_alt_outlined, size: 56),
+                SizedBox(height: 12),
+                Text('Point camera at ingredients'),
+                SizedBox(height: 6),
+                Text('Keep products visible and well lit'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Semantics(
+            label: 'Take ingredients photo',
+            button: true,
+            child: ElevatedButton.icon(
+              onPressed: onCapture,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Take photo'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: onGallery,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Choose from gallery'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CapturedPreview extends StatelessWidget {
+  const _CapturedPreview({
+    required this.image,
+    required this.onRetake,
+    required this.onAnalyze,
+  });
+
+  final XFile image;
+  final VoidCallback onRetake;
+  final VoidCallback onAnalyze;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: kIsWeb
+                  ? Image.network(image.path, fit: BoxFit.cover)
+                  : Image.file(File(image.path), fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onRetake,
+                  child: const Text('Retake'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: Semantics(
+                  label: 'Analyze ingredients from photo',
+                  button: true,
+                  child: ElevatedButton(
+                    onPressed: onAnalyze,
+                    child: const Text('Analyze ingredients'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

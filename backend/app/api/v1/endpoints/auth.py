@@ -32,10 +32,18 @@ class User(BaseModel):
     email: str
     chef_id: Optional[str] = None
 
+
+def _chef_id_from_user_result(user_result) -> Optional[str]:
+    """Read trusted chef membership without accepting it from JWT user metadata."""
+    if not user_result.data:
+        return None
+    chef_id = user_result.data[0].get("chef_id")
+    return str(chef_id) if chef_id else None
+
 async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
     """Verify Supabase JWT token and return user info"""
     token = credentials.credentials
-    logger.info(f"🔐 verify_firebase_token called with token: {token[:20]}...")
+    logger.info("Authentication token received")
 
     try:
         # Get auth service (Supabase or Mock for development)
@@ -50,14 +58,18 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
         # Supabase uses 'sub' for user ID, not 'uid'
         user_id = decoded_token.get('sub') or decoded_token.get('user_id', 'unknown')
         email = decoded_token.get('email', 'unknown@example.com')
-        logger.info(f"👤 User ID: {user_id}, Email: {email}")
+        logger.info("Token verified for user %s", user_id)
 
         # Check if user exists in our database, create if not
         logger.info(f"🔍 Checking if user exists in database...")
         user_result = await supabase_service.execute_query(
-            'users', 'select', filters={'id': user_id}
+            'users',
+            'select',
+            filters={'id': user_id},
+            use_service_key=True,
         )
 
+        chef_id = _chef_id_from_user_result(user_result)
         if not user_result.data:
             logger.info(f"➕ User not found, creating new user...")
             # Create new user in our database with default free tier subscription
@@ -75,7 +87,7 @@ async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depe
             logger.info(f"✅ User found in database: {user_id}")
 
         logger.info(f"🎉 Authentication successful for user: {user_id}")
-        return User(id=user_id, email=email, chef_id=None)
+        return User(id=user_id, email=email, chef_id=chef_id)
 
     except ValueError as e:
         logger.warning(f"❌ Token verification failed: {str(e)}")
@@ -112,9 +124,13 @@ async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] 
 
         # Check if user exists in our database, create if not
         user_result = await supabase_service.execute_query(
-            'users', 'select', filters={'id': user_id}
+            'users',
+            'select',
+            filters={'id': user_id},
+            use_service_key=True,
         )
 
+        chef_id = _chef_id_from_user_result(user_result)
         if not user_result.data:
             # Create new user in our database with default free tier subscription
             user_data = {
@@ -128,7 +144,7 @@ async def get_optional_user(credentials: Optional[HTTPAuthorizationCredentials] 
             )
             logger.info(f"✅ Created new user with free tier: {user_id}")
 
-        return User(id=user_id, email=email, chef_id=None)
+        return User(id=user_id, email=email, chef_id=chef_id)
 
     except Exception as e:
         logger.warning(f"Optional authentication failed: {str(e)}")
@@ -175,8 +191,8 @@ async def sync_user(request: UserSyncRequest, current_user: User = Depends(verif
     try:
         # Update or create user in our database
         user_data = {
-            'id': request.id,
-            'email': request.email,
+            'id': current_user.id,
+            'email': current_user.email,
             'display_name': request.display_name,
             'avatar_url': request.avatar_url,
             'updated_at': 'now()'
@@ -184,14 +200,17 @@ async def sync_user(request: UserSyncRequest, current_user: User = Depends(verif
         
         # Check if user exists
         existing_user = await supabase_service.execute_query(
-            'users', 'select', filters={'id': request.id}
+            'users',
+            'select',
+            filters={'id': current_user.id},
+            use_service_key=True,
         )
         
         if existing_user.data:
             # Update existing user
             await supabase_service.execute_query(
                 'users', 'update', 
-                filters={'id': request.id}, 
+                filters={'id': current_user.id},
                 data=user_data, 
                 use_service_key=True
             )

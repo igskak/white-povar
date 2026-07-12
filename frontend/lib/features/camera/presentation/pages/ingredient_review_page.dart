@@ -1,26 +1,29 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/state_views.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/photo_search_provider.dart';
-import '../widgets/ingredient_list_widget.dart';
+import '../widgets/camera_flow_scaffold.dart';
 import '../widgets/ingredient_edit_dialog.dart';
-import '../widgets/loading_overlay.dart';
+import '../widgets/ingredient_list_widget.dart';
 
 class IngredientReviewPage extends ConsumerStatefulWidget {
-  final XFile capturedImage;
-
   const IngredientReviewPage({
     super.key,
     required this.capturedImage,
   });
 
+  final XFile capturedImage;
+
   @override
-  ConsumerState<IngredientReviewPage> createState() => _IngredientReviewPageState();
+  ConsumerState<IngredientReviewPage> createState() =>
+      _IngredientReviewPageState();
 }
 
 class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
@@ -28,12 +31,11 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Initialize ingredients from photo search results
       final photoSearchState = ref.read(photoSearchProvider);
       if (photoSearchState.detectedIngredients.isNotEmpty) {
         ref.read(ingredientEditProvider.notifier).setIngredients(
-          photoSearchState.detectedIngredients,
-        );
+              photoSearchState.detectedIngredients,
+            );
       }
     });
   }
@@ -42,186 +44,100 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
   Widget build(BuildContext context) {
     final photoSearchState = ref.watch(photoSearchProvider);
     final ingredients = ref.watch(ingredientEditProvider);
+    final confirmedCount = ingredients.where((item) => item.isConfirmed).length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Ingredients'),
-        actions: [
-          TextButton(
-            onPressed: ingredients.isNotEmpty ? _searchRecipes : null,
-            child: const Text('Find Recipes'),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildImageThumbnail(),
-              _buildConfidenceIndicator(photoSearchState.confidence),
-              Expanded(
-                child: _buildIngredientsSection(ingredients),
-              ),
-            ],
-          ),
-          if (photoSearchState.isLoading)
-            const LoadingOverlay(message: 'Searching recipes...'),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
+    return CameraFlowScaffold(
+      title: 'Review Ingredients',
+      step: CameraFlowStep.review,
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _addIngredient,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Add'),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: ElevatedButton.icon(
+          onPressed: confirmedCount == 0 || photoSearchState.isLoading
+              ? null
+              : _searchRecipes,
+          icon: const Icon(Icons.search),
+          label: const Text('Find recipes'),
+        ),
+      ),
+      child: _buildContent(
+        photoSearchState: photoSearchState,
+        ingredients: ingredients,
+        confirmedCount: confirmedCount,
       ),
     );
   }
 
-  Widget _buildImageThumbnail() {
-    return Container(
-      height: 120,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: kIsWeb
-            ? Image.network(
-                widget.capturedImage.path,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              )
-            : Image.file(
-                File(widget.capturedImage.path),
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-      ),
-    );
-  }
+  Widget _buildContent({
+    required PhotoSearchState photoSearchState,
+    required List<DetectedIngredient> ingredients,
+    required int confirmedCount,
+  }) {
+    if (photoSearchState.isLoading) {
+      return const CameraFlowStatusView.loading(
+        title: 'Searching recipes',
+        subtitle: 'Matching recipes with your selected ingredients.',
+      );
+    }
 
-  Widget _buildConfidenceIndicator(double confidence) {
-    if (confidence <= 0) return const SizedBox.shrink();
-
-    final percentage = (confidence * 100).toInt();
-    final color = confidence > 0.7 
-        ? Colors.green 
-        : confidence > 0.4 
-            ? Colors.orange 
-            : Colors.red;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            confidence > 0.7 
-                ? Icons.check_circle 
-                : confidence > 0.4 
-                    ? Icons.warning 
-                    : Icons.error,
-            color: color,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Detection confidence: $percentage%',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIngredientsSection(List<DetectedIngredient> ingredients) {
-    if (ingredients.isEmpty) {
-      return _buildEmptyState();
+    if (photoSearchState.error != null) {
+      return CameraFlowStatusView.error(
+        title: 'Could not continue',
+        subtitle: photoSearchState.error,
+        onRetry: _searchRecipes,
+      );
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: SizedBox(
+            height: 130,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: kIsWeb
+                  ? Image.network(widget.capturedImage.path, fit: BoxFit.cover)
+                  : Image.file(File(widget.capturedImage.path),
+                      fit: BoxFit.cover),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
               Text(
-                'Detected Ingredients',
-                style: Theme.of(context).textTheme.titleLarge,
+                'Detected ingredients',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
-              Text(
-                '${ingredients.where((i) => i.isConfirmed).length}/${ingredients.length} confirmed',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
+              Text('$confirmedCount confirmed'),
             ],
           ),
         ),
+        const SizedBox(height: 8),
         Expanded(
-          child: IngredientListWidget(
-            ingredients: ingredients,
-            onIngredientTap: _editIngredient,
-            onIngredientToggle: _toggleIngredient,
-            onIngredientDelete: _deleteIngredient,
-          ),
+          child: ingredients.isEmpty
+              ? const StateView.empty(
+                  title: 'No ingredients detected',
+                  subtitle:
+                      'Add ingredients manually or go back and retake the photo.',
+                  icon: Icons.search_off,
+                )
+              : IngredientListWidget(
+                  ingredients: ingredients,
+                  onIngredientTap: _editIngredient,
+                  onIngredientToggle: _toggleIngredient,
+                  onIngredientDelete: _deleteIngredient,
+                ),
         ),
       ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No ingredients detected',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try taking another photo or add ingredients manually',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _addIngredient,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Ingredient'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -232,10 +148,10 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
         ingredient: ingredient,
         onSave: (name, notes) {
           ref.read(ingredientEditProvider.notifier).updateIngredient(
-            ingredient.id,
-            name: name,
-            notes: notes,
-          );
+                ingredient.id,
+                name: name,
+                notes: notes,
+              );
         },
       ),
     );
@@ -255,42 +171,35 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
       builder: (context) => IngredientEditDialog(
         onSave: (name, notes) {
           ref.read(ingredientEditProvider.notifier).addIngredient(
-            name,
-            notes: notes,
-          );
+                name,
+                notes: notes,
+              );
         },
       ),
     );
   }
 
   Future<void> _searchRecipes() async {
-    final confirmedIngredients = ref.read(ingredientEditProvider.notifier).getConfirmedIngredientNames();
-    
+    final confirmedIngredients =
+        ref.read(ingredientEditProvider.notifier).getConfirmedIngredientNames();
+
     if (confirmedIngredients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please confirm at least one ingredient'),
-        ),
-      );
       return;
     }
 
     await ref.read(photoSearchProvider.notifier).searchRecipes(
-      ingredients: confirmedIngredients,
-    );
+          ingredients: confirmedIngredients,
+        );
+
+    if (!mounted) {
+      return;
+    }
 
     final photoSearchState = ref.read(photoSearchProvider);
     if (photoSearchState.error != null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(photoSearchState.error!)),
-        );
-      }
-    } else {
-      // Navigate to results page
-      if (mounted) {
-        context.push('/camera/results');
-      }
+      return;
     }
+
+    context.push('/camera/results');
   }
 }

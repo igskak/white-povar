@@ -67,7 +67,7 @@ class IngredientCard extends StatelessWidget {
                 activeColor: Theme.of(context).primaryColor,
               ),
               const SizedBox(width: 8),
-              
+
               // Ingredient info
               Expanded(
                 child: Column(
@@ -76,21 +76,21 @@ class IngredientCard extends StatelessWidget {
                     Text(
                       ingredient.name,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: ingredient.isConfirmed 
-                            ? FontWeight.w600 
-                            : FontWeight.normal,
-                        color: ingredient.isConfirmed 
-                            ? null 
-                            : Colors.grey[600],
-                      ),
+                            fontWeight: ingredient.isConfirmed
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: ingredient.isConfirmed
+                                ? null
+                                : Colors.grey[600],
+                          ),
                     ),
                     if (ingredient.notes?.isNotEmpty == true) ...[
                       const SizedBox(height: 4),
                       Text(
                         ingredient.notes!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
+                              color: Colors.grey[600],
+                            ),
                       ),
                     ],
                     if (ingredient.confidence > 0) ...[
@@ -100,7 +100,7 @@ class IngredientCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Action buttons
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -127,10 +127,10 @@ class IngredientCard extends StatelessWidget {
 
   Widget _buildConfidenceIndicator(BuildContext context) {
     final percentage = (ingredient.confidence * 100).toInt();
-    final color = ingredient.confidence > 0.7 
-        ? Colors.green 
-        : ingredient.confidence > 0.4 
-            ? Colors.orange 
+    final color = ingredient.confidence > 0.7
+        ? Colors.green
+        : ingredient.confidence > 0.4
+            ? Colors.orange
             : Colors.red;
 
     return Row(
@@ -157,9 +157,9 @@ class IngredientCard extends StatelessWidget {
         Text(
           '$percentage%',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w500,
-          ),
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
         ),
       ],
     );
@@ -179,7 +179,8 @@ class IngredientSummary extends StatelessWidget {
     final confirmedCount = ingredients.where((i) => i.isConfirmed).length;
     final totalCount = ingredients.length;
     final averageConfidence = ingredients.isNotEmpty
-        ? ingredients.map((i) => i.confidence).reduce((a, b) => a + b) / ingredients.length
+        ? ingredients.map((i) => i.confidence).reduce((a, b) => a + b) /
+            ingredients.length
         : 0.0;
 
     return Card(
@@ -237,9 +238,9 @@ class IngredientSummary extends StatelessWidget {
         Text(
           value,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
         ),
       ],
     );

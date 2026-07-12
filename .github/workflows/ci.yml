@@ -59,19 +59,15 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
-        cache-dependency-path: '**/requirements.txt'
+        cache-dependency-path: 'backend/requirements*.txt'
         
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-asyncio httpx flake8 black
+        pip install -r requirements-dev.txt
         
-    - name: Format check
-      run: black --check app/ || echo "Code formatting check completed"
-      
     - name: Lint code
-      run: flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics || echo "Linting completed"
+      run: flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
       
     - name: Run tests
       env:
@@ -81,8 +77,7 @@ jobs:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
         FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-      run: |
-        pytest tests/ -v || echo "No tests found, creating basic test structure"
+      run: pytest tests/ -v
         
     - name: Test API startup
       env:
