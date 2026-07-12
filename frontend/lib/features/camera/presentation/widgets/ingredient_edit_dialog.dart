@@ -24,8 +24,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.ingredient?.name ?? '');
-    _notesController = TextEditingController(text: widget.ingredient?.notes ?? '');
+    _nameController =
+        TextEditingController(text: widget.ingredient?.name ?? '');
+    _notesController =
+        TextEditingController(text: widget.ingredient?.notes ?? '');
   }
 
   @override
@@ -96,10 +98,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
   Widget _buildConfidenceInfo() {
     final confidence = widget.ingredient!.confidence;
     final percentage = (confidence * 100).toInt();
-    final color = confidence > 0.7 
-        ? Colors.green 
-        : confidence > 0.4 
-            ? Colors.orange 
+    final color = confidence > 0.7
+        ? Colors.green
+        : confidence > 0.4
+            ? Colors.orange
             : Colors.red;
 
     return Container(
@@ -112,10 +114,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
       child: Row(
         children: [
           Icon(
-            confidence > 0.7 
-                ? Icons.check_circle 
-                : confidence > 0.4 
-                    ? Icons.warning 
+            confidence > 0.7
+                ? Icons.check_circle
+                : confidence > 0.4
+                    ? Icons.warning
                     : Icons.error,
             color: color,
             size: 20,
@@ -128,14 +130,14 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
                 Text(
                   'AI Detection Confidence',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 Text(
                   '$percentage% - ${_getConfidenceDescription(confidence)}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: color,
-                  ),
+                        color: color,
+                      ),
                 ),
               ],
             ),
@@ -156,7 +158,7 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
     if (_formKey.currentState!.validate()) {
       final name = _nameController.text.trim();
       final notes = _notesController.text.trim();
-      
+
       widget.onSave(name, notes.isEmpty ? null : notes);
       Navigator.of(context).pop();
     }
@@ -222,15 +224,45 @@ class QuickIngredientSelector extends StatelessWidget {
 class IngredientSuggestions extends StatelessWidget {
   final String query;
   final Function(String) onSuggestionSelected;
-  
+
   // In a real app, this would come from an API or database
   final List<String> allIngredients = const [
-    'Onion', 'Garlic', 'Tomato', 'Carrot', 'Potato', 'Bell Pepper',
-    'Mushroom', 'Spinach', 'Basil', 'Parsley', 'Oregano', 'Thyme',
-    'Salt', 'Black Pepper', 'Paprika', 'Cumin', 'Olive Oil', 'Butter',
-    'Milk', 'Cream', 'Cheese', 'Mozzarella', 'Parmesan', 'Egg',
-    'Chicken Breast', 'Ground Beef', 'Salmon', 'Flour', 'Rice', 'Pasta',
-    'Bread', 'Sugar', 'Honey', 'Lemon', 'Lime', 'Coconut Milk',
+    'Onion',
+    'Garlic',
+    'Tomato',
+    'Carrot',
+    'Potato',
+    'Bell Pepper',
+    'Mushroom',
+    'Spinach',
+    'Basil',
+    'Parsley',
+    'Oregano',
+    'Thyme',
+    'Salt',
+    'Black Pepper',
+    'Paprika',
+    'Cumin',
+    'Olive Oil',
+    'Butter',
+    'Milk',
+    'Cream',
+    'Cheese',
+    'Mozzarella',
+    'Parmesan',
+    'Egg',
+    'Chicken Breast',
+    'Ground Beef',
+    'Salmon',
+    'Flour',
+    'Rice',
+    'Pasta',
+    'Bread',
+    'Sugar',
+    'Honey',
+    'Lemon',
+    'Lime',
+    'Coconut Milk',
   ];
 
   const IngredientSuggestions({
@@ -244,7 +276,7 @@ class IngredientSuggestions extends StatelessWidget {
     if (query.length < 2) return const SizedBox.shrink();
 
     final suggestions = allIngredients
-        .where((ingredient) => 
+        .where((ingredient) =>
             ingredient.toLowerCase().contains(query.toLowerCase()))
         .take(5)
         .toList();
@@ -257,8 +289,8 @@ class IngredientSuggestions extends StatelessWidget {
         Text(
           'Suggestions',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
-          ),
+                color: Colors.grey[600],
+              ),
         ),
         const SizedBox(height: 4),
         ...suggestions.map((suggestion) {

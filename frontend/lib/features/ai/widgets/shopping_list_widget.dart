@@ -34,7 +34,8 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) {
         setState(() {
-          shoppingList = RecipeConversionService.instance.generateShoppingList(widget.suggestion);
+          shoppingList = RecipeConversionService.instance
+              .generateShoppingList(widget.suggestion);
           _isLoading = false;
         });
       }
@@ -193,12 +194,12 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
             ),
             const SizedBox(height: 8),
             ...tips.map((tip) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Text(
-                tip,
-                style: TextStyle(color: Colors.grey[700]),
-              ),
-            )),
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Text(
+                    tip,
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                )),
           ],
         ),
       ),
@@ -206,8 +207,9 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
   }
 
   Widget _buildCategorizedIngredients() {
-    final categorizedIngredients = shoppingList['categorized_ingredients'] as Map<String, dynamic>;
-    
+    final categorizedIngredients =
+        shoppingList['categorized_ingredients'] as Map<String, dynamic>;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -216,9 +218,8 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 8),
-        ...categorizedIngredients.entries.map((entry) => 
-          _buildCategorySection(entry.key, entry.value as List<dynamic>)
-        ),
+        ...categorizedIngredients.entries.map((entry) =>
+            _buildCategorySection(entry.key, entry.value as List<dynamic>)),
       ],
     );
   }
@@ -233,9 +234,10 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text('${ingredients.length} items'),
-        children: ingredients.map((ingredient) => 
-          _buildIngredientItem(ingredient as Map<String, dynamic>)
-        ).toList(),
+        children: ingredients
+            .map((ingredient) =>
+                _buildIngredientItem(ingredient as Map<String, dynamic>))
+            .toList(),
       ),
     );
   }
@@ -255,7 +257,8 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
         ),
       ),
       title: Text(ingredient['name']),
-      subtitle: Text('${ingredient['estimated_amount']} • ${ingredient['estimated_cost']}'),
+      subtitle: Text(
+          '${ingredient['estimated_amount']} • ${ingredient['estimated_cost']}'),
       trailing: Icon(
         Icons.add_shopping_cart,
         color: Colors.grey[400],
@@ -301,7 +304,7 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
   void _copyToClipboard() {
     final text = _generateClipboardText();
     Clipboard.setData(ClipboardData(text: text));
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('📋 Shopping list copied to clipboard!'),
@@ -327,14 +330,16 @@ class _ShoppingListWidgetState extends State<ShoppingListWidget> {
     buffer.writeln('• Prep Impact: ${shoppingList['prep_time_impact']}');
     buffer.writeln('');
 
-    final categorizedIngredients = shoppingList['categorized_ingredients'] as Map<String, dynamic>;
-    
+    final categorizedIngredients =
+        shoppingList['categorized_ingredients'] as Map<String, dynamic>;
+
     for (final entry in categorizedIngredients.entries) {
       buffer.writeln('📂 ${entry.key}:');
       final ingredients = entry.value as List<dynamic>;
       for (final ingredient in ingredients) {
         final ing = ingredient as Map<String, dynamic>;
-        buffer.writeln('  • ${ing['estimated_amount']} ${ing['name']} (${ing['estimated_cost']})');
+        buffer.writeln(
+            '  • ${ing['estimated_amount']} ${ing['name']} (${ing['estimated_cost']})');
       }
       buffer.writeln('');
     }

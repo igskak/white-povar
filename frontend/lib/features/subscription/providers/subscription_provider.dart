@@ -139,4 +139,3 @@ final subscriptionTierProvider = Provider<SubscriptionTier>((ref) {
   final subscriptionState = ref.watch(subscriptionProvider);
   return subscriptionState.status?.subscription.tier ?? SubscriptionTier.free;
 });
-

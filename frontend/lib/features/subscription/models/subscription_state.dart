@@ -46,4 +46,3 @@ class SubscriptionState extends Equatable {
   @override
   List<Object?> get props => [isLoading, status, error];
 }
-

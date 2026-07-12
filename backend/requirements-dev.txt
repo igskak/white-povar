@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Test and code-quality tooling used by local development and CI.
+pytest==7.4.4
+pytest-asyncio==0.23.5
+flake8==7.0.0

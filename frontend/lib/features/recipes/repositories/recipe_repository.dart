@@ -5,7 +5,7 @@ import '../models/recipe.dart';
 abstract class RecipeRepository {
   /// Search recipes by text query
   Future<List<Recipe>> searchRecipes(String query);
-  
+
   /// Get all recipes with optional filtering
   Future<List<Recipe>> getRecipes({
     String? cuisine,
@@ -16,24 +16,25 @@ abstract class RecipeRepository {
     int limit = 20,
     int offset = 0,
   });
-  
+
   /// Get a single recipe by ID
   Future<Recipe?> getRecipe(String id);
-  
+
   /// Get featured recipes
   Future<List<Recipe>> getFeaturedRecipes({int limit = 10});
-  
+
   /// Create a new recipe
   Future<Recipe> createRecipe(Recipe recipe);
-  
+
   /// Update an existing recipe
   Future<Recipe> updateRecipe(Recipe recipe);
-  
+
   /// Delete a recipe
   Future<void> deleteRecipe(String id);
-  
+
   /// Get recipes by chef ID
-  Future<List<Recipe>> getRecipesByChef(String chefId, {int limit = 20, int offset = 0});
+  Future<List<Recipe>> getRecipesByChef(String chefId,
+      {int limit = 20, int offset = 0});
 }
 
 /// Exception thrown when recipe operations fail

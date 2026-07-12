@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/recipe.dart';
@@ -11,10 +13,10 @@ class RecipeService {
   // Get auth headers for API calls
   Future<Map<String, String>> _getAuthHeaders() async {
     final token = await _authService.getIdToken();
-    print(
+    debugPrint(
         '🔑 RecipeService: Got token: ${token != null ? "${token.substring(0, 20)}..." : "NULL"}');
     if (token == null) {
-      print('⚠️ RecipeService: No auth token available!');
+      debugPrint('⚠️ RecipeService: No auth token available!');
     }
     return {
       'Content-Type': 'application/json',

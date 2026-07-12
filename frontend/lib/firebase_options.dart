@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '678384767745',
     projectId: 'white-povar',
     storageBucket: 'white-povar.firebasestorage.app',
-    iosClientId: '678384767745-drus7apjd9r59j730qai41a8a7f2jqg8.apps.googleusercontent.com',
+    iosClientId:
+        '678384767745-drus7apjd9r59j730qai41a8a7f2jqg8.apps.googleusercontent.com',
     iosBundleId: 'com.example.frontend',
   );
 

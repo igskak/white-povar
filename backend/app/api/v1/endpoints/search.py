@@ -257,6 +257,8 @@ async def search_by_text(
         recipes = []
         for recipe_data in result.data:
             try:
+                if recipe_data.get('is_premium', False):
+                    continue
                 # Ingredients are now included via JOIN, no need for separate query
                 # Extract ingredients from the nested structure
                 ingredients = recipe_data.pop('recipe_ingredients', [])
@@ -336,7 +338,7 @@ async def _find_recipes_by_ingredients(
     """Find recipes that contain the detected ingredients"""
     try:
         # Get all recipes (filtered by chef if specified)
-        filters = {}
+        filters = {'is_public': True}
         if chef_id:
             filters['chef_id'] = chef_id
 
@@ -351,6 +353,8 @@ async def _find_recipes_by_ingredients(
 
         for recipe_data in result.data:
             try:
+                if recipe_data.get('is_premium', False):
+                    continue
                 # Ingredients are included via JOIN
                 join_ingredients = recipe_data.pop('recipe_ingredients', []) or []
 
@@ -483,7 +487,7 @@ async def advanced_search(
     """
     try:
         # Build search query for Supabase
-        query_filters = {}
+        query_filters = {'is_public': True}
 
         # Apply filters
         if filters.chef_id:
@@ -530,6 +534,8 @@ async def advanced_search(
         if result.data:
             for recipe_data in result.data:
                 try:
+                    if recipe_data.get('is_premium', False):
+                        continue
                     # Ingredients are now included via JOIN, no need for separate query
                     ingredients = recipe_data.pop('recipe_ingredients', [])
 

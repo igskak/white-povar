@@ -8,11 +8,11 @@ class ErrorHandler {
     if (error is DioException) {
       return _handleDioError(error);
     }
-    
+
     if (error is Exception) {
       return _handleGenericException(error);
     }
-    
+
     // Fallback for unknown error types
     return 'An unexpected error occurred. Please try again.';
   }
@@ -24,19 +24,19 @@ class ErrorHandler {
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.sendTimeout:
         return 'Connection timeout. Please check your internet connection and try again.';
-      
+
       case DioExceptionType.connectionError:
         return 'Unable to connect to the server. Please check your internet connection.';
-      
+
       case DioExceptionType.badResponse:
         return _handleHttpStatusError(e.response?.statusCode, e.response?.data);
-      
+
       case DioExceptionType.cancel:
         return 'Request was cancelled.';
-      
+
       case DioExceptionType.badCertificate:
         return 'Security certificate error. Please try again later.';
-      
+
       case DioExceptionType.unknown:
       default:
         return 'Network error occurred. Please try again.';
@@ -47,70 +47,73 @@ class ErrorHandler {
   static String _handleHttpStatusError(int? statusCode, dynamic responseData) {
     switch (statusCode) {
       case 400:
-        return _extractDetailFromResponse(responseData) ?? 'Invalid request. Please check your input.';
-      
+        return _extractDetailFromResponse(responseData) ??
+            'Invalid request. Please check your input.';
+
       case 401:
         return 'Authentication required. Please log in again.';
-      
+
       case 403:
         return 'Access denied. You don\'t have permission to perform this action.';
-      
+
       case 404:
         return 'The requested resource was not found.';
-      
+
       case 409:
         return 'Conflict occurred. The resource may have been modified by another user.';
-      
+
       case 422:
-        return _extractDetailFromResponse(responseData) ?? 'Invalid data provided. Please check your input.';
-      
+        return _extractDetailFromResponse(responseData) ??
+            'Invalid data provided. Please check your input.';
+
       case 429:
         return 'Too many requests. Please wait a moment and try again.';
-      
+
       case 500:
       case 502:
       case 503:
       case 504:
         return 'Server error occurred. Please try again later.';
-      
+
       default:
-        return _extractDetailFromResponse(responseData) ?? 'An error occurred. Please try again.';
+        return _extractDetailFromResponse(responseData) ??
+            'An error occurred. Please try again.';
     }
   }
 
   /// Handle generic exceptions
   static String _handleGenericException(Exception e) {
     final message = e.toString();
-    
+
     // Remove common exception prefixes for cleaner user messages
     if (message.startsWith('Exception: ')) {
       return message.substring(11);
     }
-    
+
     if (message.startsWith('FormatException: ')) {
       return 'Invalid data format received. Please try again.';
     }
-    
+
     if (message.startsWith('TimeoutException: ')) {
       return 'Operation timed out. Please try again.';
     }
-    
+
     return message.isNotEmpty ? message : 'An unexpected error occurred.';
   }
 
   /// Extract error detail from API response
   static String? _extractDetailFromResponse(dynamic responseData) {
     if (responseData == null) return null;
-    
+
     try {
       if (responseData is Map<String, dynamic>) {
         // Try common error message fields
-        return responseData['detail'] ?? 
-               responseData['message'] ?? 
-               responseData['error'] ??
-               responseData['errors']?.toString();
+        return responseData['detail'] ??
+            responseData['message'] ??
+            responseData['error'] ??
+            responseData['errors']?.toString();
       }
-      
+
       if (responseData is String) {
         return responseData;
       }
@@ -118,7 +121,7 @@ class ErrorHandler {
       // If parsing fails, return null to use default message
       debugPrint('Error parsing response data: $e');
     }
-    
+
     return null;
   }
 
@@ -136,9 +139,9 @@ class ErrorHandler {
   static bool isNetworkError(dynamic error) {
     if (error is DioException) {
       return error.type == DioExceptionType.connectionError ||
-             error.type == DioExceptionType.connectionTimeout ||
-             error.type == DioExceptionType.receiveTimeout ||
-             error.type == DioExceptionType.sendTimeout;
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout;
     }
     return false;
   }
@@ -146,7 +149,8 @@ class ErrorHandler {
   /// Check if error is authentication-related
   static bool isAuthError(dynamic error) {
     if (error is DioException && error.response?.statusCode != null) {
-      return error.response!.statusCode == 401 || error.response!.statusCode == 403;
+      return error.response!.statusCode == 401 ||
+          error.response!.statusCode == 403;
     }
     return false;
   }
@@ -165,11 +169,11 @@ class ErrorHandler {
     if (isNetworkError(error) || isServerError(error)) {
       return true;
     }
-    
+
     if (error is DioException && error.response?.statusCode == 429) {
       return true; // Rate limited - can retry after delay
     }
-    
+
     return false;
   }
 }
@@ -202,10 +206,10 @@ class AppError {
   factory AppError.fromException(dynamic error) {
     final message = ErrorHandler.getErrorMessage(error);
     final isRetryable = ErrorHandler.isRetryable(error);
-    
+
     ErrorType type = ErrorType.unknown;
     String? code;
-    
+
     if (ErrorHandler.isNetworkError(error)) {
       type = ErrorType.network;
     } else if (ErrorHandler.isAuthError(error)) {
@@ -219,7 +223,7 @@ class AppError {
       }
       code = statusCode.toString();
     }
-    
+
     return AppError(
       message: message,
       type: type,

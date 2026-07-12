@@ -17,7 +17,6 @@ class PremiumBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final bgColor = backgroundColor ?? Colors.amber.shade700;
     final iColor = iconColor ?? Colors.white;
 
@@ -188,4 +187,3 @@ class PremiumIndicator extends StatelessWidget {
     );
   }
 }
-

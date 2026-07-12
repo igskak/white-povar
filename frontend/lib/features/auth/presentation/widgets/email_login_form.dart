@@ -28,7 +28,7 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
     if (_formKey.currentState!.validate()) {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
-      
+
       if (_isSignUp) {
         ref.read(authProvider.notifier).signUpWithEmail(email, password);
       } else {
@@ -60,15 +60,16 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
                 return 'Please enter a valid email address';
               }
               return null;
             },
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Password Field
           TextFormField(
             controller: _passwordController,
@@ -100,9 +101,9 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
               return null;
             },
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Submit Button
           SizedBox(
             height: 48,
@@ -120,22 +121,22 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
                   : Text(_isSignUp ? 'Sign Up' : 'Sign In'),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Toggle Sign In/Sign Up
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                _isSignUp 
-                    ? 'Already have an account? ' 
+                _isSignUp
+                    ? 'Already have an account? '
                     : 'Don\'t have an account? ',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               TextButton(
-                onPressed: authState.isLoading 
-                    ? null 
+                onPressed: authState.isLoading
+                    ? null
                     : () {
                         setState(() {
                           _isSignUp = !_isSignUp;
@@ -147,14 +148,14 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
               ),
             ],
           ),
-          
+
           // Forgot Password (only show for sign in)
           if (!_isSignUp) ...[
             const SizedBox(height: 8),
             Center(
               child: TextButton(
-                onPressed: authState.isLoading 
-                    ? null 
+                onPressed: authState.isLoading
+                    ? null
                     : () => _showForgotPasswordDialog(),
                 child: const Text('Forgot Password?'),
               ),
@@ -167,7 +168,7 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
 
   void _showForgotPasswordDialog() {
     final emailController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -175,7 +176,8 @@ class _EmailLoginFormState extends ConsumerState<EmailLoginForm> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter your email address to receive a password reset link.'),
+            const Text(
+                'Enter your email address to receive a password reset link.'),
             const SizedBox(height: 16),
             TextField(
               controller: emailController,

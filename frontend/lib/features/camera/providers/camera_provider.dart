@@ -13,7 +13,8 @@ final imageProcessingServiceProvider = Provider<ImageProcessingService>(
 );
 
 // Camera state provider
-final cameraProvider = StateNotifierProvider<CameraNotifier, CameraState>((ref) {
+final cameraProvider =
+    StateNotifierProvider<CameraNotifier, CameraState>((ref) {
   return CameraNotifier(
     cameraService: ref.watch(cameraServiceProvider),
     imageProcessingService: ref.watch(imageProcessingServiceProvider),
@@ -27,9 +28,9 @@ class CameraNotifier extends StateNotifier<CameraState> {
   CameraNotifier({
     required CameraService cameraService,
     required ImageProcessingService imageProcessingService,
-  }) : _cameraService = cameraService,
-       _imageProcessingService = imageProcessingService,
-       super(const CameraState());
+  })  : _cameraService = cameraService,
+        _imageProcessingService = imageProcessingService,
+        super(const CameraState());
 
   /// Initialize camera and check permissions
   Future<void> initialize() async {
@@ -44,7 +45,7 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
       // Check permissions
       final hasPermission = await _cameraService.checkCameraPermission();
-      
+
       state = state.copyWith(
         isInitialized: true,
         isLoading: false,
@@ -64,7 +65,7 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
     try {
       final granted = await _cameraService.requestCameraPermission();
-      
+
       state = state.copyWith(
         isLoading: false,
         hasPermission: granted,
@@ -87,11 +88,11 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
     try {
       final image = await _cameraService.captureFromCamera();
-      
+
       if (image != null) {
         // Validate the captured image
         final validation = await _imageProcessingService.validateForAI(image);
-        
+
         if (!validation.isValid) {
           throw Exception(validation.errors.join(', '));
         }
@@ -120,11 +121,11 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
     try {
       final image = await _cameraService.pickFromGallery();
-      
+
       if (image != null) {
         // Validate the selected image
         final validation = await _imageProcessingService.validateForAI(image);
-        
+
         if (!validation.isValid) {
           throw Exception(validation.errors.join(', '));
         }

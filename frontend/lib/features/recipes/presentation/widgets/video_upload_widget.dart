@@ -46,7 +46,8 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
       _urlController.text = widget.initialVideoUrl!;
       _selectedOption = 'url';
       _validateUrl(widget.initialVideoUrl!);
-    } else if (widget.initialVideoFilePath != null && widget.initialVideoFilePath!.isNotEmpty) {
+    } else if (widget.initialVideoFilePath != null &&
+        widget.initialVideoFilePath!.isNotEmpty) {
       _selectedOption = 'file';
       // Note: We can't recreate the File object from just the path
       // In a real app, you might want to show the filename or a preview
@@ -84,13 +85,14 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
     ];
 
     final host = uri.host.toLowerCase();
-    final isSupported = supportedPlatforms.any((platform) => 
-        host.contains(platform) || host.endsWith(platform));
+    final isSupported = supportedPlatforms
+        .any((platform) => host.contains(platform) || host.endsWith(platform));
 
     if (!isSupported) {
       setState(() {
         _isValidUrl = false;
-        _urlError = 'URL must be from a supported platform (YouTube, TikTok, Instagram, Vimeo, Facebook, Dailymotion)';
+        _urlError =
+            'URL must be from a supported platform (YouTube, TikTok, Instagram, Vimeo, Facebook, Dailymotion)';
       });
       return;
     }
@@ -110,16 +112,17 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
 
       if (result != null && result.files.single.path != null) {
         final file = File(result.files.single.path!);
-        
+
         // Check file size (max 100MB)
         final fileSizeInBytes = await file.length();
         final fileSizeInMB = fileSizeInBytes / (1024 * 1024);
-        
+
         if (fileSizeInMB > 100) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Video file is too large. Maximum size is 100MB.'),
+                content:
+                    Text('Video file is too large. Maximum size is 100MB.'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -187,15 +190,15 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
             Text(
               'Recipe Video (Optional)',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Add a video to help users follow your recipe',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
             const SizedBox(height: 16),
 
@@ -253,8 +256,8 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
               Text(
                 'Supported platforms: YouTube, TikTok, Instagram, Vimeo, Facebook, Dailymotion',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                      color: Colors.grey[600],
+                    ),
               ),
             ],
 
@@ -322,12 +325,14 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
                             label: const Text('Change'),
                           ),
                           TextButton.icon(
-                            onPressed: widget.enabled ? () {
-                              setState(() {
-                                _selectedVideoFile = null;
-                              });
-                              widget.onVideoFileChanged?.call(null);
-                            } : null,
+                            onPressed: widget.enabled
+                                ? () {
+                                    setState(() {
+                                      _selectedVideoFile = null;
+                                    });
+                                    widget.onVideoFileChanged?.call(null);
+                                  }
+                                : null,
                             icon: const Icon(Icons.delete),
                             label: const Text('Remove'),
                             style: TextButton.styleFrom(
@@ -344,8 +349,8 @@ class _VideoUploadWidgetState extends State<VideoUploadWidget> {
               Text(
                 'Supported formats: MP4, MOV, AVI, WebM, MKV (Max 100MB)',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                      color: Colors.grey[600],
+                    ),
               ),
             ],
           ],

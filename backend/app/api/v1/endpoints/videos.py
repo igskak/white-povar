@@ -75,7 +75,10 @@ async def upload_video(
             )
         
         recipe_data = recipe_result['data'][0]
-        if recipe_data.get('chef_id') != current_user.uid:
+        if (
+            current_user.chef_id is None
+            or str(recipe_data.get('chef_id')) != current_user.chef_id
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only upload videos to your own recipes"
@@ -87,7 +90,7 @@ async def upload_video(
         if not file_extension:
             file_extension = '.mp4'  # Default extension
 
-        unique_filename = f"recipe_{recipe_id}_{current_user.uid}_{timestamp}{file_extension}"
+        unique_filename = f"recipe_{recipe_id}_{current_user.id}_{timestamp}{file_extension}"
         # Store objects inside the bucket WITHOUT repeating the bucket name in the path
         relative_path = f"{recipe_id}/{unique_filename}"
         # Persist in DB with bucket prefix so the frontend can build the public URL as /object/public/<db_path>
@@ -128,7 +131,7 @@ async def upload_video(
             'file_path': db_path,  # store with bucket prefix for consistency
             'file_size': len(file_content),
             'mime_type': file.content_type,
-            'uploaded_by': current_user.uid,
+            'uploaded_by': current_user.id,
             'is_active': True
         }
         
@@ -156,13 +159,17 @@ async def upload_video(
             })
             logger.info(f"Successfully updated recipe {recipe_id} with video path: {db_path}")
         except Exception as e:
-            logger.error(f"Failed to update recipe {recipe_id} with video path {storage_path}: {str(e)}")
+            logger.error(
+                f"Failed to update recipe {recipe_id} with video path {db_path}: {str(e)}"
+            )
             # Clean up uploaded file if database update fails
             try:
-                await storage_service.delete_file('recipe-videos', file_path)
-                logger.info(f"Cleaned up uploaded file: {file_path}")
+                client.storage.from_("recipe-videos").remove([relative_path])
+                logger.info(f"Cleaned up uploaded file: {relative_path}")
             except Exception as cleanup_error:
-                logger.error(f"Failed to cleanup file {file_path}: {str(cleanup_error)}")
+                logger.error(
+                    f"Failed to clean up file {relative_path}: {str(cleanup_error)}"
+                )
             raise HTTPException(
                 status_code=500,
                 detail=f"Video uploaded but failed to update recipe: {str(e)}"
@@ -182,9 +189,12 @@ async def upload_video(
 @router.post("/upload-admin", response_model=RecipeVideo)
 async def upload_video_admin(
     recipe_id: str,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    current_user: User = Depends(verify_firebase_token),
 ):
-    """Admin upload endpoint - bypasses authentication for admin interface"""
+    """Local development helper. It is unavailable in production."""
+    if settings.environment != "development":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     try:
         # Validate recipe_id format
         try:
@@ -354,7 +364,7 @@ async def delete_video(
         video_data = video_result['data'][0]
         
         # Check permission
-        if video_data.get('uploaded_by') != current_user.uid:
+        if video_data.get('uploaded_by') != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete your own videos"

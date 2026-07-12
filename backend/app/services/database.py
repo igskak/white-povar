@@ -89,7 +89,11 @@ class SupabaseService:
             # Apply filters if provided
             if filters:
                 for key, value in filters.items():
-                    if isinstance(value, list):
+                    if key == 'max_time':
+                        query = query.lte('total_time_minutes', value)
+                    elif key == 'tags_contains':
+                        query = query.contains('tags', value)
+                    elif isinstance(value, list):
                         query = query.in_(key, value)
                     else:
                         query = query.eq(key, value)
@@ -117,7 +121,8 @@ class SupabaseService:
             # Select recipe with ingredients using JOIN
             recipe_result = client.table('recipes').select('''
                 *,
-                recipe_ingredients(*)
+                recipe_ingredients(*),
+                recipe_nutrition(*)
             ''').eq('id', recipe_id).execute()
 
             if not recipe_result.data:
@@ -155,7 +160,7 @@ class SupabaseService:
             search_query = client.table('recipes').select('''
                 *,
                 recipe_ingredients(*)
-            ''')
+            ''').eq('is_public', True)
 
             # Add text search filters - search in title, description, and tags
             search_query = search_query.or_(
@@ -243,36 +248,129 @@ class SupabaseService:
             raise e
     
     async def create_recipe(self, recipe_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create new recipe with ingredients"""
+        """Create a recipe and its canonical ingredient/nutrition records."""
         def _execute():
             client = self.get_client(use_service_key=True)
-            
+
             # Extract ingredients from recipe data
-            ingredients = recipe_data.pop('ingredients', [])
-            nutrition = recipe_data.pop('nutrition', None)
-            
+            recipe_row = dict(recipe_data)
+            ingredients = recipe_row.pop('ingredients', [])
+            nutrition = recipe_row.pop('nutrition', None)
+
             # Insert recipe
-            recipe_result = client.table('recipes').insert(recipe_data).execute()
+            recipe_result = client.table('recipes').insert(recipe_row).execute()
             if not recipe_result.data:
                 raise Exception("Failed to create recipe")
-            
+
             recipe_id = recipe_result.data[0]['id']
-            
+
             # Insert ingredients
             if ingredients:
-                for ingredient in ingredients:
-                    ingredient['recipe_id'] = recipe_id
-                client.table('ingredients').insert(ingredients).execute()
-            
+                ingredient_rows = [
+                    {**ingredient, 'recipe_id': recipe_id}
+                    for ingredient in ingredients
+                ]
+                client.table('recipe_ingredients').insert(ingredient_rows).execute()
+
             # Insert nutrition if provided
             if nutrition:
-                nutrition['recipe_id'] = recipe_id
-                client.table('nutrition').insert(nutrition).execute()
-            
+                nutrition_row = {**nutrition, 'recipe_id': recipe_id}
+                client.table('recipe_nutrition').insert(nutrition_row).execute()
+
             return recipe_result
-        
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
+
+    async def update_owned_recipe(
+        self,
+        recipe_id: str,
+        chef_id: str,
+        recipe_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Update a recipe owned by ``chef_id`` and replace supplied child rows."""
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            recipe_row = dict(recipe_data)
+            ingredients = recipe_row.pop('ingredients', None)
+            nutrition = recipe_row.pop('nutrition', None)
+
+            query = client.table('recipes').update(recipe_row).eq('id', recipe_id).eq('chef_id', chef_id)
+            recipe_result = query.execute()
+            if not recipe_result.data:
+                return recipe_result
+
+            if ingredients is not None:
+                client.table('recipe_ingredients').delete().eq('recipe_id', recipe_id).execute()
+                if ingredients:
+                    rows = [{**ingredient, 'recipe_id': recipe_id} for ingredient in ingredients]
+                    client.table('recipe_ingredients').insert(rows).execute()
+
+            if nutrition is not None:
+                client.table('recipe_nutrition').delete().eq('recipe_id', recipe_id).execute()
+                if nutrition:
+                    client.table('recipe_nutrition').insert(
+                        {**nutrition, 'recipe_id': recipe_id}
+                    ).execute()
+
+            return recipe_result
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
+    async def delete_owned_recipe(self, recipe_id: str, chef_id: str) -> Dict[str, Any]:
+        """Delete a recipe only when it belongs to ``chef_id``."""
+        return await self.execute_query(
+            'recipes',
+            'delete',
+            filters={'id': recipe_id, 'chef_id': chef_id},
+            use_service_key=True,
+        )
+
+    async def get_user_chef_id(self, user_id: str) -> Optional[str]:
+        """Return the chef explicitly linked to a user, if one exists."""
+        result = await self.execute_query(
+            'users',
+            'select',
+            filters={'id': user_id},
+            use_service_key=True,
+        )
+        if not result.data:
+            return None
+        chef_id = result.data[0].get('chef_id')
+        return str(chef_id) if chef_id else None
+
+    async def get_user_favorite_ids(self, user_id: str) -> List[str]:
+        """Return recipe IDs from the canonical user_favorites junction table."""
+        result = await self.execute_query(
+            'user_favorites', 'select', filters={'user_id': user_id}, use_service_key=True
+        )
+        return [str(row['recipe_id']) for row in (result.data or [])]
+
+    async def toggle_user_favorite(self, user_id: str, recipe_id: str) -> bool:
+        """Toggle one user/recipe favorite pair and return its new state."""
+        existing = await self.execute_query(
+            'user_favorites',
+            'select',
+            filters={'user_id': user_id, 'recipe_id': recipe_id},
+            use_service_key=True,
+        )
+        if existing.data:
+            await self.execute_query(
+                'user_favorites',
+                'delete',
+                filters={'user_id': user_id, 'recipe_id': recipe_id},
+                use_service_key=True,
+            )
+            return False
+
+        await self.execute_query(
+            'user_favorites',
+            'insert',
+            data={'user_id': user_id, 'recipe_id': recipe_id},
+            use_service_key=True,
+        )
+        return True
 
     # Ingestion-related methods
     async def create_ingestion_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:

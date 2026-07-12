@@ -60,7 +60,8 @@ class IngredientLoadingAnimation extends StatefulWidget {
   });
 
   @override
-  State<IngredientLoadingAnimation> createState() => _IngredientLoadingAnimationState();
+  State<IngredientLoadingAnimation> createState() =>
+      _IngredientLoadingAnimationState();
 }
 
 class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
@@ -84,7 +85,7 @@ class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat();
-    
+
     _animation = Tween<double>(
       begin: 0,
       end: 1,
@@ -123,8 +124,9 @@ class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
                           final index = entry.key;
                           final icon = entry.value;
                           final delay = index * 0.2;
-                          final animationValue = (_animation.value - delay).clamp(0.0, 1.0);
-                          
+                          final animationValue =
+                              (_animation.value - delay).clamp(0.0, 1.0);
+
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             child: Transform.scale(
@@ -154,8 +156,8 @@ class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
                 Text(
                   'This may take a few seconds...',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                        color: Colors.grey[600],
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],

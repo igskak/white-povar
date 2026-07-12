@@ -40,7 +40,8 @@ class RecipeSuggestionsState {
 class RecipeSuggestionsNotifier extends StateNotifier<RecipeSuggestionsState> {
   final AIService _aiService;
 
-  RecipeSuggestionsNotifier(this._aiService) : super(const RecipeSuggestionsState());
+  RecipeSuggestionsNotifier(this._aiService)
+      : super(const RecipeSuggestionsState());
 
   Future<void> getRecipeSuggestions({
     required List<String> ingredients,
@@ -75,7 +76,9 @@ class RecipeSuggestionsNotifier extends StateNotifier<RecipeSuggestionsState> {
   }
 }
 
-final recipeSuggestionsProvider = StateNotifierProvider<RecipeSuggestionsNotifier, RecipeSuggestionsState>((ref) {
+final recipeSuggestionsProvider =
+    StateNotifierProvider<RecipeSuggestionsNotifier, RecipeSuggestionsState>(
+        (ref) {
   final aiService = ref.watch(aiServiceProvider);
   return RecipeSuggestionsNotifier(aiService);
 });
@@ -142,15 +145,18 @@ class SubstitutionsNotifier extends StateNotifier<SubstitutionsState> {
   }
 }
 
-final substitutionsProvider = StateNotifierProvider<SubstitutionsNotifier, SubstitutionsState>((ref) {
+final substitutionsProvider =
+    StateNotifierProvider<SubstitutionsNotifier, SubstitutionsState>((ref) {
   final aiService = ref.watch(aiServiceProvider);
   return SubstitutionsNotifier(aiService);
 });
 
 // Cooking Tips Provider
-final cookingTipsProvider = FutureProvider.family<List<String>, Map<String, String>>((ref, params) async {
+final cookingTipsProvider =
+    FutureProvider.family<List<String>, Map<String, String>>(
+        (ref, params) async {
   final aiService = ref.watch(aiServiceProvider);
-  
+
   return await aiService.getCookingTips(
     recipeTitle: params['recipeTitle'] ?? '',
     cookingMethod: params['cookingMethod'] ?? '',
@@ -159,9 +165,11 @@ final cookingTipsProvider = FutureProvider.family<List<String>, Map<String, Stri
 });
 
 // Nutrition Analysis Provider
-final nutritionAnalysisProvider = FutureProvider.family<NutritionInfo, Map<String, dynamic>>((ref, params) async {
+final nutritionAnalysisProvider =
+    FutureProvider.family<NutritionInfo, Map<String, dynamic>>(
+        (ref, params) async {
   final aiService = ref.watch(aiServiceProvider);
-  
+
   return await aiService.analyzeNutrition(
     ingredients: List<Map<String, dynamic>>.from(params['ingredients'] ?? []),
     servings: params['servings'] ?? 1,
@@ -169,9 +177,11 @@ final nutritionAnalysisProvider = FutureProvider.family<NutritionInfo, Map<Strin
 });
 
 // Improved Instructions Provider
-final improvedInstructionsProvider = FutureProvider.family<List<String>, Map<String, dynamic>>((ref, params) async {
+final improvedInstructionsProvider =
+    FutureProvider.family<List<String>, Map<String, dynamic>>(
+        (ref, params) async {
   final aiService = ref.watch(aiServiceProvider);
-  
+
   return await aiService.improveInstructions(
     currentInstructions: List<String>.from(params['currentInstructions'] ?? []),
     recipeTitle: params['recipeTitle'] ?? '',
@@ -179,8 +189,10 @@ final improvedInstructionsProvider = FutureProvider.family<List<String>, Map<Str
 });
 
 // Quick Suggestions Provider
-final quickSuggestionsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, ingredients) async {
+final quickSuggestionsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+        (ref, ingredients) async {
   final aiService = ref.watch(aiServiceProvider);
-  
+
   return await aiService.getQuickSuggestions(ingredients: ingredients);
 });
