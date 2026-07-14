@@ -24,7 +24,7 @@ flutter build web \
   --release \
   --base-href=/ \
   --dart-define=API_BASE_URL="$API_BASE_URL" \
-  --dart-define=WEB_APP_URL="${WEB_APP_URL:-https://white-povar.onrender.com}" \
+  --dart-define=WEB_APP_URL="${WEB_APP_URL:-https://white-povar-p79r.onrender.com}" \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
   --dart-define=ENVIRONMENT="${ENVIRONMENT:-production}"

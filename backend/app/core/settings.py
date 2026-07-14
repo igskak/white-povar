@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     firebase_project_id: Optional[str] = None
 
     # CORS - Production ready origins
-    allowed_origins: str = "https://white-povar.onrender.com,http://localhost:3000,http://localhost:8080"
+    allowed_origins: str = "https://white-povar-p79r.onrender.com,http://localhost:3000,http://localhost:8080"
 
     # Database
     database_url: Optional[str] = None

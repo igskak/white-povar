@@ -46,8 +46,8 @@ jobs:
         flutter build web \
           --release \
           --base-href=/ \
-          --dart-define=API_BASE_URL=https://white-povar-api.onrender.com \
-          --dart-define=WEB_APP_URL=https://white-povar.onrender.com \
+          --dart-define=API_BASE_URL=https://white-povar-api-p79r.onrender.com \
+          --dart-define=WEB_APP_URL=https://white-povar-p79r.onrender.com \
           --dart-define=SUPABASE_URL=https://example.supabase.co \
           --dart-define=SUPABASE_ANON_KEY=test-anon-key \
           --dart-define=ENVIRONMENT=ci

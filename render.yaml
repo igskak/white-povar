@@ -35,9 +35,9 @@ services:
       - key: FLUTTER_VERSION
         value: 3.24.5
       - key: API_BASE_URL
-        value: https://white-povar-api.onrender.com
+        value: https://white-povar-api-p79r.onrender.com
       - key: WEB_APP_URL
-        value: https://white-povar.onrender.com
+        value: https://white-povar-p79r.onrender.com
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
@@ -70,7 +70,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: ALLOWED_ORIGINS
-        value: https://white-povar.onrender.com
+        value: https://white-povar-p79r.onrender.com
       - key: DEFAULT_LOCALE
         value: uk
       - key: SUPPORTED_LOCALES

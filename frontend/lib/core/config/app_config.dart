@@ -27,7 +27,7 @@ class AppConfig {
   static const String appVersion = '1.0.0';
   static const String webAppUrl = String.fromEnvironment(
     'WEB_APP_URL',
-    defaultValue: 'https://white-povar.onrender.com',
+    defaultValue: 'https://white-povar-p79r.onrender.com',
   );
   static const String authCallbackPath = '/auth/callback';
   static const String webAuthCallbackUrl = '$webAppUrl$authCallbackPath';
