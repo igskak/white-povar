@@ -24,7 +24,7 @@ class CameraFlowScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
 
-  static const _labels = ['Capture', 'Review', 'Results'];
+  static const _labels = ['Зйомка', 'Перевірка', 'Результати'];
 
   @override
   Widget build(BuildContext context) {

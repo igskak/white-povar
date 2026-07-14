@@ -56,7 +56,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(next.error ?? 'Authentication error'),
+              content: Text(next.error ?? 'Помилка авторизації'),
               backgroundColor: theme.colorScheme.error,
             ),
           );
@@ -85,15 +85,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        'Welcome to White Povar',
+                        'White Povar',
                         style: theme.textTheme.headlineMedium,
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         _isSignUp
-                            ? 'Create your account to start cooking.'
-                            : 'Sign in to continue to your recipes.',
+                            ? 'Створіть акаунт, щоб зберігати рецепти.'
+                            : 'Увійдіть, щоб продовжити до своїх рецептів.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: AppColorsV2.textSecondary,
@@ -114,11 +114,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
-                                  return 'Enter your email';
+                                  return 'Введіть email';
                                 }
                                 if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
                                     .hasMatch(value.trim())) {
-                                  return 'Invalid email format';
+                                  return 'Некоректний формат email';
                                 }
                                 return null;
                               },
@@ -130,7 +130,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _submit(),
                               decoration: InputDecoration(
-                                labelText: 'Password',
+                                labelText: 'Пароль',
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
                                   onPressed: () => setState(
@@ -145,10 +145,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
-                                  return 'Enter your password';
+                                  return 'Введіть пароль';
                                 }
                                 if (_isSignUp && value.length < 6) {
-                                  return 'Minimum 6 characters';
+                                  return 'Мінімум 6 символів';
                                 }
                                 return null;
                               },
@@ -159,7 +159,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(height: AppSpacing.md),
                       ElevatedButton(
                         onPressed: isLoading ? null : _submit,
-                        child: Text(_isSignUp ? 'Create account' : 'Sign in'),
+                        child: Text(_isSignUp ? 'Створити акаунт' : 'Увійти'),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       TextButton(
@@ -171,8 +171,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               },
                         child: Text(
                           _isSignUp
-                              ? 'I already have an account'
-                              : 'Create a new account',
+                              ? 'У мене вже є акаунт'
+                              : 'Створити новий акаунт',
                         ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
@@ -184,7 +184,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               horizontal: AppSpacing.sm,
                             ),
                             child: Text(
-                              'OR',
+                              'АБО',
                               style: theme.textTheme.labelSmall,
                             ),
                           ),
@@ -199,7 +199,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 .read(authProvider.notifier)
                                 .signInWithGoogle(),
                         icon: const Icon(Icons.g_mobiledata_rounded),
-                        label: const Text('Continue with Google'),
+                        label: const Text('Продовжити з Google'),
                       ),
                       if (!kIsWeb) ...[
                         const SizedBox(height: AppSpacing.xs),
@@ -210,14 +210,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   .read(authProvider.notifier)
                                   .signInWithApple(),
                           icon: const Icon(Icons.apple_rounded),
-                          label: const Text('Continue with Apple'),
+                          label: const Text('Продовжити з Apple'),
                         ),
                       ],
                       if (isLoading) ...[
                         const SizedBox(height: AppSpacing.sm),
                         const StateView.loading(
-                          title: 'Authorizing',
-                          subtitle: 'Please wait a moment...',
+                          title: 'Авторизація',
+                          subtitle: 'Зачекайте кілька секунд.',
                         ),
                       ],
                     ],

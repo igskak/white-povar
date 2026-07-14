@@ -1,20 +1,23 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../providers/recipe_provider.dart';
+import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/widgets/state_views.dart';
 import '../../../ai/widgets/ai_assistant_button.dart';
-import '../widgets/recipe_video_widget.dart';
 import '../../../subscription/widgets/premium_badge.dart';
+import '../../models/recipe.dart';
+import '../../providers/recipe_provider.dart';
+import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerWidget {
-  final String recipeId;
-
   const RecipeDetailPage({
     super.key,
     required this.recipeId,
   });
+
+  final String recipeId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,221 +25,15 @@ class RecipeDetailPage extends ConsumerWidget {
 
     return Scaffold(
       body: recipeAsync.when(
-        data: (recipe) => CustomScrollView(
-          slivers: [
-            // App Bar with Image
-            SliverAppBar(
-              expandedHeight: 300,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    recipe.images.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: recipe.images.first,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey[200],
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.restaurant_menu,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          )
-                        : Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.restaurant_menu,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                          ),
-                    // Premium badge
-                    if (recipe.isPremium)
-                      const Positioned(
-                        top: 60,
-                        right: 16,
-                        child: PremiumBadge(size: 32, showLabel: true),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Recipe Content
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title and Basic Info
-                    Text(
-                      recipe.title,
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      recipe.description,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Recipe Stats
-                    Row(
-                      children: [
-                        _StatCard(
-                          icon: Icons.schedule,
-                          label: 'Total Time',
-                          value: '${recipe.totalTimeMinutes} min',
-                        ),
-                        const SizedBox(width: 16),
-                        _StatCard(
-                          icon: Icons.people,
-                          label: 'Servings',
-                          value: '${recipe.servings}',
-                        ),
-                        const SizedBox(width: 16),
-                        _StatCard(
-                          icon: Icons.star,
-                          label: 'Difficulty',
-                          value: 'Level ${recipe.difficulty}',
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Video Section
-                    if (recipe.videoUrl != null ||
-                        recipe.videoFilePath != null) ...[
-                      Text(
-                        'Recipe Video',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 12),
-                      RecipeVideoWidget(
-                        videoUrl: recipe.videoUrl,
-                        videoFilePath: recipe.videoFilePath,
-                        height: 200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Ingredients Section
-                    Text(
-                      'Ingredients',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    ...recipe.ingredients.map((ingredient) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  '${ingredient.amount} ${ingredient.unit} ${ingredient.name}',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-
-                    const SizedBox(height: 24),
-
-                    // Instructions Section
-                    Text(
-                      'Instructions',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 12),
-                    ...recipe.instructions.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final instruction = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).primaryColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  '${index + 1}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                instruction,
-                                style: Theme.of(context).textTheme.bodyLarge,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 104),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        data: (recipe) => _RecipeDetailContent(recipe: recipe),
+        loading: () => const StateView.loading(
+          title: 'Відкриваємо рецепт',
+          subtitle: 'Завантажуємо інгредієнти та кроки приготування.',
         ),
-        loading: () => const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        ),
-        error: (error, stackTrace) => Scaffold(
-          appBar: AppBar(title: const Text('Error')),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  'Error loading recipe',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(error.toString()),
-              ],
-            ),
-          ),
+        error: (error, _) => StateView.error(
+          title: 'Не вдалося завантажити рецепт',
+          subtitle: error.toString(),
+          onRetry: () => ref.invalidate(recipeDetailProvider(recipeId)),
         ),
       ),
       floatingActionButton: recipeAsync.when(
@@ -252,7 +49,12 @@ class RecipeDetailPage extends ConsumerWidget {
       bottomNavigationBar: recipeAsync.when(
         data: (recipe) => SafeArea(
           child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               boxShadow: const [
@@ -268,7 +70,7 @@ class RecipeDetailPage extends ConsumerWidget {
                   ? null
                   : () => context.push('/recipes/$recipeId/cook'),
               icon: const Icon(Icons.soup_kitchen_outlined),
-              label: const Text('Start cooking'),
+              label: const Text('Готувати'),
             ),
           ),
         ),
@@ -279,44 +81,307 @@ class RecipeDetailPage extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
+class _RecipeDetailContent extends StatelessWidget {
+  const _RecipeDetailContent({required this.recipe});
 
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          expandedHeight: 320,
+          pinned: true,
+          foregroundColor: AppColorsV2.onInk,
+          backgroundColor: AppColorsV2.ink,
+          flexibleSpace: FlexibleSpaceBar(
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                _RecipeHeroImage(recipe: recipe),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x66000000), Color(0x99000000)],
+                    ),
+                  ),
+                ),
+                if (recipe.isPremium)
+                  const Positioned(
+                    top: 60,
+                    right: AppSpacing.md,
+                    child: PremiumBadge(size: 32, showLabel: true),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                  AppSpacing.md,
+                  112,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(recipe.title, style: theme.textTheme.headlineMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      recipe.description,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColorsV2.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _StatsRow(recipe: recipe),
+                    if (recipe.videoUrl != null ||
+                        recipe.videoFilePath != null) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      Text('Відео рецепта', style: theme.textTheme.titleLarge),
+                      const SizedBox(height: AppSpacing.sm),
+                      RecipeVideoWidget(
+                        videoUrl: recipe.videoUrl,
+                        videoFilePath: recipe.videoFilePath,
+                        height: 220,
+                        borderRadius: AppRadius.md,
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                    Text('Інгредієнти', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: AppSpacing.sm),
+                    ...recipe.ingredients.map(
+                      (ingredient) => _IngredientRow(
+                        label:
+                            '${ingredient.amount} ${ingredient.unit} ${ingredient.name}'
+                                .trim(),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Text('Кроки', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: AppSpacing.sm),
+                    ...recipe.instructions.asMap().entries.map(
+                          (entry) => _InstructionStep(
+                            number: entry.key + 1,
+                            text: entry.value,
+                          ),
+                        ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecipeHeroImage extends StatelessWidget {
+  const _RecipeHeroImage({required this.recipe});
+
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    if (recipe.images.isEmpty) {
+      return const _HeroFallback();
+    }
+
+    return CachedNetworkImage(
+      imageUrl: recipe.images.first,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => const _HeroFallback(isLoading: true),
+      errorWidget: (context, url, error) => const _HeroFallback(),
+    );
+  }
+}
+
+class _HeroFallback extends StatelessWidget {
+  const _HeroFallback({this.isLoading = false});
+
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColorsV2.ink,
+      alignment: Alignment.center,
+      child: isLoading
+          ? const CircularProgressIndicator()
+          : const Icon(
+              Icons.restaurant_menu_rounded,
+              size: 72,
+              color: AppColorsV2.onInk,
+            ),
+    );
+  }
+}
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.recipe});
+
+  final Recipe recipe;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final children = [
+          _StatCard(
+            icon: Icons.schedule_rounded,
+            label: 'Час',
+            value: '${recipe.totalTimeMinutes} хв',
+          ),
+          _StatCard(
+            icon: Icons.people_outline_rounded,
+            label: 'Порції',
+            value: '${recipe.servings}',
+          ),
+          _StatCard(
+            icon: Icons.speed_rounded,
+            label: 'Складність',
+            value: 'Рівень ${recipe.difficulty}',
+          ),
+        ];
+
+        if (compact) {
+          return Column(
+            children: [
+              for (final child in children) ...[
+                child,
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              Expanded(child: children[i]),
+              if (i != children.length - 1)
+                const SizedBox(width: AppSpacing.sm),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.icon,
     required this.label,
     required this.value,
   });
 
+  final IconData icon;
+  final String label;
+  final String value;
+
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColorsV2.surfaceStrong,
+        borderRadius: AppRadius.md,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
           children: [
-            Icon(icon, color: Theme.of(context).primaryColor),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+            Icon(icon, color: AppColorsV2.accent),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-            ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                ],
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _IngredientRow extends StatelessWidget {
+  const _IngredientRow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_outline,
+            size: 20,
+            color: AppColorsV2.success,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyLarge),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstructionStep extends StatelessWidget {
+  const _InstructionStep({
+    required this.number,
+    required this.text,
+  });
+
+  final int number;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColorsV2.ink,
+            child: Text(
+              '$number',
+              style: const TextStyle(
+                color: AppColorsV2.onInk,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+          ),
+        ],
       ),
     );
   }

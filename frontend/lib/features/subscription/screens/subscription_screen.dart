@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/state_views.dart';
 import '../models/subscription.dart';
 import '../providers/subscription_provider.dart';
-import '../widgets/premium_gate_card.dart';
 import '../widgets/premium_badge.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
@@ -31,17 +29,17 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscription'),
+        title: const Text('Підписка'),
       ),
       body: SafeArea(
         child: state.isLoading
             ? const StateView.loading(
-                title: 'Loading subscription',
-                subtitle: 'Checking your current tier and feature access.',
+                title: 'Завантажуємо підписку',
+                subtitle: 'Перевіряємо поточний рівень доступу.',
               )
             : state.hasError
                 ? StateView.error(
-                    title: 'Failed to load subscription',
+                    title: 'Не вдалося завантажити підписку',
                     subtitle: state.error,
                     onRetry: () =>
                         ref.read(subscriptionProvider.notifier).refresh(),
@@ -49,12 +47,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                 : state.hasStatus
                     ? _SubscriptionContent(status: state.status!)
                     : StateView.empty(
-                        title: 'No subscription data',
-                        subtitle: 'Retry loading your account status.',
+                        title: 'Немає даних підписки',
+                        subtitle: 'Повторіть завантаження статусу акаунта.',
                         icon: Icons.credit_card_off_outlined,
                         onRetry: () =>
                             ref.read(subscriptionProvider.notifier).refresh(),
-                        actionLabel: 'Refresh',
+                        actionLabel: 'Оновити',
                       ),
       ),
     );
@@ -68,7 +66,6 @@ class _SubscriptionContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isPremium = status.hasPremiumAccess;
     final theme = Theme.of(context);
 
     return ListView(
@@ -83,64 +80,37 @@ class _SubscriptionContent extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Why Premium',
+                  'Що дає Premium',
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 const _ValueItem(
                   icon: Icons.auto_awesome_outlined,
-                  title: 'AI cooking assistant',
+                  title: 'AI-помічник на кухні',
                   subtitle:
-                      'Generate variations, substitutions, and step-by-step tips.',
+                      'Підказки, заміни інгредієнтів і поради під час приготування.',
                 ),
                 const _ValueItem(
                   icon: Icons.workspace_premium_outlined,
-                  title: 'Premium recipe catalog',
-                  subtitle:
-                      'Access advanced and chef-level recipes unavailable on Free.',
+                  title: 'Premium-каталог',
+                  subtitle: 'Доступ до складніших рецептів і шеф-рівня.',
                 ),
                 const _ValueItem(
                   icon: Icons.filter_alt_outlined,
-                  title: 'Advanced discovery',
+                  title: 'Розширений пошук',
                   subtitle:
-                      'Use richer filters to find recipes faster with fewer misses.',
+                      'Більше фільтрів, щоб швидше знаходити потрібні рецепти.',
                 ),
               ],
             ),
           ),
         ),
         const SizedBox(height: 12),
-        PremiumGateCard(
-          title: isPremium ? 'Premium is active' : 'Upgrade to Premium',
-          message: isPremium
-              ? 'You already have access to premium features. Manage billing support from your account channel.'
-              : 'Unlock AI tools, premium recipes, and advanced search to reduce cooking time and find better matches.',
-          features: const [
-            'AI recipe generation and cooking guidance',
-            'Premium recipe catalog',
-            'Advanced search filters',
-            'Nutrition analysis',
-          ],
-          ctaLabel: isPremium ? 'Manage subscription' : 'Upgrade to Premium',
-          secondaryLabel: isPremium ? 'Open settings' : 'Compare plans',
-          onPrimary: () {
-            if (isPremium) {
-              context.push('/settings');
-              return;
-            }
-
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Upgrade flow is coming soon.'),
-            ));
-          },
-          onSecondary: () => context.push('/profile'),
-        ),
-        const SizedBox(height: 16),
         _FeaturesSummary(features: status.features),
         if (!kReleaseMode) ...[
           const SizedBox(height: 20),
-          _DebugControls(isPremium: isPremium),
+          _DebugControls(isPremium: status.hasPremiumAccess),
         ],
       ],
     );
@@ -173,7 +143,7 @@ class _CurrentTierCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Current plan',
+                    'Поточний план',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                   const SizedBox(height: 4),
@@ -185,10 +155,10 @@ class _CurrentTierCard extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  Text('Status: ${subscription.status.displayName}'),
+                  Text('Статус: ${subscription.status.displayName}'),
                   if (subscription.endDate != null)
                     Text(
-                      'Valid until: ${_formatDate(subscription.endDate!)}',
+                      'Діє до: ${_formatDate(subscription.endDate!)}',
                     ),
                 ],
               ),
@@ -259,15 +229,15 @@ class _FeaturesSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <({String name, bool enabled})>[
-      (name: 'Basic recipes', enabled: features.basicRecipes),
-      (name: 'Basic search', enabled: features.basicSearch),
-      (name: 'Favorites', enabled: features.favorites),
-      (name: 'Premium recipes', enabled: features.premiumRecipes),
-      (name: 'Advanced search', enabled: features.advancedSearch),
-      (name: 'AI recipe generation', enabled: features.aiRecipeGeneration),
-      (name: 'AI cooking tips', enabled: features.aiCookingTips),
-      (name: 'AI substitutions', enabled: features.aiSubstitutions),
-      (name: 'Nutrition analysis', enabled: features.aiNutritionAnalysis),
+      (name: 'Базові рецепти', enabled: features.basicRecipes),
+      (name: 'Базовий пошук', enabled: features.basicSearch),
+      (name: 'Збережене', enabled: features.favorites),
+      (name: 'Premium-рецепти', enabled: features.premiumRecipes),
+      (name: 'Розширений пошук', enabled: features.advancedSearch),
+      (name: 'AI-генерація рецептів', enabled: features.aiRecipeGeneration),
+      (name: 'AI-поради під час готування', enabled: features.aiCookingTips),
+      (name: 'AI-заміни інгредієнтів', enabled: features.aiSubstitutions),
+      (name: 'Аналіз поживності', enabled: features.aiNutritionAnalysis),
     ];
 
     return Card(
@@ -277,7 +247,7 @@ class _FeaturesSummary extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Current access',
+              'Поточний доступ',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
