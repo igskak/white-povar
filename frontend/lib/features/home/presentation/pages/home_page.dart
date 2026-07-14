@@ -31,7 +31,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final recipesState = ref.watch(recipeListProvider);
 
     return Scaffold(
-      backgroundColor: _ChefColors.bg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: RefreshIndicator(
         onRefresh: () => ref.read(recipeListProvider.notifier).loadRecipes(),
         child: CustomScrollView(
@@ -151,10 +151,10 @@ class _ChefHeader extends StatelessWidget {
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: const BoxDecoration(
-                    color: _ChefColors.accent,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Color(0x99D9A441),
                         blurRadius: 8,
@@ -163,11 +163,11 @@ class _ChefHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'WHITE POVAR',
                     style: TextStyle(
-                      color: _ChefColors.accent,
+                      color: Theme.of(context).colorScheme.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 2.5,
@@ -178,9 +178,11 @@ class _ChefHeader extends StatelessWidget {
                   onPressed: onProfileTap,
                   tooltip: 'Профіль',
                   style: IconButton.styleFrom(
-                    backgroundColor: _ChefColors.surface,
-                    foregroundColor: _ChefColors.text,
-                    side: const BorderSide(color: _ChefColors.surfaceStrong),
+                    backgroundColor: Theme.of(context).colorScheme.surface,
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
                   icon: const Icon(Icons.person_outline_rounded),
                 ),
@@ -188,20 +190,20 @@ class _ChefHeader extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             RichText(
-              text: const TextSpan(
+              text: TextSpan(
                 style: TextStyle(
-                  color: _ChefColors.text,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 36,
                   height: 1.02,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0,
                 ),
                 children: [
-                  TextSpan(text: 'Що приготуємо\n'),
+                  const TextSpan(text: 'Що приготуємо\n'),
                   TextSpan(
                     text: 'сьогодні?',
                     style: TextStyle(
-                      color: _ChefColors.accent,
+                      color: Theme.of(context).colorScheme.primary,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -244,16 +246,16 @@ class _ScanBanner extends StatelessWidget {
         borderRadius: AppRadius.lg,
         child: Ink(
           height: 62,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Color(0xFFE7BC5A),
-                _ChefColors.accent,
-                Color(0xFFC7902F)
+                const Color(0xFFE7BC5A),
+                Theme.of(context).colorScheme.primary,
+                const Color(0xFFC7902F),
               ],
             ),
             borderRadius: AppRadius.lg,
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
                 color: Color(0x3DD9A441),
                 blurRadius: 20,
@@ -269,16 +271,19 @@ class _ScanBanner extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: _ChefColors.bg.withOpacity(.14),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onPrimary
+                        .withOpacity(.14),
                     borderRadius: AppRadius.md,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.photo_camera_outlined,
-                    color: _ChefColors.bg,
+                    color: Theme.of(context).colorScheme.onPrimary,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                const Expanded(
+                Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,12 +291,12 @@ class _ScanBanner extends StatelessWidget {
                       Text(
                         'Сканувати інгредієнти',
                         style: TextStyle(
-                          color: _ChefColors.bg,
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 14.5,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Text(
+                      const Text(
                         'Фото продуктів → рецепти за 10 секунд',
                         style: TextStyle(
                           color: Color(0xA316130F),
@@ -305,12 +310,15 @@ class _ScanBanner extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: _ChefColors.bg.withOpacity(.14),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onPrimary
+                        .withOpacity(.14),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_rounded,
-                    color: _ChefColors.bg,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     size: 19,
                   ),
                 ),
@@ -336,14 +344,20 @@ class _FilterChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? _ChefColors.accent : _ChefColors.surface,
+        color: selected
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(17),
-        border: selected ? null : Border.all(color: _ChefColors.surfaceStrong),
+        border: selected
+            ? null
+            : Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: selected ? _ChefColors.bg : _ChefColors.muted,
+          color: selected
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
           fontSize: 13,
           fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
         ),
@@ -364,7 +378,7 @@ class _FeaturedRecipeCard extends StatelessWidget {
       button: true,
       label: 'Відкрити рецепт ${recipe.title}',
       child: Material(
-        color: _ChefColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: AppRadius.xl,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -410,7 +424,7 @@ class _FeaturedRecipeCard extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: _ChefColors.text,
+                                color: Colors.white,
                                 fontSize: 24,
                                 height: 1.05,
                                 fontWeight: FontWeight.w800,
@@ -446,9 +460,9 @@ class _FeaturedRecipeCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_forward_rounded,
-                          color: _ChefColors.bg,
+                          color: Theme.of(context).colorScheme.onPrimary,
                         ),
                       ),
                     ],
@@ -472,7 +486,7 @@ class _CompactRecipeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _ChefColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       borderRadius: AppRadius.lg,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -501,8 +515,8 @@ class _CompactRecipeTile extends StatelessWidget {
                             recipe.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: _ChefColors.text,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontSize: 15,
                               height: 1.25,
                               fontWeight: FontWeight.w700,
@@ -510,9 +524,9 @@ class _CompactRecipeTile extends StatelessWidget {
                           ),
                         ),
                         if (recipe.isPremium)
-                          const Icon(
+                          Icon(
                             Icons.workspace_premium_rounded,
-                            color: _ChefColors.accent,
+                            color: Theme.of(context).colorScheme.primary,
                             size: 16,
                           ),
                       ],
@@ -522,8 +536,8 @@ class _CompactRecipeTile extends StatelessWidget {
                       '${recipe.totalTimeMinutes} хв · ${recipe.cuisine}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _ChefColors.muted,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
@@ -572,12 +586,12 @@ class _ImageFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _ChefColors.surfaceStrong,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       alignment: Alignment.center,
       child: Icon(
         Icons.restaurant_menu_rounded,
         size: iconSize,
-        color: _ChefColors.muted,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     );
   }
@@ -604,15 +618,19 @@ class _GoldBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.star_rounded, size: 13, color: _ChefColors.bg),
-          SizedBox(width: 4),
+          Icon(
+            Icons.star_rounded,
+            size: 13,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+          const SizedBox(width: 4),
           Text(
             'Рекомендоване',
             style: TextStyle(
-              color: _ChefColors.bg,
+              color: Theme.of(context).colorScheme.onPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w800,
               letterSpacing: .6,
@@ -685,18 +703,9 @@ class _SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: _ChefColors.surface,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
-}
-
-class _ChefColors {
-  static const bg = Color(0xFF16130F);
-  static const surface = Color(0xFF221D16);
-  static const surfaceStrong = Color(0xFF2E2820);
-  static const text = Color(0xFFF3E9DA);
-  static const muted = Color(0xFFB9AC98);
-  static const accent = Color(0xFFD9A441);
 }
