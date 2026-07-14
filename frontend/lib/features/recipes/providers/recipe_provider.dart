@@ -113,6 +113,11 @@ final recipeDetailProvider =
   return recipeService.getRecipe(recipeId);
 });
 
+final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
+  final recipeService = ref.watch(recipeServiceProvider);
+  return recipeService.getFavoriteRecipes();
+});
+
 // Recipe service provider
 final recipeServiceProvider = Provider<RecipeService>((ref) {
   return RecipeService();

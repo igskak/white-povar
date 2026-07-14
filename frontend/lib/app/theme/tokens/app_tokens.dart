@@ -26,18 +26,18 @@ class AppElevation {
 }
 
 class AppColorsV2 {
-  static const Color bg = Color(0xFFF6F1E8);
-  static const Color surface = Color(0xFFFFFBF4);
-  static const Color surfaceStrong = Color(0xFFEDE4D6);
-  static const Color textPrimary = Color(0xFF242019);
-  static const Color textSecondary = Color(0xFF6F675C);
-  static const Color accent = Color(0xFFA94428);
-  static const Color accentDark = Color(0xFF923B22);
-  static const Color ink = Color(0xFF1F3027);
-  static const Color onInk = Color(0xFFF9F2E7);
-  static const Color success = Color(0xFF2D8F5B);
-  static const Color warning = Color(0xFFC2842E);
-  static const Color error = Color(0xFFB00020);
+  static const Color bg = Color(0xFFF5EEE1);
+  static const Color surface = Color(0xFFFDF8EE);
+  static const Color surfaceStrong = Color(0xFFEBE0CC);
+  static const Color textPrimary = Color(0xFF1C1710);
+  static const Color textSecondary = Color(0xFF7C7159);
+  static const Color accent = Color(0xFFA87B24);
+  static const Color accentDark = Color(0xFF7A5A1A);
+  static const Color ink = Color(0xFF16130F);
+  static const Color onInk = Color(0xFFF3E9DA);
+  static const Color success = Color(0xFF3E6B4A);
+  static const Color warning = Color(0xFFB0832E);
+  static const Color error = Color(0xFFA8362A);
 }
 
 class AppMotion {

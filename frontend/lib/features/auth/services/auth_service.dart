@@ -64,8 +64,7 @@ class AuthService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo:
-            kIsWeb ? 'https://white-povar.web.app/auth/callback' : null,
+        emailRedirectTo: kIsWeb ? AppConfig.webAuthCallbackUrl : null,
       );
 
       if (response.user != null) {
@@ -85,7 +84,7 @@ class AuthService {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb
-            ? 'https://qnlfvpqmkmbvzmzqgjpo.supabase.co/auth/v1/callback'
+            ? AppConfig.webAuthCallbackUrl
             : 'io.supabase.cookingapp://login-callback',
       );
     } catch (e) {
@@ -120,7 +119,10 @@ class AuthService {
 
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: kIsWeb ? AppConfig.webAuthCallbackUrl : null,
+      );
     } catch (e) {
       throw Exception('Password reset failed: $e');
     }

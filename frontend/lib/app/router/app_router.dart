@@ -108,8 +108,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final image = state.extra;
               if (image is! XFile) {
                 return const _RouteErrorScreen(
-                  title: 'Photo missing',
-                  subtitle: 'Capture a photo first to continue review.',
+                  title: 'Фото не знайдено',
+                  subtitle: 'Спочатку зробіть фото, щоб перейти до перевірки.',
                 );
               }
               return IngredientReviewPage(capturedImage: image);
@@ -129,8 +129,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final recipeId = state.pathParameters['id'];
               if (recipeId == null || recipeId.isEmpty) {
                 return const _RouteErrorScreen(
-                  title: 'Recipe not found',
-                  subtitle: 'Invalid recipe id.',
+                  title: 'Рецепт не знайдено',
+                  subtitle: 'Некоректний ідентифікатор рецепта.',
                 );
               }
               return RecipeDetailPage(recipeId: recipeId);
@@ -142,8 +142,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final recipeId = state.pathParameters['id'];
               if (recipeId == null || recipeId.isEmpty) {
                 return const _RouteErrorScreen(
-                  title: 'Recipe not found',
-                  subtitle: 'Invalid recipe id.',
+                  title: 'Рецепт не знайдено',
+                  subtitle: 'Некоректний ідентифікатор рецепта.',
                 );
               }
               return CookingModePage(recipeId: recipeId);
@@ -154,8 +154,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
     errorBuilder: (context, state) {
       return const _RouteErrorScreen(
-        title: 'Route not found',
-        subtitle: 'Please return to Home tab.',
+        title: 'Сторінку не знайдено',
+        subtitle: 'Поверніться на головний екран.',
       );
     },
   );
@@ -194,30 +194,84 @@ class _AppShellScaffold extends StatelessWidget {
     final showNavigation = !location.startsWith(AppRoutePaths.camera) &&
         !location.startsWith('/recipes/');
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: showNavigation
-          ? NavigationBar(
-              selectedIndex: selectedIndex,
-              onDestinationSelected: (index) {
-                context.go(AppRoutePaths.tabLocations[index]);
-              },
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.home_outlined), label: 'Home'),
-                NavigationDestination(
-                    icon: Icon(Icons.search), label: 'Discover'),
-                NavigationDestination(
-                  icon: Icon(Icons.bookmark_border_rounded),
-                  label: 'Saved',
+    if (!showNavigation) {
+      return Scaffold(body: child);
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 600) {
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: selectedIndex,
+                  labelType: NavigationRailLabelType.all,
+                  onDestinationSelected: (index) {
+                    context.go(AppRoutePaths.tabLocations[index]);
+                  },
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home_rounded),
+                      label: Text('Головна'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.search_outlined),
+                      selectedIcon: Icon(Icons.search),
+                      label: Text('Пошук'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.bookmark_border_rounded),
+                      selectedIcon: Icon(Icons.bookmark_rounded),
+                      label: Text('Збережене'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.person_outline),
+                      selectedIcon: Icon(Icons.person_rounded),
+                      label: Text('Профіль'),
+                    ),
+                  ],
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  label: 'Profile',
-                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: child),
               ],
-            )
-          : null,
+            ),
+          );
+        }
+
+        return Scaffold(
+          body: child,
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: (index) {
+              context.go(AppRoutePaths.tabLocations[index]);
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Головна',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.search_outlined),
+                selectedIcon: Icon(Icons.search),
+                label: 'Пошук',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bookmark_border_rounded),
+                selectedIcon: Icon(Icons.bookmark_rounded),
+                label: 'Збережене',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'Профіль',
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -258,7 +312,7 @@ class _RouteErrorScreen extends StatelessWidget {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => context.go(AppRoutePaths.home),
-                child: const Text('Go home'),
+                child: const Text('На головну'),
               ),
             ],
           ),

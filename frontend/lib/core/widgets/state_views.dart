@@ -5,7 +5,7 @@ import '../../app/theme/tokens/app_tokens.dart';
 class StateView extends StatelessWidget {
   const StateView.loading({
     super.key,
-    this.title = 'Loading...',
+    this.title = 'Завантаження...',
     this.subtitle,
   })  : icon = Icons.hourglass_top_rounded,
         onRetry = null,
@@ -23,11 +23,11 @@ class StateView extends StatelessWidget {
 
   const StateView.error({
     super.key,
-    this.title = 'Something went wrong',
+    this.title = 'Щось пішло не так',
     this.subtitle,
     this.icon = Icons.error_outline_rounded,
     this.onRetry,
-    this.actionLabel = 'Retry',
+    this.actionLabel = 'Повторити',
   }) : isLoading = false;
 
   final String title;

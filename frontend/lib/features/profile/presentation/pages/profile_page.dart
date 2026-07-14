@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../auth/providers/auth_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
@@ -12,7 +13,7 @@ class ProfilePage extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Profile')),
+        appBar: AppBar(title: const Text('Профіль')),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 460),
@@ -24,13 +25,13 @@ class ProfilePage extends ConsumerWidget {
                   const Icon(Icons.person_outline_rounded, size: 64),
                   const SizedBox(height: 20),
                   Text(
-                    'Make the kitchen yours',
+                    'Зробіть кухню своєю',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Sign in to save recipes, remember your preferences, and continue on any device.',
+                    'Увійдіть, щоб зберігати рецепти, памʼятати налаштування і продовжувати на будь-якому пристрої.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
@@ -38,7 +39,7 @@ class ProfilePage extends ConsumerWidget {
                   FilledButton.icon(
                     onPressed: () => context.go('/login'),
                     icon: const Icon(Icons.login),
-                    label: const Text('Sign in'),
+                    label: const Text('Увійти'),
                   ),
                 ],
               ),
@@ -47,21 +48,21 @@ class ProfilePage extends ConsumerWidget {
         ),
       );
     }
-    final email = user.email ?? 'No email';
+    final email = user.email ?? 'Email не вказано';
     final userId = user.id;
     final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Профіль'),
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppSpacing.md),
           children: [
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -74,13 +75,13 @@ class ProfilePage extends ConsumerWidget {
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Signed in as',
+                            'Ви увійшли як',
                             style: theme.textTheme.labelLarge,
                           ),
                           const SizedBox(height: 4),
@@ -100,48 +101,48 @@ class ProfilePage extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Card(
               child: Column(
                 children: [
                   ListTile(
                     leading: const Icon(Icons.workspace_premium_outlined),
-                    title: const Text('Subscription'),
+                    title: const Text('Підписка'),
                     subtitle:
-                        const Text('Current tier, feature access, and upgrade'),
+                        const Text('Поточний рівень і доступні можливості'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.go('/subscription'),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.settings_outlined),
-                    title: const Text('Settings'),
-                    subtitle: const Text('App preferences and account actions'),
+                    title: const Text('Налаштування'),
+                    subtitle: const Text('Тема, уподобання і дії акаунта'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/settings'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.help_outline),
-                title: const Text('Need help with billing?'),
+                title: const Text('Потрібна допомога з підпискою?'),
                 subtitle: const Text(
-                  'Open Subscription to review premium status and next steps.',
+                  'Відкрийте розділ підписки, щоб перевірити статус premium.',
                 ),
                 trailing: TextButton(
                   onPressed: () => context.go('/subscription'),
-                  child: const Text('Open'),
+                  child: const Text('Відкрити'),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton.tonalIcon(
               onPressed: () => ref.read(authProvider.notifier).signOut(),
               icon: const Icon(Icons.logout),
-              label: const Text('Sign out'),
+              label: const Text('Вийти'),
             ),
           ],
         ),

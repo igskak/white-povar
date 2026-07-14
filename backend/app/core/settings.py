@@ -6,7 +6,7 @@ import json
 
 class Settings(BaseSettings):
     # Application
-    app_name: str = "White-Label Cooking App API"
+    app_name: str = "White Povar API"
     version: str = "1.0.0"
     debug: bool = False
     environment: str = "production"
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     firebase_project_id: Optional[str] = None
 
     # CORS - Production ready origins
-    allowed_origins: str = "https://white-povar.web.app,https://white-povar.firebaseapp.com,http://localhost:3000,http://localhost:8080"
+    allowed_origins: str = "https://white-povar.onrender.com,http://localhost:3000,http://localhost:8080"
 
     # Database
     database_url: Optional[str] = None
@@ -40,14 +40,14 @@ class Settings(BaseSettings):
     max_file_size: int = 10 * 1024 * 1024  # 10MB
 
     # System Standardization Settings
-    default_locale: str = "en"
+    default_locale: str = "uk"
     default_unit_system: str = "metric"
     default_temperature_unit: str = "C"
     default_timezone: str = "UTC"
     default_currency: str = "EUR"
     canonical_date_format: str = "ISO_8601"
     data_normalize_input: bool = True
-    supported_locales: str = "en,it"
+    supported_locales: str = "uk,en,it"
 
     # Measurement Settings
     ingredient_round_decimals: int = 1
@@ -55,8 +55,8 @@ class Settings(BaseSettings):
     enable_auto_translate: bool = True
 
     # Search and AI Settings
-    search_language: str = "en"
-    ai_target_lang: str = "en"
+    search_language: str = "uk"
+    ai_target_lang: str = "uk"
 
     # Pagination
     default_page_size: int = 20
@@ -84,7 +84,20 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """Parse allowed_origins string into a list for CORS configuration"""
-        return [origin.strip() for origin in self.allowed_origins.split(",")]
+        origins = [
+            origin.strip()
+            for origin in self.allowed_origins.split(",")
+            if origin.strip()
+        ]
+        if self.environment != "production":
+            for origin in ("http://localhost:3000", "http://localhost:8080"):
+                if origin not in origins:
+                    origins.append(origin)
+        return origins
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() == "production"
 
     @property
     def supported_locales_list(self) -> List[str]:

@@ -11,12 +11,14 @@ class WhitePovarAppV2 extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final theme = ref.watch(appThemeV2Provider);
+    final themeMode = ref.watch(appThemeModeProvider);
 
     return MaterialApp.router(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
-      theme: theme,
+      theme: AppThemeV2.light(),
+      darkTheme: AppThemeV2.dark(),
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

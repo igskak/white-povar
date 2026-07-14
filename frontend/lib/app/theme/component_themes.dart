@@ -22,7 +22,7 @@ class ComponentThemes {
   static InputDecorationTheme inputDecorationTheme(ColorScheme scheme) {
     return InputDecorationTheme(
       filled: true,
-      fillColor: AppColorsV2.surface,
+      fillColor: scheme.surface,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -46,7 +46,7 @@ class ComponentThemes {
   static CardTheme cardTheme(ColorScheme scheme) {
     return CardTheme(
       color: scheme.surface,
-      elevation: AppElevation.level1,
+      elevation: AppElevation.level0,
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.lg),
       margin: const EdgeInsets.all(AppSpacing.xs),
     );

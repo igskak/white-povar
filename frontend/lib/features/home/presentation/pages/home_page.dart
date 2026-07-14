@@ -45,8 +45,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   AppSpacing.md,
                 ),
                 child: _SectionHeader(
-                  title: 'Cook something memorable',
-                  action: 'Explore all',
+                  title: 'Стрічка шефа',
+                  action: 'Усі рецепти',
                   onTap: () => context.go('/search'),
                 ),
               ),
@@ -66,8 +66,9 @@ class _HomePageState extends ConsumerState<HomePage> {
           return const [
             SliverToBoxAdapter(
               child: StateView.empty(
-                title: 'The kitchen is quiet',
-                subtitle: 'Fresh recipes will appear here soon.',
+                title: 'На кухні поки тихо',
+                subtitle:
+                    'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
                 icon: Icons.menu_book_outlined,
               ),
             ),
@@ -111,15 +112,15 @@ class _HomePageState extends ConsumerState<HomePage> {
       loading: () => const [
         SliverToBoxAdapter(
           child: StateView.loading(
-            title: 'Setting the table',
-            subtitle: 'Finding recipes worth cooking...',
+            title: 'Накриваємо стіл',
+            subtitle: 'Підбираємо рецепти, які варто приготувати.',
           ),
         ),
       ],
       error: (error, _) => [
         SliverToBoxAdapter(
           child: StateView.error(
-            title: 'We could not open the cookbook',
+            title: 'Не вдалося відкрити кулінарну книгу',
             subtitle: error.toString(),
             onRetry: () => ref.read(recipeListProvider.notifier).loadRecipes(),
           ),
@@ -171,7 +172,7 @@ class _HomeHeader extends StatelessWidget {
                         ),
                   ),
                   Text(
-                    'Your everyday kitchen companion',
+                    'Ваш кулінарний помічник',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -179,7 +180,7 @@ class _HomeHeader extends StatelessWidget {
             ),
             IconButton(
               onPressed: () => context.go('/profile'),
-              tooltip: 'Open profile',
+              tooltip: 'Відкрити профіль',
               icon: const Icon(Icons.account_circle_outlined),
             ),
           ],
@@ -222,7 +223,7 @@ class _PantryHero extends StatelessWidget {
                     borderRadius: AppRadius.xl,
                   ),
                   child: const Text(
-                    'COOK WITH WHAT YOU HAVE',
+                    'ГОТУЙТЕ З ТОГО, ЩО Є',
                     style: TextStyle(
                       color: AppColorsV2.onInk,
                       fontSize: 11,
@@ -233,7 +234,7 @@ class _PantryHero extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  'Turn your pantry\ninto dinner.',
+                  'Перетворіть запаси\nна вечерю.',
                   style: theme.textTheme.headlineLarge?.copyWith(
                     color: AppColorsV2.onInk,
                     fontSize: wide ? 48 : 38,
@@ -241,7 +242,7 @@ class _PantryHero extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Snap your ingredients and we will find recipes that make the most of them.',
+                  'Сфотографуйте інгредієнти, а ми підберемо рецепти, які використовують їх найкраще.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: AppColorsV2.onInk.withOpacity(.72),
                   ),
@@ -258,7 +259,7 @@ class _PantryHero extends StatelessWidget {
                       ),
                       onPressed: () => context.go('/camera'),
                       icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Scan ingredients'),
+                      label: const Text('Сканувати інгредієнти'),
                     ),
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
@@ -269,7 +270,7 @@ class _PantryHero extends StatelessWidget {
                       ),
                       onPressed: () => context.go('/search'),
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Type them in'),
+                      label: const Text('Ввести вручну'),
                     ),
                   ],
                 ),
@@ -344,7 +345,7 @@ class _EditorialRecipeCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Semantics(
       button: true,
-      label: 'Open recipe ${recipe.title}',
+      label: 'Відкрити рецепт ${recipe.title}',
       child: Material(
         color: AppColorsV2.surface,
         borderRadius: AppRadius.lg,
@@ -396,7 +397,7 @@ class _EditorialRecipeCard extends StatelessWidget {
                       children: [
                         const Icon(Icons.schedule_rounded, size: 16),
                         const SizedBox(width: AppSpacing.xxs),
-                        Text('${recipe.totalTimeMinutes} min'),
+                        Text('${recipe.totalTimeMinutes} хв'),
                         const SizedBox(width: AppSpacing.md),
                         const Icon(Icons.restaurant_outlined, size: 16),
                         const SizedBox(width: AppSpacing.xxs),

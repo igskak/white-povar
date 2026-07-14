@@ -1,32 +1,93 @@
 services:
   - type: web
-    name: white-povar-backend
-    env: python
+    name: white-povar
+    runtime: static
+    rootDir: frontend
+    buildCommand: ./scripts/render-build.sh
+    staticPublishPath: build/web
+    autoDeployTrigger: checksPass
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(self), microphone=(), geolocation=()
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
+      - path: /flutter_bootstrap.js
+        name: Cache-Control
+        value: no-cache
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+      - key: FLUTTER_VERSION
+        value: 3.24.5
+      - key: API_BASE_URL
+        value: https://white-povar-api.onrender.com
+      - key: WEB_APP_URL
+        value: https://white-povar.onrender.com
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+
+  - type: web
+    name: white-povar-api
+    runtime: python
     plan: free
-    pythonVersion: "3.11"
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
     envVars:
       - key: PYTHON_VERSION
         value: 3.11
       - key: ENVIRONMENT
         value: production
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: White Povar API
       - key: SECRET_KEY
         generateValue: true
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
+      - key: ALLOWED_ORIGINS
+        value: https://white-povar.onrender.com
+      - key: DEFAULT_LOCALE
+        value: uk
+      - key: SUPPORTED_LOCALES
+        value: uk,en,it
+      - key: SEARCH_LANGUAGE
+        value: uk
+      - key: AI_TARGET_LANG
+        value: uk
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY
-        sync: false
-      - key: FIREBASE_PROJECT_ID
         sync: false

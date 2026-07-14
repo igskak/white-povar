@@ -1,14 +1,11 @@
-import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../models/recipe.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 
 class RecipeCard extends StatelessWidget {
-  final Recipe recipe;
-  final VoidCallback? onTap;
-  final bool showMatchIndicator;
-  final int matchedIngredients;
-
   const RecipeCard({
     super.key,
     required this.recipe,
@@ -17,229 +14,208 @@ class RecipeCard extends StatelessWidget {
     this.matchedIngredients = 0,
   });
 
+  final Recipe recipe;
+  final VoidCallback? onTap;
+  final bool showMatchIndicator;
+  final int matchedIngredients;
+
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Recipe Image
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: recipe.images.isNotEmpty
-                      ? CachedNetworkImage(
-                          imageUrl: recipe.images.first,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[200],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[200],
-                            child: const Icon(
-                              Icons.restaurant_menu,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.restaurant_menu,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                        ),
-                ),
-                // Premium badge
-                if (recipe.isPremium)
-                  const Positioned(
-                    top: 8,
-                    left: 8,
-                    child: PremiumBadge(size: 24),
-                  ),
-                // Video indicator
-                if (recipe.videoUrl != null || recipe.videoFilePath != null)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.play_circle_fill,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                if (showMatchIndicator && matchedIngredients > 0)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            size: 16,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$matchedIngredients match',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+    final theme = Theme.of(context);
 
-            // Recipe Info
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Semantics(
+      button: onTap != null,
+      label: 'Відкрити рецепт ${recipe.title}',
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  // Title and Featured Badge
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          recipe.title,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (recipe.isFeatured)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Featured',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
+                  AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: recipe.images.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: recipe.images.first,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) =>
+                                const _ImageFallback(isLoading: true),
+                            errorWidget: (context, url, error) =>
+                                const _ImageFallback(),
+                          )
+                        : const _ImageFallback(),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // Description
-                  Text(
-                    recipe.description,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Recipe Details
-                  Row(
-                    children: [
-                      _InfoChip(
-                        icon: Icons.schedule,
-                        label: '${recipe.totalTimeMinutes} min',
+                  if (recipe.isPremium)
+                    const Positioned(
+                      top: AppSpacing.sm,
+                      left: AppSpacing.sm,
+                      child: PremiumBadge(size: 24),
+                    ),
+                  if (recipe.isFeatured)
+                    const Positioned(
+                      left: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: _Badge(
+                        icon: Icons.local_fire_department_outlined,
+                        label: 'Вибір шефа',
                       ),
-                      const SizedBox(width: 8),
-                      _InfoChip(
-                        icon: Icons.people,
-                        label: '${recipe.servings} servings',
+                    ),
+                  if (recipe.videoUrl != null || recipe.videoFilePath != null)
+                    const Positioned(
+                      top: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      child: _CircleBadge(icon: Icons.play_arrow_rounded),
+                    ),
+                  if (showMatchIndicator && matchedIngredients > 0)
+                    Positioned(
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: _Badge(
+                        icon: Icons.check_circle_outline,
+                        label: '$matchedIngredients збіг',
                       ),
-                      const SizedBox(width: 8),
-                      _InfoChip(
-                        icon: Icons.star,
-                        label: 'Level ${recipe.difficulty}',
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  // Cuisine and Category
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          recipe.cuisine,
-                          style: TextStyle(
-                            color: Colors.blue[700],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          recipe.category,
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.title,
+                      style: theme.textTheme.titleLarge,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      recipe.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColorsV2.textSecondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        _InfoChip(
+                          icon: Icons.schedule_rounded,
+                          label: '${recipe.totalTimeMinutes} хв',
+                        ),
+                        _InfoChip(
+                          icon: Icons.people_outline_rounded,
+                          label: '${recipe.servings} порц.',
+                        ),
+                        _InfoChip(
+                          icon: Icons.restaurant_menu_rounded,
+                          label: recipe.cuisine,
+                        ),
+                        _InfoChip(
+                          icon: Icons.speed_rounded,
+                          label: 'Рівень ${recipe.difficulty}',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImageFallback extends StatelessWidget {
+  const _ImageFallback({this.isLoading = false});
+
+  final bool isLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColorsV2.surfaceStrong,
+      alignment: Alignment.center,
+      child: isLoading
+          ? const SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            )
+          : const Icon(
+              Icons.restaurant_menu_rounded,
+              size: 44,
+              color: AppColorsV2.textSecondary,
+            ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: AppColorsV2.textSecondary),
+        const SizedBox(width: AppSpacing.xxs),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColorsV2.ink.withOpacity(.86),
+        borderRadius: AppRadius.sm,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: AppColorsV2.onInk),
+            const SizedBox(width: AppSpacing.xxs),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColorsV2.onInk,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
           ],
         ),
@@ -248,34 +224,22 @@ class RecipeCard extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
+class _CircleBadge extends StatelessWidget {
+  const _CircleBadge({required this.icon});
 
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-  });
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 16,
-          color: Colors.grey[600],
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColorsV2.ink.withOpacity(.82),
+        shape: BoxShape.circle,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        child: Icon(icon, size: 20, color: AppColorsV2.onInk),
+      ),
     );
   }
 }

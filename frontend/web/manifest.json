@@ -1,11 +1,11 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "White Povar",
+    "short_name": "White Povar",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F5EEE1",
+    "theme_color": "#A87B24",
+    "description": "Персональний кулінарний застосунок для рецептів, пошуку страв і приготування.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

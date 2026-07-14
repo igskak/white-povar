@@ -23,9 +23,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
-    description="Backend API for White-Label Cooking App",
+    description="Backend API for White Povar",
     debug=settings.debug,
     lifespan=lifespan,
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
 )
 
 # Configure CORS
@@ -52,9 +55,9 @@ app.include_router(subscription.router, prefix="/api/v1/subscription", tags=["su
 
 @app.get("/")
 async def root():
-    """Root endpoint - API health check"""
+    """Root endpoint for API service identity checks."""
     return {
-        "message": "White-Label Cooking App API",
+        "message": "White Povar API",
         "version": settings.version,
         "status": "healthy"
     }
@@ -63,6 +66,27 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "environment": settings.environment}
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Readiness check for required production configuration."""
+    missing = []
+    for key, value in {
+        "SUPABASE_URL": settings.supabase_url,
+        "SUPABASE_KEY": settings.supabase_key,
+        "SUPABASE_SERVICE_KEY": settings.supabase_service_key,
+        "OPENAI_API_KEY": settings.openai_api_key,
+    }.items():
+        if not value:
+            missing.append(key)
+
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "not_ready", "missing": missing},
+        )
+
+    return {"status": "ready", "environment": settings.environment}
 
 if settings.environment == "development":
     @app.get("/admin_video_upload.html", include_in_schema=False)
