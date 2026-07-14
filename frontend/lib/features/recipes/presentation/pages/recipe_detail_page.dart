@@ -283,6 +283,8 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColorsV2.surfaceStrong,
@@ -298,10 +300,17 @@ class _StatCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    label,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColorsV2.textSecondary,
+                    ),
+                  ),
                   Text(
                     value,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: textTheme.titleLarge?.copyWith(
+                      color: AppColorsV2.textPrimary,
+                    ),
                   ),
                 ],
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/config/app_config.dart';
 
 class RecipeVideoWidget extends StatefulWidget {
@@ -88,14 +89,14 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
         if (mounted) {
           setState(() {
             _hasError = true;
-            _errorMessage = 'Failed to load video: $error';
+            _errorMessage = 'Не вдалося завантажити відео';
           });
         }
       });
     } catch (e) {
       setState(() {
         _hasError = true;
-        _errorMessage = 'Error initializing video: $e';
+        _errorMessage = 'Не вдалося підготувати відео';
       });
     }
   }
@@ -134,7 +135,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Error loading video',
+                  'Не вдалося завантажити відео',
                   style: TextStyle(color: Colors.white),
                 ),
               ],
@@ -169,14 +170,14 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
           if (mounted) {
             setState(() {
               _hasError = true;
-              _errorMessage = 'Failed to load video: $error';
+              _errorMessage = 'Не вдалося завантажити відео';
             });
           }
         });
       } catch (e) {
         setState(() {
           _hasError = true;
-          _errorMessage = 'Error loading video: $e';
+          _errorMessage = 'Не вдалося завантажити відео';
         });
       }
     }
@@ -209,7 +210,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     } else if (url.contains('dailymotion.com')) {
       return 'Dailymotion';
     }
-    return 'External Video';
+    return 'зовнішньому сервісі';
   }
 
   IconData _getPlatformIcon(String url) {
@@ -238,9 +239,9 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to open video: $e'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('Не вдалося відкрити відео'),
+            backgroundColor: AppColorsV2.error,
           ),
         );
       }
@@ -255,8 +256,17 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       return const SizedBox.shrink();
     }
 
-    final height = widget.height ?? 200.0;
     final borderRadius = widget.borderRadius ?? BorderRadius.circular(12);
+    final isCompactExternalLink = widget.videoFilePath == null &&
+        widget.videoUrl != null &&
+        widget.videoUrl!.isNotEmpty &&
+        !_isDirectVideoUrl(widget.videoUrl!);
+
+    if (isCompactExternalLink) {
+      return _buildExternalVideoLink();
+    }
+
+    final height = widget.height ?? 200.0;
 
     return Container(
       height: height,
@@ -296,47 +306,44 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     final platformName = _getPlatformName(url);
     final platformIcon = _getPlatformIcon(url);
 
-    return InkWell(
-      onTap: () => _launchUrl(url),
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.blue.withOpacity(0.8),
-              Colors.purple.withOpacity(0.8),
-            ],
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: AppColorsV2.accent,
+        borderRadius: AppRadius.sm,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _launchUrl(url),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  platformIcon,
+                  size: 20,
+                  color: AppColorsV2.ink,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  'Дивитися в $platformName',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColorsV2.ink,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(
+                  Icons.open_in_new_rounded,
+                  size: 16,
+                  color: AppColorsV2.ink,
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              platformIcon,
-              size: 48,
-              color: Colors.white,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Watch on $platformName',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Tap to open',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -365,7 +372,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-            _errorMessage ?? 'Failed to load video',
+            _errorMessage ?? 'Не вдалося завантажити відео',
             style: TextStyle(
               color: Colors.grey[600],
               fontSize: 14,

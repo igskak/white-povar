@@ -133,13 +133,13 @@ def _recipe_payload_to_rows(payload: Dict[str, Any], *, partial: bool = False) -
 def _get_unit_name_from_id(unit_id: str) -> str:
     """Convert unit_id to unit name"""
     if not unit_id:
-        return 'unit'
+        return 'од.'
 
     # Simple unit mapping - in production you'd query the units table
     unit_mapping = {
         '00000000-0000-0000-0000-000000000001': 'g',
         '00000000-0000-0000-0000-000000000010': 'ml',
-        '00000000-0000-0000-0000-000000000020': 'piece',
+        '00000000-0000-0000-0000-000000000020': 'шт',
         '00000000-0000-0000-0000-000000000031': 'tbsp',
         '00000000-0000-0000-0000-000000000032': 'tsp',
         '00000000-0000-0000-0000-000000000002': 'kg',
@@ -148,33 +148,33 @@ def _get_unit_name_from_id(unit_id: str) -> str:
         '00000000-0000-0000-0000-000000000041': 'oz',
         '00000000-0000-0000-0000-000000000051': 'lb'
     }
-    return unit_mapping.get(unit_id, 'unit')
+    return unit_mapping.get(unit_id, 'од.')
 
 
 def _get_category_name_from_id(category_id: str) -> str:
     """Convert category_id to category name"""
     if not category_id:
-        return 'Unknown'
+        return 'Інше'
 
     # Category mapping based on database
     category_mapping = {
-        '20000000-0000-0000-0000-000000000001': 'Appetizers',
-        '20000000-0000-0000-0000-000000000002': 'First Courses',
-        '20000000-0000-0000-0000-000000000003': 'Second Courses',
-        '20000000-0000-0000-0000-000000000004': 'Side Dishes',
-        '20000000-0000-0000-0000-000000000005': 'Desserts',
-        '20000000-0000-0000-0000-000000000006': 'Beverages',
-        '20000000-0000-0000-0000-000000000007': 'Bread & Baked Goods',
-        '20000000-0000-0000-0000-000000000008': 'Salads',
-        '20000000-0000-0000-0000-000000000099': 'Other'
+        '20000000-0000-0000-0000-000000000001': 'Закуски',
+        '20000000-0000-0000-0000-000000000002': 'Перші страви',
+        '20000000-0000-0000-0000-000000000003': 'Другі страви',
+        '20000000-0000-0000-0000-000000000004': 'Гарніри',
+        '20000000-0000-0000-0000-000000000005': 'Десерти',
+        '20000000-0000-0000-0000-000000000006': 'Напої',
+        '20000000-0000-0000-0000-000000000007': 'Хліб і випічка',
+        '20000000-0000-0000-0000-000000000008': 'Салати',
+        '20000000-0000-0000-0000-000000000099': 'Інше'
     }
-    return category_mapping.get(category_id, 'Unknown')
+    return category_mapping.get(category_id, 'Інше')
 
 
 def _extract_cuisine_from_tags(tags: list) -> str:
     """Extract cuisine from tags"""
     if not tags:
-        return 'Unknown'
+        return 'Інше'
 
     # Common cuisines to look for in tags
     cuisines = [
@@ -190,7 +190,7 @@ def _extract_cuisine_from_tags(tags: list) -> str:
             if tag.lower() == cuisine.lower():
                 return cuisine
 
-    return 'Unknown'
+    return 'Інше'
 
 def _normalize_instructions(instructions_data):
     """Normalize instructions data to List[str]"""
@@ -203,7 +203,7 @@ def _normalize_instructions(instructions_data):
         else:
             return [instructions_data]
     else:
-        return ["No instructions provided"]
+        return ["Інструкції не вказані"]
 
 def _normalize_images(images_data):
     """Normalize images data to List[str]"""

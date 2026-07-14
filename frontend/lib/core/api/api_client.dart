@@ -20,7 +20,10 @@ class ApiClient {
             connectTimeout: connectTimeout,
             receiveTimeout: receiveTimeout,
             sendTimeout: sendTimeout,
-            headers: const {'Content-Type': 'application/json'},
+            headers: const {
+              'Content-Type': 'application/json',
+              'Accept-Language': 'uk',
+            },
           ),
         ) {
     _dio.interceptors.add(AuthInterceptor(tokenProvider: tokenProvider));
