@@ -34,7 +34,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.text('Scan ingredients'), findsOneWidget);
+      expect(find.text('Сканувати інгредієнти'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Test Pasta'),
         300,
@@ -61,7 +61,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.text('No recipes found'), findsOneWidget);
+      expect(find.text('Нічого не знайшли'), findsOneWidget);
     });
 
     testWidgets('Camera journey: results screen renders recipe matches', (
@@ -93,7 +93,7 @@ void main() {
 
       await tester.pump();
 
-      expect(find.text('No recipe matches found'), findsOneWidget);
+      expect(find.text('Рецепти не знайдено'), findsOneWidget);
     });
   });
 }

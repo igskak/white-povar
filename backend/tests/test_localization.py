@@ -28,7 +28,7 @@ class TestLocalizationContext:
         request = self.create_mock_request()
         context = LocalizationContext(request)
         
-        assert context.primary_language == "en"
+        assert context.primary_language == "uk"
         assert context.unit_system == "metric"
         assert context.currency == "EUR"
         assert context.timezone == "UTC"
@@ -117,7 +117,7 @@ class TestLocalizationContext:
         context = LocalizationContext(request)
         
         assert context.should_translate_to("it") is True
-        assert context.should_translate_to("en") is False  # Default language
+        assert context.should_translate_to("en") is True
         assert context.should_translate_to("fr") is False  # Not requested
     
     def test_get_preferred_language(self):
@@ -135,9 +135,9 @@ class TestLocalizationContext:
         preferred = context.get_preferred_language(["en", "de", "fr"])
         assert preferred == "en"
         
-        # Should fall back to default if none available
+        # Should fall back to the configured default locale if none available
         preferred = context.get_preferred_language(["de", "fr", "es"])
-        assert preferred == "en"
+        assert preferred == "uk"
     
     def test_to_dict(self):
         """Test conversion to dictionary"""
@@ -369,7 +369,7 @@ class TestLocalizationMiddleware:
         data = response.json()
         
         # Should fall back to default language
-        assert data["current_language"] == "en"
+        assert data["current_language"] == "uk"
 
 
 class TestLocalizationEdgeCases:
@@ -384,7 +384,7 @@ class TestLocalizationEdgeCases:
         context = LocalizationContext(request)
         
         # Should fall back to default
-        assert context.primary_language == "en"
+        assert context.primary_language == "uk"
     
     def test_empty_accept_language_header(self):
         """Test handling of empty Accept-Language header"""
@@ -394,7 +394,7 @@ class TestLocalizationEdgeCases:
         
         context = LocalizationContext(request)
         
-        assert context.primary_language == "en"
+        assert context.primary_language == "uk"
     
     def test_invalid_unit_system(self):
         """Test handling of invalid unit system values"""

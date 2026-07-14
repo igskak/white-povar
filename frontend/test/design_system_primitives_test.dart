@@ -43,7 +43,7 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Retry'));
+    await tester.tap(find.text('Повторити'));
     await tester.pump();
 
     expect(tapped, isTrue);
