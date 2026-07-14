@@ -186,5 +186,4 @@ class AppThemeV2 {
   }
 }
 
-final appThemeModeProvider =
-    StateProvider<ThemeMode>((ref) => ThemeMode.system);
+final appThemeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.dark);
