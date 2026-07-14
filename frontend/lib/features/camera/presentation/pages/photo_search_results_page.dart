@@ -22,7 +22,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
         .toSet();
 
     return CameraFlowScaffold(
-      title: 'Recipe Results',
+      title: 'Підібрані рецепти',
       step: CameraFlowStep.results,
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -32,7 +32,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Back to review'),
+                label: const Text('Назад'),
               ),
             ),
             const SizedBox(width: 10),
@@ -40,7 +40,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
               child: OutlinedButton.icon(
                 onPressed: () => context.go('/camera'),
                 icon: const Icon(Icons.camera_alt_outlined),
-                label: const Text('Start over'),
+                label: const Text('Нове фото'),
               ),
             ),
           ],
@@ -61,14 +61,14 @@ class PhotoSearchResultsPage extends ConsumerWidget {
   }) {
     if (state.isLoading) {
       return const CameraFlowStatusView.loading(
-        title: 'Loading recipe matches',
-        subtitle: 'This usually takes only a moment.',
+        title: 'Завантажуємо рецепти',
+        subtitle: 'Підбираємо найкращі збіги.',
       );
     }
 
     if (state.error != null) {
       return CameraFlowStatusView.error(
-        title: 'Could not load results',
+        title: 'Не вдалося завантажити рецепти',
         subtitle: state.error,
         onRetry: () => context.pop(),
       );
@@ -76,12 +76,11 @@ class PhotoSearchResultsPage extends ConsumerWidget {
 
     if (state.suggestedRecipes.isEmpty) {
       return StateView.empty(
-        title: 'No recipe matches found',
-        subtitle:
-            'Try adjusting ingredients in the previous step or take another photo.',
+        title: 'Рецепти не знайдено',
+        subtitle: 'Спробуйте змінити список продуктів або зробити інше фото.',
         icon: Icons.search_off,
         onRetry: () => context.pop(),
-        actionLabel: 'Back to review',
+        actionLabel: 'Назад до списку',
       );
     }
 
@@ -91,7 +90,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
-            '${state.suggestedRecipes.length} recipes based on ${confirmedIngredients.length} ingredients',
+            'Знайдено рецептів: ${state.suggestedRecipes.length}. Продуктів у пошуку: ${confirmedIngredients.length}.',
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
@@ -100,7 +99,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.78,
+              childAspectRatio: 0.76,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
@@ -122,7 +121,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
                   child: Center(
                     child: Padding(
                       padding: EdgeInsets.all(12),
-                      child: Text('Invalid recipe payload'),
+                      child: Text('Рецепт недоступний'),
                     ),
                   ),
                 );

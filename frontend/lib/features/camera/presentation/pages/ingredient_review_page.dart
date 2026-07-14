@@ -47,12 +47,12 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
     final confirmedCount = ingredients.where((item) => item.isConfirmed).length;
 
     return CameraFlowScaffold(
-      title: 'Review Ingredients',
+      title: 'Перевірка продуктів',
       step: CameraFlowStep.review,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addIngredient,
         icon: const Icon(Icons.add),
-        label: const Text('Add'),
+        label: const Text('Додати'),
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -61,7 +61,7 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
               ? null
               : _searchRecipes,
           icon: const Icon(Icons.search),
-          label: const Text('Find recipes'),
+          label: const Text('Знайти рецепти'),
         ),
       ),
       child: _buildContent(
@@ -79,14 +79,14 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
   }) {
     if (photoSearchState.isLoading) {
       return const CameraFlowStatusView.loading(
-        title: 'Searching recipes',
-        subtitle: 'Matching recipes with your selected ingredients.',
+        title: 'Шукаємо рецепти',
+        subtitle: 'Підбираємо страви під обрані продукти.',
       );
     }
 
     if (photoSearchState.error != null) {
       return CameraFlowStatusView.error(
-        title: 'Could not continue',
+        title: 'Не вдалося продовжити',
         subtitle: photoSearchState.error,
         onRetry: _searchRecipes,
       );
@@ -113,11 +113,11 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
           child: Row(
             children: [
               Text(
-                'Detected ingredients',
+                'Знайдені продукти',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
-              Text('$confirmedCount confirmed'),
+              Text('Підтверджено: $confirmedCount'),
             ],
           ),
         ),
@@ -125,9 +125,8 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
         Expanded(
           child: ingredients.isEmpty
               ? const StateView.empty(
-                  title: 'No ingredients detected',
-                  subtitle:
-                      'Add ingredients manually or go back and retake the photo.',
+                  title: 'Продукти не знайдено',
+                  subtitle: 'Додайте інгредієнти вручну або зробіть нове фото.',
                   icon: Icons.search_off,
                 )
               : IngredientListWidget(

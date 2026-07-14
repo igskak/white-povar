@@ -54,7 +54,7 @@ class CameraService {
       if (!hasPermission) {
         final granted = await requestCameraPermission();
         if (!granted) {
-          throw Exception('Camera permission denied');
+          throw Exception('Доступ до камери не надано');
         }
       }
 
@@ -80,7 +80,7 @@ class CameraService {
       if (!hasPermission) {
         final granted = await requestStoragePermission();
         if (!granted) {
-          throw Exception('Storage permission denied');
+          throw Exception('Доступ до фото не надано');
         }
       }
 

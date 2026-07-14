@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/state_views.dart';
-import '../../../ai/widgets/ai_assistant_button.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
@@ -35,16 +34,6 @@ class RecipeDetailPage extends ConsumerWidget {
           subtitle: error.toString(),
           onRetry: () => ref.invalidate(recipeDetailProvider(recipeId)),
         ),
-      ),
-      floatingActionButton: recipeAsync.when(
-        data: (recipe) => AIAssistantButton(
-          recipeTitle: recipe.title,
-          ingredients: recipe.ingredients.map((ing) => ing.name).toList(),
-          instructions: recipe.instructions,
-          context: 'Recipe: ${recipe.title}',
-        ),
-        loading: () => null,
-        error: (_, __) => null,
       ),
       bottomNavigationBar: recipeAsync.when(
         data: (recipe) => SafeArea(

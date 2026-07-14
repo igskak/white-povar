@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/state_views.dart';
 
 enum CameraFlowStep {
@@ -29,7 +30,12 @@ class CameraFlowScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      backgroundColor: AppColorsV2.ink,
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: AppColorsV2.ink,
+        foregroundColor: AppColorsV2.onInk,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -99,16 +105,18 @@ class _CameraStepHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
       child: Row(
         children: List.generate(labels.length, (index) {
           final stepNumber = index + 1;
           final isDone = stepNumber < currentStep;
           final isCurrent = stepNumber == currentStep;
           final color = isDone || isCurrent
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.outlineVariant;
+              ? AppColorsV2.accent
+              : AppColorsV2.onInk.withOpacity(.18);
 
           return Expanded(
             child: Row(
@@ -118,8 +126,8 @@ class _CameraStepHeader extends StatelessWidget {
                   backgroundColor: color,
                   child: Text(
                     '$stepNumber',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -129,16 +137,19 @@ class _CameraStepHeader extends StatelessWidget {
                 Expanded(
                   child: Text(
                     labels[index],
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontWeight: isCurrent ? FontWeight.w700 : null,
-                        ),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: isCurrent
+                          ? AppColorsV2.onInk
+                          : AppColorsV2.onInk.withOpacity(.52),
+                      fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
+                    ),
                   ),
                 ),
                 if (index < labels.length - 1)
                   Container(
                     width: 16,
                     height: 1,
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                    color: AppColorsV2.onInk.withOpacity(.16),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                   ),
               ],

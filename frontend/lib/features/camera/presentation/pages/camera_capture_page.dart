@@ -38,7 +38,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
     final photoSearchState = ref.watch(photoSearchProvider);
 
     return CameraFlowScaffold(
-      title: 'Camera Search',
+      title: 'Сканування продуктів',
       step: CameraFlowStep.capture,
       child: _buildContent(cameraState, photoSearchState),
     );
@@ -47,7 +47,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
   Widget _buildContent(CameraState cameraState, PhotoSearchState searchState) {
     if (searchState.error != null) {
       return CameraFlowStatusView.error(
-        title: 'Could not analyze photo',
+        title: 'Не вдалося розпізнати фото',
         subtitle: searchState.error,
         onRetry: _analyzeImage,
       );
@@ -55,7 +55,7 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
 
     if (cameraState.error != null) {
       return CameraFlowStatusView.error(
-        title: 'Camera unavailable',
+        title: 'Камера недоступна',
         subtitle: cameraState.error,
         onRetry: () {
           ref.read(cameraProvider.notifier).clearError();
@@ -66,10 +66,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
 
     if (cameraState.isLoading || searchState.isLoading) {
       return CameraFlowStatusView.loading(
-        title: searchState.isLoading ? 'Analyzing photo' : 'Preparing camera',
+        title: searchState.isLoading ? 'Аналізуємо фото' : 'Готуємо камеру',
         subtitle: searchState.isLoading
-            ? 'Detecting ingredients...'
-            : 'Checking permission and camera access.',
+            ? 'Шукаємо продукти та інгредієнти.'
+            : 'Перевіряємо доступ до камери.',
       );
     }
 
@@ -161,25 +161,25 @@ class _PermissionView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const StateView.empty(
-            title: 'Camera permission required',
+            title: 'Потрібен доступ до камери',
             subtitle:
-                'Allow camera access to detect ingredients from photos, or choose an existing image.',
+                'Дайте доступ до камери або оберіть готове фото з галереї.',
             icon: Icons.photo_camera_outlined,
           ),
           const SizedBox(height: 12),
           Semantics(
-            label: 'Grant camera permission',
+            label: 'Дати доступ до камери',
             button: true,
             child: ElevatedButton(
               onPressed: onGrant,
-              child: const Text('Grant camera access'),
+              child: const Text('Дати доступ'),
             ),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onGallery,
             icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Choose from gallery'),
+            label: const Text('Обрати з галереї'),
           ),
         ],
       ),
@@ -198,6 +198,8 @@ class _CameraActionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -207,35 +209,36 @@ class _CameraActionView extends StatelessWidget {
           Container(
             height: 220,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(28),
+              color: theme.colorScheme.surface,
+              border: Border.all(color: Colors.white.withOpacity(.10)),
             ),
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.camera_alt_outlined, size: 56),
                 SizedBox(height: 12),
-                Text('Point camera at ingredients'),
+                Text('Наведіть камеру на продукти'),
                 SizedBox(height: 6),
-                Text('Keep products visible and well lit'),
+                Text('Добре освітліть кадр і не перекривайте упаковки'),
               ],
             ),
           ),
           const SizedBox(height: 20),
           Semantics(
-            label: 'Take ingredients photo',
+            label: 'Зробити фото продуктів',
             button: true,
             child: ElevatedButton.icon(
               onPressed: onCapture,
               icon: const Icon(Icons.camera_alt),
-              label: const Text('Take photo'),
+              label: const Text('Зробити фото'),
             ),
           ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
             onPressed: onGallery,
             icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Choose from gallery'),
+            label: const Text('Обрати з галереї'),
           ),
         ],
       ),
@@ -275,18 +278,18 @@ class _CapturedPreview extends StatelessWidget {
               Expanded(
                 child: OutlinedButton(
                   onPressed: onRetake,
-                  child: const Text('Retake'),
+                  child: const Text('Перезняти'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 flex: 2,
                 child: Semantics(
-                  label: 'Analyze ingredients from photo',
+                  label: 'Розпізнати продукти на фото',
                   button: true,
                   child: ElevatedButton(
                     onPressed: onAnalyze,
-                    child: const Text('Analyze ingredients'),
+                    child: const Text('Розпізнати'),
                   ),
                 ),
               ),

@@ -214,7 +214,7 @@ class SubscriptionStatusResponse extends Equatable {
   List<Object?> get props => [userId, subscription, hasPremiumAccess, features];
 }
 
-/// Upgrade prompt for premium features
+/// Premium feature prompt data returned by the API.
 class UpgradePrompt extends Equatable {
   final String title;
   final String message;
@@ -232,13 +232,13 @@ class UpgradePrompt extends Equatable {
 
   factory UpgradePrompt.fromJson(Map<String, dynamic> json) {
     return UpgradePrompt(
-      title: json['title']?.toString() ?? 'Upgrade to Premium',
+      title: json['title']?.toString() ?? 'Преміум-доступ',
       message: json['message']?.toString() ?? '',
       features: (json['features'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      ctaText: json['cta_text']?.toString() ?? 'Upgrade Now',
+      ctaText: json['cta_text']?.toString() ?? 'Перейти до преміуму',
       ctaAction: json['cta_action']?.toString() ?? 'navigate_to_subscription',
     );
   }

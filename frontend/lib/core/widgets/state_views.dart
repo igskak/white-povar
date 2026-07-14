@@ -69,7 +69,7 @@ class StateView extends StatelessWidget {
                   subtitle!,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColorsV2.textSecondary,
+                    color: theme.colorScheme.onSurface.withOpacity(.68),
                   ),
                 ),
               ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../models/detected_ingredient.dart';
 
 class IngredientEditDialog extends StatefulWidget {
@@ -42,7 +43,7 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
     final isEditing = widget.ingredient != null;
 
     return AlertDialog(
-      title: Text(isEditing ? 'Edit Ingredient' : 'Add Ingredient'),
+      title: Text(isEditing ? 'Редагувати продукт' : 'Додати продукт'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -51,13 +52,13 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Ingredient Name',
-                hintText: 'e.g., tomatoes, onions, garlic',
+                labelText: 'Назва продукту',
+                hintText: 'Наприклад: томати, цибуля, часник',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter an ingredient name';
+                  return 'Введіть назву продукту';
                 }
                 return null;
               },
@@ -68,8 +69,8 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
             TextFormField(
               controller: _notesController,
               decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
-                hintText: 'e.g., diced, fresh, large',
+                labelText: 'Нотатки (необовʼязково)',
+                hintText: 'Наприклад: нарізані, свіжі, великі',
                 border: OutlineInputBorder(),
               ),
               maxLines: 2,
@@ -85,11 +86,11 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: const Text('Скасувати'),
         ),
         ElevatedButton(
           onPressed: _saveIngredient,
-          child: Text(isEditing ? 'Update' : 'Add'),
+          child: Text(isEditing ? 'Оновити' : 'Додати'),
         ),
       ],
     );
@@ -99,10 +100,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
     final confidence = widget.ingredient!.confidence;
     final percentage = (confidence * 100).toInt();
     final color = confidence > 0.7
-        ? Colors.green
+        ? AppColorsV2.success
         : confidence > 0.4
-            ? Colors.orange
-            : Colors.red;
+            ? AppColorsV2.warning
+            : AppColorsV2.error;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -128,7 +129,7 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Detection Confidence',
+                  'Точність розпізнавання',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -148,10 +149,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
   }
 
   String _getConfidenceDescription(double confidence) {
-    if (confidence > 0.8) return 'Very confident';
-    if (confidence > 0.6) return 'Confident';
-    if (confidence > 0.4) return 'Somewhat confident';
-    return 'Low confidence';
+    if (confidence > 0.8) return 'дуже висока';
+    if (confidence > 0.6) return 'висока';
+    if (confidence > 0.4) return 'середня';
+    return 'низька';
   }
 
   void _saveIngredient() {
@@ -168,26 +169,26 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
 class QuickIngredientSelector extends StatelessWidget {
   final Function(String) onIngredientSelected;
   final List<String> commonIngredients = const [
-    'Onion',
-    'Garlic',
-    'Tomato',
-    'Carrot',
-    'Potato',
-    'Bell Pepper',
-    'Mushroom',
-    'Spinach',
-    'Basil',
-    'Parsley',
-    'Salt',
-    'Black Pepper',
-    'Olive Oil',
-    'Butter',
-    'Cheese',
-    'Egg',
-    'Chicken',
-    'Rice',
-    'Pasta',
-    'Flour',
+    'Цибуля',
+    'Часник',
+    'Томат',
+    'Морква',
+    'Картопля',
+    'Перець',
+    'Гриби',
+    'Шпинат',
+    'Базилік',
+    'Петрушка',
+    'Сіль',
+    'Чорний перець',
+    'Оливкова олія',
+    'Вершкове масло',
+    'Сир',
+    'Яйце',
+    'Курка',
+    'Рис',
+    'Паста',
+    'Борошно',
   ];
 
   const QuickIngredientSelector({
@@ -201,7 +202,7 @@ class QuickIngredientSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick Add',
+          'Швидке додавання',
           style: Theme.of(context).textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
@@ -225,44 +226,43 @@ class IngredientSuggestions extends StatelessWidget {
   final String query;
   final Function(String) onSuggestionSelected;
 
-  // In a real app, this would come from an API or database
   final List<String> allIngredients = const [
-    'Onion',
-    'Garlic',
-    'Tomato',
-    'Carrot',
-    'Potato',
-    'Bell Pepper',
-    'Mushroom',
-    'Spinach',
-    'Basil',
-    'Parsley',
-    'Oregano',
-    'Thyme',
-    'Salt',
-    'Black Pepper',
-    'Paprika',
-    'Cumin',
-    'Olive Oil',
-    'Butter',
-    'Milk',
-    'Cream',
-    'Cheese',
-    'Mozzarella',
-    'Parmesan',
-    'Egg',
-    'Chicken Breast',
-    'Ground Beef',
-    'Salmon',
-    'Flour',
-    'Rice',
-    'Pasta',
-    'Bread',
-    'Sugar',
-    'Honey',
-    'Lemon',
-    'Lime',
-    'Coconut Milk',
+    'Цибуля',
+    'Часник',
+    'Томат',
+    'Морква',
+    'Картопля',
+    'Перець',
+    'Гриби',
+    'Шпинат',
+    'Базилік',
+    'Петрушка',
+    'Орегано',
+    'Чебрець',
+    'Сіль',
+    'Чорний перець',
+    'Паприка',
+    'Кмин',
+    'Оливкова олія',
+    'Вершкове масло',
+    'Молоко',
+    'Вершки',
+    'Сир',
+    'Моцарела',
+    'Пармезан',
+    'Яйце',
+    'Куряча грудка',
+    'Фарш',
+    'Лосось',
+    'Борошно',
+    'Рис',
+    'Паста',
+    'Хліб',
+    'Цукор',
+    'Мед',
+    'Лимон',
+    'Лайм',
+    'Кокосове молоко',
   ];
 
   const IngredientSuggestions({
@@ -287,9 +287,9 @@ class IngredientSuggestions extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Suggestions',
+          'Підказки',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(.62),
               ),
         ),
         const SizedBox(height: 4),

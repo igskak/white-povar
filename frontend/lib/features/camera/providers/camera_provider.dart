@@ -69,7 +69,7 @@ class CameraNotifier extends StateNotifier<CameraState> {
       state = state.copyWith(
         isLoading: false,
         hasPermission: granted,
-        error: granted ? null : 'Camera permission denied',
+        error: granted ? null : 'Доступ до камери не надано',
       );
 
       return granted;

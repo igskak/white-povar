@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../models/detected_ingredient.dart';
 
 class IngredientListWidget extends StatelessWidget {
@@ -53,9 +54,14 @@ class IngredientCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: ingredient.isConfirmed ? 2 : 1,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.lg,
+        side: BorderSide(color: Colors.white.withOpacity(.08)),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.lg,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -64,7 +70,7 @@ class IngredientCard extends StatelessWidget {
               Checkbox(
                 value: ingredient.isConfirmed,
                 onChanged: (_) => onToggle(),
-                activeColor: Theme.of(context).primaryColor,
+                activeColor: AppColorsV2.accent,
               ),
               const SizedBox(width: 8),
 
@@ -81,7 +87,10 @@ class IngredientCard extends StatelessWidget {
                                 : FontWeight.normal,
                             color: ingredient.isConfirmed
                                 ? null
-                                : Colors.grey[600],
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(.52),
                           ),
                     ),
                     if (ingredient.notes?.isNotEmpty == true) ...[
@@ -89,7 +98,10 @@ class IngredientCard extends StatelessWidget {
                       Text(
                         ingredient.notes!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[600],
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(.62),
                             ),
                       ),
                     ],
@@ -108,13 +120,13 @@ class IngredientCard extends StatelessWidget {
                   IconButton(
                     onPressed: onTap,
                     icon: const Icon(Icons.edit, size: 20),
-                    tooltip: 'Edit ingredient',
+                    tooltip: 'Редагувати продукт',
                   ),
                   IconButton(
                     onPressed: onDelete,
                     icon: const Icon(Icons.delete, size: 20),
-                    tooltip: 'Remove ingredient',
-                    color: Colors.red[400],
+                    tooltip: 'Видалити продукт',
+                    color: AppColorsV2.error,
                   ),
                 ],
               ),
@@ -128,10 +140,10 @@ class IngredientCard extends StatelessWidget {
   Widget _buildConfidenceIndicator(BuildContext context) {
     final percentage = (ingredient.confidence * 100).toInt();
     final color = ingredient.confidence > 0.7
-        ? Colors.green
+        ? AppColorsV2.success
         : ingredient.confidence > 0.4
-            ? Colors.orange
-            : Colors.red;
+            ? AppColorsV2.warning
+            : AppColorsV2.error;
 
     return Row(
       children: [
@@ -140,7 +152,7 @@ class IngredientCard extends StatelessWidget {
           height: 4,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(2),
-            color: Colors.grey[300],
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(.14),
           ),
           child: FractionallySizedBox(
             alignment: Alignment.centerLeft,
@@ -191,7 +203,7 @@ class IngredientSummary extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Summary',
+              'Підсумок',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -199,18 +211,20 @@ class IngredientSummary extends StatelessWidget {
               children: [
                 _buildSummaryItem(
                   context,
-                  'Confirmed',
+                  'Підтверджено',
                   '$confirmedCount/$totalCount',
                   Icons.check_circle,
-                  Colors.green,
+                  AppColorsV2.success,
                 ),
                 const SizedBox(width: 16),
                 _buildSummaryItem(
                   context,
-                  'Confidence',
+                  'Точність',
                   '${(averageConfidence * 100).toInt()}%',
                   Icons.analytics,
-                  averageConfidence > 0.7 ? Colors.green : Colors.orange,
+                  averageConfidence > 0.7
+                      ? AppColorsV2.success
+                      : AppColorsV2.warning,
                 ),
               ],
             ),

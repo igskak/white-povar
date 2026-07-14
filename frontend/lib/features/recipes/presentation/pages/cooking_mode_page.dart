@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/widgets/state_views.dart';
 import '../../providers/recipe_provider.dart';
 
 class CookingModePage extends ConsumerStatefulWidget {
@@ -25,28 +26,24 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       appBar: AppBar(
         backgroundColor: AppColorsV2.ink,
         foregroundColor: AppColorsV2.onInk,
-        title: const Text('Cooking mode'),
+        title: const Text('Режим готування'),
       ),
       body: recipeAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Text(
-              'Could not start cooking: $error',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColorsV2.onInk),
-            ),
-          ),
+        loading: () => const StateView.loading(
+          title: 'Готуємо рецепт',
+          subtitle: 'Завантажуємо покрокові інструкції.',
+        ),
+        error: (error, _) => StateView.error(
+          title: 'Не вдалося відкрити режим готування',
+          subtitle: error.toString(),
         ),
         data: (recipe) {
           final instructions = recipe.instructions;
           if (instructions.isEmpty) {
-            return const Center(
-              child: Text(
-                'This recipe has no cooking steps yet.',
-                style: TextStyle(color: AppColorsV2.onInk),
-              ),
+            return const StateView.empty(
+              title: 'Кроки ще не додані',
+              subtitle: 'Для цього рецепта поки немає покрокової інструкції.',
+              icon: Icons.menu_book_outlined,
             );
           }
 
@@ -93,7 +90,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                       ),
                       const Spacer(),
                       Text(
-                        'STEP ${_step + 1}',
+                        'КРОК ${_step + 1}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColorsV2.accent,
@@ -128,7 +125,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                               onPressed: _step == 0
                                   ? null
                                   : () => setState(() => _step--),
-                              child: const Text('Previous'),
+                              child: const Text('Назад'),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.sm),
@@ -144,8 +141,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                                   : () => setState(() => _step++),
                               icon: Icon(
                                   lastStep ? Icons.check : Icons.arrow_forward),
-                              label: Text(
-                                  lastStep ? 'Finish cooking' : 'Next step'),
+                              label: Text(lastStep ? 'Завершити' : 'Далі'),
                             ),
                           ),
                         ],
