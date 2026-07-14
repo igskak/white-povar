@@ -81,12 +81,15 @@ class AuthService {
 
   Future<void> signInWithGoogle() async {
     try {
-      await _supabase.auth.signInWithOAuth(
+      final didOpen = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: kIsWeb
             ? AppConfig.webAuthCallbackUrl
             : 'io.supabase.cookingapp://login-callback',
       );
+      if (!didOpen) {
+        throw Exception('Google sign in was not opened');
+      }
     } catch (e) {
       throw Exception('Google sign in failed: $e');
     }
@@ -98,10 +101,13 @@ class AuthService {
     }
 
     try {
-      await _supabase.auth.signInWithOAuth(
+      final didOpen = await _supabase.auth.signInWithOAuth(
         OAuthProvider.apple,
         redirectTo: 'io.supabase.cookingapp://login-callback',
       );
+      if (!didOpen) {
+        throw Exception('Apple sign in was not opened');
+      }
     } catch (e) {
       throw Exception('Apple sign in failed: $e');
     }

@@ -28,6 +28,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
 
   final AuthService _authService;
   StreamSubscription<User?>? _subscription;
+  static const Duration _oauthCallbackTimeout = Duration(seconds: 45);
 
   Future<void> signInWithEmail(String email, String password) async {
     state = const AppAuthState.loading();
@@ -51,6 +52,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     state = const AppAuthState.loading();
     try {
       await _authService.signInWithGoogle();
+      await _waitForOAuthCallback();
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -60,6 +62,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     state = const AppAuthState.loading();
     try {
       await _authService.signInWithApple();
+      await _waitForOAuthCallback();
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }
@@ -80,6 +83,29 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
           ? const AppAuthState.unauthenticated()
           : AppAuthState.authenticated(user);
     }
+  }
+
+  Future<void> _waitForOAuthCallback() async {
+    if (_authService.currentUser != null) {
+      state = AppAuthState.authenticated(_authService.currentUser!);
+      return;
+    }
+
+    final user = await _authService.authStateChanges
+        .where((user) => user != null)
+        .cast<User>()
+        .first
+        .timeout(_oauthCallbackTimeout, onTimeout: () {
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        return currentUser;
+      }
+      throw TimeoutException(
+        'Не вдалося завершити вхід. Перевірте Google redirect URL і спробуйте ще раз.',
+      );
+    });
+
+    state = AppAuthState.authenticated(user);
   }
 
   @override
