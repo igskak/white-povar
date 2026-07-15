@@ -15,6 +15,7 @@ import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
 import '../widgets/content_detail_sections.dart';
+import '../widgets/favorite_button.dart';
 import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerWidget {
@@ -134,8 +135,14 @@ class _RecipeHero extends StatelessWidget {
           if (recipe.isPremium)
             const Positioned(
                 top: AppSpacing.md,
-                right: AppSpacing.md,
+                right: 56,
                 child: PremiumBadge(size: 24, showLabel: true)),
+          Positioned(
+            top: AppSpacing.xs,
+            right: AppSpacing.xs,
+            child:
+                FavoriteButton(recipeId: recipe.id, color: AppColorsV2.onInk),
+          ),
           Positioned(
               left: AppSpacing.lg,
               right: AppSpacing.lg,

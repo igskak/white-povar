@@ -559,13 +559,14 @@ async def get_favorite_recipes(
     return [_recipe_from_row(row) for row in _result_data(result)]
 
 
-@router.post("/{recipe_id}/favorite")
-async def toggle_recipe_favorite(
+@router.put("/{recipe_id}/favorite")
+async def set_recipe_favorite(
     recipe_id: str,
+    is_favorite: bool,
     current_user: User = Depends(verify_firebase_token),
     tenant: TenantContext = Depends(require_tenant_context),
 ):
-    """Toggle a recipe in the authenticated user's saved list."""
+    """Persist the requested saved state for a recipe in this tenant."""
     try:
         UUID(recipe_id)
     except ValueError:
@@ -574,7 +575,9 @@ async def toggle_recipe_favorite(
     if not _result_data(await supabase_service.get_recipe_by_id(recipe_id, tenant.chef_id)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
-    is_favorite = await supabase_service.toggle_user_favorite(current_user.id, recipe_id)
+    is_favorite = await supabase_service.set_user_favorite(
+        current_user.id, recipe_id, is_favorite
+    )
     return {'recipe_id': recipe_id, 'is_favorite': is_favorite}
 
 

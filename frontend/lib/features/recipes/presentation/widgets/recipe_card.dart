@@ -1,12 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../models/recipe.dart';
 import '../../../subscription/widgets/premium_badge.dart';
+import 'favorite_button.dart';
 
-class RecipeCard extends StatelessWidget {
+class RecipeCard extends ConsumerWidget {
   const RecipeCard({
     super.key,
     required this.recipe,
@@ -21,7 +23,7 @@ class RecipeCard extends StatelessWidget {
   final int matchedIngredients;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     return Semantics(
@@ -67,9 +69,14 @@ class RecipeCard extends StatelessWidget {
                 if (recipe.videoUrl != null || recipe.videoFilePath != null)
                   const Positioned(
                     top: AppSpacing.sm,
-                    right: AppSpacing.sm,
+                    right: 52,
                     child: _CircleBadge(icon: Icons.play_arrow_rounded),
                   ),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: FavoriteButton(recipeId: recipe.id),
+                ),
                 if (showMatchIndicator && matchedIngredients > 0)
                   Positioned(
                     right: AppSpacing.sm,

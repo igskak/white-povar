@@ -445,6 +445,34 @@ class SupabaseService:
         )
         return True
 
+    async def set_user_favorite(
+        self, user_id: str, recipe_id: str, is_favorite: bool
+    ) -> bool:
+        """Idempotently persist the requested favorite state.
+
+        The consumer sends a desired state rather than a toggle so retries and
+        rapid taps cannot invert the final server state.
+        """
+        if not is_favorite:
+            await self.execute_query(
+                'user_favorites',
+                'delete',
+                filters={'user_id': user_id, 'recipe_id': recipe_id},
+                use_service_key=True,
+            )
+            return False
+
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            return client.table('user_favorites').upsert(
+                {'user_id': user_id, 'recipe_id': recipe_id},
+                on_conflict='user_id,recipe_id',
+            ).execute()
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _execute)
+        return True
+
     # Ingestion-related methods
     async def create_ingestion_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new ingestion job"""

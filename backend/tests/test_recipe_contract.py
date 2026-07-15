@@ -178,7 +178,7 @@ def test_create_recipe_fails_closed_without_user_chef_link(monkeypatch):
     assert error.value.status_code == 403
 
 
-def test_toggle_favorite_uses_authenticated_user(monkeypatch):
+def test_set_favorite_uses_authenticated_user_and_desired_state(monkeypatch):
     user_id = str(uuid4())
     recipe_id = str(uuid4())
     calls = []
@@ -190,22 +190,23 @@ def test_toggle_favorite_uses_authenticated_user(monkeypatch):
         assert requested_id == recipe_id
         return RecipeResult()
 
-    async def fake_toggle(requested_user_id, requested_recipe_id):
-        calls.append((requested_user_id, requested_recipe_id))
+    async def fake_set(requested_user_id, requested_recipe_id, requested_state):
+        calls.append((requested_user_id, requested_recipe_id, requested_state))
         return True
 
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', fake_get_recipe)
-    monkeypatch.setattr(recipes.supabase_service, 'toggle_user_favorite', fake_toggle)
+    monkeypatch.setattr(recipes.supabase_service, 'set_user_favorite', fake_set)
 
     response = asyncio.run(
-        recipes.toggle_recipe_favorite(
+        recipes.set_recipe_favorite(
             recipe_id,
+            True,
             User(id=user_id, email='user@example.com'),
             TenantContext(chef_id=str(uuid4()), slug='tenant-a'),
         )
     )
 
-    assert calls == [(user_id, recipe_id)]
+    assert calls == [(user_id, recipe_id, True)]
     assert response == {'recipe_id': recipe_id, 'is_favorite': True}
 
 

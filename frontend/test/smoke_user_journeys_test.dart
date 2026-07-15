@@ -208,6 +208,10 @@ class _FakeRecipeService implements RecipeService {
   }
 
   @override
+  Future<bool> setFavorite(String recipeId, bool isFavorite) async =>
+      isFavorite;
+
+  @override
   Future<void> toggleFavorite(String recipeId) async {}
 
   @override

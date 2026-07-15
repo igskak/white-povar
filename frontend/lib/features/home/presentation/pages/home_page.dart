@@ -13,6 +13,7 @@ import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
+import '../../../recipes/presentation/widgets/favorite_button.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
 /// The public, tenant-branded recipe feed.
@@ -367,13 +368,7 @@ class _RecipeTile extends StatelessWidget {
             if (recipe.isPremium)
               const Icon(Icons.workspace_premium_rounded,
                   color: AppColorsV2.premiumGold),
-            const Tooltip(
-              message: 'Збереження стане доступним незабаром',
-              child: IconButton(
-                onPressed: null,
-                icon: Icon(Icons.bookmark_border_rounded),
-              ),
-            ),
+            FavoriteButton(recipeId: recipe.id),
           ],
         ),
       );

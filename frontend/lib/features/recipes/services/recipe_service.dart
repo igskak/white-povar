@@ -143,17 +143,26 @@ class RecipeService {
     }
   }
 
-  // Toggle recipe favorite status
-  Future<void> toggleFavorite(String recipeId) async {
+  /// Persist a desired favorite state. This is deliberately not a toggle: a
+  /// retry or a second quick tap must not accidentally invert the result.
+  Future<bool> setFavorite(String recipeId, bool isFavorite) async {
     try {
-      final response =
-          await _apiClient.post<void>('/api/v1/recipes/$recipeId/favorite');
+      final response = await _apiClient.put<Map<String, dynamic>>(
+        '/api/v1/recipes/$recipeId/favorite',
+        queryParameters: {'is_favorite': isFavorite},
+      );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to toggle favorite: ${response.statusCode}');
+        throw Exception('Failed to save recipe: ${response.statusCode}');
       }
+      return response.data?['is_favorite'] == true;
     } catch (e) {
-      throw Exception('Failed to toggle favorite: $e');
+      throw Exception('Failed to save recipe: $e');
     }
+  }
+
+  @Deprecated('Use setFavorite with an explicit desired state.')
+  Future<void> toggleFavorite(String recipeId) async {
+    await setFavorite(recipeId, true);
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api/api_client.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
 
@@ -115,9 +116,93 @@ final recipeDetailProvider =
 });
 
 final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const [];
   final recipeService = ref.watch(recipeServiceProvider);
   return recipeService.getFavoriteRecipes();
 });
+
+/// The single in-memory source of truth for saved state across cards, detail
+/// and Saved. It is cleared as soon as the auth session ends.
+final favoriteIdsProvider =
+    StateNotifierProvider<FavoriteNotifier, Set<String>>((ref) {
+  final notifier = FavoriteNotifier(ref.read(recipeServiceProvider), ref);
+  ref.listen(currentUserProvider, (previous, next) {
+    if (next != null) {
+      notifier.onAuthenticated();
+    } else if (previous != null) {
+      notifier.clearForLogout();
+    }
+  }, fireImmediately: true);
+  return notifier;
+});
+
+class FavoriteNotifier extends StateNotifier<Set<String>> {
+  FavoriteNotifier(this._recipeService, this._ref) : super(<String>{});
+
+  final RecipeService _recipeService;
+  final Ref _ref;
+  final Map<String, Future<void>> _writes = {};
+  String? _guestIntentRecipeId;
+
+  bool isFavorite(String recipeId) => state.contains(recipeId);
+
+  void queueGuestIntent(String recipeId) {
+    _guestIntentRecipeId = recipeId;
+  }
+
+  Future<void> onAuthenticated() async {
+    try {
+      final recipes = await _recipeService.getFavoriteRecipes();
+      state = recipes.map((recipe) => recipe.id).toSet();
+      _ref.invalidate(favoriteRecipesProvider);
+      final intent = _guestIntentRecipeId;
+      _guestIntentRecipeId = null;
+      if (intent != null) await setFavorite(intent, true);
+    } catch (_) {
+      // Cards remain usable; a mutation will expose its own recoverable error.
+    }
+  }
+
+  void clearForLogout() {
+    _guestIntentRecipeId = null;
+    state = <String>{};
+    _ref.invalidate(favoriteRecipesProvider);
+  }
+
+  /// Optimistically changes the local canonical state and serializes writes per
+  /// recipe. A failure rolls back only when no newer intent has superseded it.
+  Future<void> setFavorite(String recipeId, bool shouldSave) {
+    final before = Set<String>.from(state);
+    state = {...state}
+      ..remove(recipeId)
+      ..addAll(shouldSave ? [recipeId] : []);
+
+    final previous = (_writes[recipeId] ?? Future<void>.value())
+        .catchError((_) {});
+    final write = previous.then((_) async {
+      try {
+        final confirmed =
+            await _recipeService.setFavorite(recipeId, shouldSave);
+        if (state.contains(recipeId) == shouldSave) {
+          state = {...state}
+            ..remove(recipeId)
+            ..addAll(confirmed ? [recipeId] : []);
+        }
+        _ref.invalidate(favoriteRecipesProvider);
+      } catch (_) {
+        if (state.contains(recipeId) == shouldSave) state = before;
+        rethrow;
+      }
+    });
+    late final Future<void> tracked;
+    tracked = write.whenComplete(() {
+      if (identical(_writes[recipeId], tracked)) _writes.remove(recipeId);
+    });
+    _writes[recipeId] = tracked;
+    return tracked;
+  }
+}
 
 // Recipe service provider
 final recipeServiceProvider = Provider<RecipeService>((ref) {
