@@ -37,6 +37,8 @@ abstract interface class BrandBootstrapRemoteLoader {
 }
 
 class HttpBrandBootstrapRemoteLoader implements BrandBootstrapRemoteLoader {
+  // Startup adapter: bootstrap resolves the tenant context before Riverpod can
+  // construct ApiClient. All post-bootstrap config requests use ApiClient.
   HttpBrandBootstrapRemoteLoader({http.Client? client})
       : _client = client ?? http.Client();
 

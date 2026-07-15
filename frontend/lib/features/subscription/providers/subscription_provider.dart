@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../models/subscription.dart';
@@ -24,7 +25,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
         return;
       }
 
-      final status = await _subscriptionService.getSubscriptionStatus(token);
+      final status = await _subscriptionService.getSubscriptionStatus();
       state = SubscriptionState.loaded(status);
     } catch (e) {
       debugPrint('Error loading subscription status: $e');
@@ -45,10 +46,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
         throw Exception('Not authenticated');
       }
 
-      return await _subscriptionService.checkPremiumAccess(
-        token,
-        feature: feature,
-      );
+      return await _subscriptionService.checkPremiumAccess(feature: feature);
     } catch (e) {
       debugPrint('Error checking premium access: $e');
       rethrow;
@@ -65,45 +63,6 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
     }
   }
 
-  /// Grant premium access (for testing)
-  Future<void> grantPremiumAccess({int durationDays = 30}) async {
-    try {
-      final token = await _authService.getIdToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      await _subscriptionService.grantPremiumAccess(
-        token,
-        durationDays: durationDays,
-      );
-
-      // Refresh subscription status
-      await loadSubscriptionStatus();
-    } catch (e) {
-      debugPrint('Error granting premium access: $e');
-      rethrow;
-    }
-  }
-
-  /// Revoke premium access (for testing)
-  Future<void> revokePremiumAccess() async {
-    try {
-      final token = await _authService.getIdToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      await _subscriptionService.revokePremiumAccess(token);
-
-      // Refresh subscription status
-      await loadSubscriptionStatus();
-    } catch (e) {
-      debugPrint('Error revoking premium access: $e');
-      rethrow;
-    }
-  }
-
   /// Clear error state
   void clearError() {
     if (state.hasError) {
@@ -114,7 +73,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 
 // Providers
 final subscriptionServiceProvider = Provider<SubscriptionService>((ref) {
-  return SubscriptionService();
+  return SubscriptionService(ref.watch(apiClientProvider));
 });
 
 final subscriptionProvider =

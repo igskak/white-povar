@@ -1,23 +1,27 @@
-import 'package:dio/dio.dart';
+import '../../../core/api/api_error.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
 import 'recipe_repository.dart';
-import '../../../core/services/error_handler.dart';
+import 'package:dio/dio.dart';
 
 /// API-based implementation of RecipeRepository
 /// This wraps the existing RecipeService with proper error handling and abstraction
 class ApiRecipeRepository implements RecipeRepository {
   final RecipeService _recipeService;
 
-  ApiRecipeRepository({RecipeService? recipeService})
-      : _recipeService = recipeService ?? RecipeService();
+  ApiRecipeRepository({required RecipeService recipeService})
+      : _recipeService = recipeService;
 
   @override
-  Future<List<Recipe>> searchRecipes(String query) async {
+  Future<List<Recipe>> searchRecipes(
+    String query, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      return await _recipeService.searchRecipes(query);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+      return await _recipeService.searchRecipes(query,
+          cancelToken: cancelToken);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to search recipes',
@@ -61,8 +65,8 @@ class ApiRecipeRepository implements RecipeRepository {
       }
 
       return filteredRecipes;
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to get recipes',
@@ -75,11 +79,11 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<Recipe?> getRecipe(String id) async {
     try {
       return await _recipeService.getRecipe(id);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
+    } on ApiError catch (e) {
+      if (e.type == ApiErrorType.notFound) {
         return null; // Recipe not found
       }
-      throw _handleDioException(e);
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to get recipe',
@@ -92,8 +96,8 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<List<Recipe>> getFeaturedRecipes({int limit = 10}) async {
     try {
       return await _recipeService.getFeaturedRecipes();
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to get featured recipes',
@@ -106,8 +110,8 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<Recipe> createRecipe(Recipe recipe) async {
     try {
       return await _recipeService.createRecipe(recipe);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to create recipe',
@@ -120,8 +124,8 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<Recipe> updateRecipe(Recipe recipe) async {
     try {
       return await _recipeService.updateRecipe(recipe.id.toString(), recipe);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to update recipe',
@@ -134,8 +138,8 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<void> deleteRecipe(String id) async {
     try {
       await _recipeService.deleteRecipe(id);
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to delete recipe',
@@ -166,8 +170,8 @@ class ApiRecipeRepository implements RecipeRepository {
       }
 
       return chefRecipes;
-    } on DioException catch (e) {
-      throw _handleDioException(e);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
     } catch (e) {
       throw RecipeRepositoryException(
         'Failed to get recipes by chef',
@@ -176,53 +180,34 @@ class ApiRecipeRepository implements RecipeRepository {
     }
   }
 
-  /// Convert DioException to appropriate repository exception using standardized error handler
-  RecipeRepositoryException _handleDioException(DioException e) {
-    // Log the error for debugging
-    ErrorHandler.logError(e);
-
-    // Use the standardized error handler to get user-friendly message
-    final message = ErrorHandler.getErrorMessage(e);
-
-    // Determine the appropriate exception type based on error characteristics
-    if (ErrorHandler.isNetworkError(e)) {
-      return NetworkRecipeRepositoryException(
-        message,
-        code: 'NETWORK_ERROR',
-        originalError: e,
-      );
+  RecipeRepositoryException _handleApiError(ApiError error) {
+    switch (error.type) {
+      case ApiErrorType.unauthorized:
+      case ApiErrorType.forbidden:
+        return AuthRecipeRepositoryException(
+          error.message,
+          code: error.statusCode?.toString(),
+          originalError: error,
+        );
+      case ApiErrorType.notFound:
+        return NotFoundRecipeRepositoryException(
+          error.message,
+          code: 'NOT_FOUND',
+          originalError: error,
+        );
+      case ApiErrorType.network:
+      case ApiErrorType.timeout:
+        return NetworkRecipeRepositoryException(
+          error.message,
+          code: error.type.name,
+          originalError: error,
+        );
+      default:
+        return RecipeRepositoryException(
+          error.message,
+          code: error.statusCode?.toString(),
+          originalError: error,
+        );
     }
-
-    if (ErrorHandler.isAuthError(e)) {
-      return AuthRecipeRepositoryException(
-        message,
-        code: 'AUTH_ERROR',
-        originalError: e,
-      );
-    }
-
-    if (ErrorHandler.isServerError(e)) {
-      return NetworkRecipeRepositoryException(
-        message,
-        code: 'SERVER_ERROR',
-        originalError: e,
-      );
-    }
-
-    // Handle specific status codes
-    if (e.response?.statusCode == 404) {
-      return NotFoundRecipeRepositoryException(
-        message,
-        code: 'NOT_FOUND',
-        originalError: e,
-      );
-    }
-
-    // Default to generic repository exception
-    return RecipeRepositoryException(
-      message,
-      code: e.response?.statusCode?.toString() ?? 'UNKNOWN',
-      originalError: e,
-    );
   }
 }

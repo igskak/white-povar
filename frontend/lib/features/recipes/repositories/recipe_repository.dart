@@ -1,10 +1,11 @@
 import '../models/recipe.dart';
+import 'package:dio/dio.dart';
 
 /// Abstract repository interface for recipe operations
 /// This decouples business logic from data access implementation
 abstract class RecipeRepository {
   /// Search recipes by text query
-  Future<List<Recipe>> searchRecipes(String query);
+  Future<List<Recipe>> searchRecipes(String query, {CancelToken? cancelToken});
 
   /// Get all recipes with optional filtering
   Future<List<Recipe>> getRecipes({

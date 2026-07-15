@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 
+import 'package:frontend/core/api/api_client.dart';
 import 'package:frontend/features/camera/models/detected_ingredient.dart';
 import 'package:frontend/features/camera/presentation/pages/photo_search_results_page.dart';
 import 'package:frontend/features/camera/providers/photo_search_provider.dart';
@@ -32,7 +33,7 @@ void main() {
       );
 
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Сканувати інгредієнти'), findsOneWidget);
       await tester.scrollUntilVisible(
@@ -59,7 +60,7 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'pasta');
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Нічого не знайшли'), findsOneWidget);
     });
@@ -126,7 +127,10 @@ class _FakeRecipeService implements RecipeService {
   }
 
   @override
-  Future<List<Recipe>> searchRecipes(String query) async {
+  Future<List<Recipe>> searchRecipes(
+    String query, {
+    CancelToken? cancelToken,
+  }) async {
     return [];
   }
 
@@ -175,7 +179,10 @@ class _FakeRecipeRepository implements RecipeRepository {
   }
 
   @override
-  Future<List<Recipe>> searchRecipes(String query) async {
+  Future<List<Recipe>> searchRecipes(
+    String query, {
+    CancelToken? cancelToken,
+  }) async {
     return [];
   }
 
@@ -187,10 +194,11 @@ class _FakePhotoSearchNotifier extends PhotoSearchNotifier {
   _FakePhotoSearchNotifier()
       : super(
           photoSearchService: PhotoSearchService(
-            dio: Dio(
-              BaseOptions(
-                baseUrl: 'https://example.com',
-              ),
+            apiClient: ApiClient(
+              baseUrl: 'https://example.com',
+              tenantSlug: 'ohorodnik-oleksandr',
+              locale: 'uk',
+              tokenProvider: () async => null,
             ),
           ),
         ) {

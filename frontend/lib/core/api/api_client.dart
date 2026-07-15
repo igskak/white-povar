@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/branding/brand_providers.dart';
 import '../../features/auth/services/auth_service.dart';
 import 'api_error.dart';
 import 'auth_interceptor.dart';
@@ -11,22 +12,32 @@ class ApiClient {
   ApiClient({
     String? baseUrl,
     required AuthTokenProvider tokenProvider,
+    required String tenantSlug,
+    required String locale,
+    Dio? dio,
     Duration connectTimeout = const Duration(seconds: 20),
     Duration receiveTimeout = const Duration(seconds: 20),
     Duration sendTimeout = const Duration(seconds: 20),
-  }) : _dio = Dio(
-          BaseOptions(
-            baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
-            connectTimeout: connectTimeout,
-            receiveTimeout: receiveTimeout,
-            sendTimeout: sendTimeout,
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept-Language': 'uk',
-            },
-          ),
-        ) {
-    _dio.interceptors.add(AuthInterceptor(tokenProvider: tokenProvider));
+  }) : _dio = dio ??
+            Dio(
+              BaseOptions(
+                baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
+                connectTimeout: connectTimeout,
+                receiveTimeout: receiveTimeout,
+                sendTimeout: sendTimeout,
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept-Language': locale,
+                },
+              ),
+            ) {
+    _dio.interceptors.add(
+      RequestContextInterceptor(
+        tokenProvider: tokenProvider,
+        tenantSlug: tenantSlug,
+        locale: locale,
+      ),
+    );
 
     if (kDebugMode) {
       _dio.interceptors.add(
@@ -117,7 +128,10 @@ class ApiClient {
 }
 
 final apiClientProvider = Provider<ApiClient>((ref) {
+  final bootstrap = ref.watch(tenantBootstrapProvider);
   return ApiClient(
     tokenProvider: AuthService().getIdToken,
+    tenantSlug: bootstrap.tenantSlug,
+    locale: bootstrap.brandConfig.locale,
   );
 });

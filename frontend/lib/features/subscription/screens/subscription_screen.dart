@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -108,10 +107,6 @@ class _SubscriptionContent extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _FeaturesSummary(features: status.features),
-        if (!kReleaseMode) ...[
-          const SizedBox(height: 20),
-          _DebugControls(isPremium: status.hasPremiumAccess),
-        ],
       ],
     );
   }
@@ -272,52 +267,6 @@ class _FeaturesSummary extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DebugControls extends ConsumerWidget {
-  const _DebugControls({required this.isPremium});
-
-  final bool isPremium;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Debug controls',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            if (!isPremium)
-              ElevatedButton(
-                onPressed: () async {
-                  await ref
-                      .read(subscriptionProvider.notifier)
-                      .grantPremiumAccess(durationDays: 30);
-                },
-                child: const Text('Grant Premium (30 days)'),
-              ),
-            if (isPremium)
-              ElevatedButton(
-                onPressed: () async {
-                  await ref
-                      .read(subscriptionProvider.notifier)
-                      .revokePremiumAccess();
-                },
-                child: const Text('Revoke Premium'),
-              ),
           ],
         ),
       ),

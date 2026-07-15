@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/recipe_service.dart';
+import 'recipe_provider.dart';
 
 // Filter options model
 class FilterOptions {
@@ -25,8 +25,7 @@ class FilterOptions {
 // Provider for filter options
 final filterOptionsProvider = FutureProvider<FilterOptions>((ref) async {
   try {
-    // Create a new instance to avoid circular dependency
-    final recipeService = RecipeService();
+    final recipeService = ref.watch(recipeServiceProvider);
 
     // Get all recipes to extract available options
     final recipes = await recipeService.getRecipes();

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/api/api_client.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
 
@@ -120,5 +121,5 @@ final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
 
 // Recipe service provider
 final recipeServiceProvider = Provider<RecipeService>((ref) {
-  return RecipeService();
+  return RecipeService(ref.watch(apiClientProvider));
 });

@@ -1,7 +1,11 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../recipes/models/recipe.dart';
 import '../../recipes/repositories/recipe_repository.dart';
 import '../../recipes/repositories/api_recipe_repository.dart';
+import '../../recipes/providers/recipe_provider.dart';
 
 // Simple Text Search State for basic search functionality
 class SimpleSearchState {
@@ -34,17 +38,21 @@ class SimpleSearchState {
 
 // Recipe Repository Provider
 final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
-  return ApiRecipeRepository();
+  return ApiRecipeRepository(recipeService: ref.watch(recipeServiceProvider));
 });
 
 // Simple Text Search Notifier
 class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
   final RecipeRepository _recipeRepository;
+  Timer? _debounce;
+  CancelToken? _cancelToken;
 
   SimpleSearchNotifier(this._recipeRepository)
       : super(const SimpleSearchState());
 
   Future<void> searchRecipes(String query) async {
+    _debounce?.cancel();
+    _cancelToken?.cancel('Superseded by a newer search query.');
     if (query.trim().isEmpty) {
       state = const SimpleSearchState();
       return;
@@ -56,27 +64,41 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
       query: query,
     );
 
-    try {
-      final results = await _recipeRepository.searchRecipes(query);
-      state = state.copyWith(
-        results: results,
-        isLoading: false,
-      );
-    } on RecipeRepositoryException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.message,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'An unexpected error occurred',
-      );
-    }
+    final cancelToken = CancelToken();
+    _cancelToken = cancelToken;
+    _debounce = Timer(const Duration(milliseconds: 250), () async {
+      try {
+        final results = await _recipeRepository.searchRecipes(
+          query,
+          cancelToken: cancelToken,
+        );
+        if (identical(_cancelToken, cancelToken)) {
+          state = state.copyWith(results: results, isLoading: false);
+        }
+      } on RecipeRepositoryException catch (e) {
+        if (identical(_cancelToken, cancelToken)) {
+          state = state.copyWith(isLoading: false, error: e.message);
+        }
+      } catch (_) {
+        if (identical(_cancelToken, cancelToken) && !cancelToken.isCancelled) {
+          state = state.copyWith(
+              isLoading: false, error: 'An unexpected error occurred');
+        }
+      }
+    });
   }
 
   void clearSearch() {
+    _debounce?.cancel();
+    _cancelToken?.cancel('Search cleared.');
     state = const SimpleSearchState();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _cancelToken?.cancel('Search notifier disposed.');
+    super.dispose();
   }
 }
 

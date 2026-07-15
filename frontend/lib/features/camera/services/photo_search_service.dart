@@ -1,28 +1,20 @@
 import 'package:flutter/foundation.dart';
-import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/config/app_config.dart';
+import '../../../core/api/api_client.dart';
+import '../../../core/api/api_error.dart';
 import '../../recipes/models/recipe.dart';
 import '../models/detected_ingredient.dart';
 import 'image_processing_service.dart';
 
 class PhotoSearchService {
-  final Dio _dio;
+  final ApiClient _apiClient;
   final ImageProcessingService _imageProcessingService;
 
   PhotoSearchService({
-    Dio? dio,
+    required ApiClient apiClient,
     ImageProcessingService? imageProcessingService,
-  })  : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: '${AppConfig.apiBaseUrl}/api/v1/search',
-              connectTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 30),
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            )),
+  })  : _apiClient = apiClient,
         _imageProcessingService =
             imageProcessingService ?? ImageProcessingService();
 
@@ -41,10 +33,13 @@ class PhotoSearchService {
       );
 
       // Make API call to existing endpoint
-      final response = await _dio.post('/photo', data: imageData);
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        '/api/v1/search/photo',
+        data: imageData,
+      );
 
       // Parse response
-      final data = response.data as Map<String, dynamic>;
+      final data = response.data!;
 
       return PhotoSearchResponse(
         ingredients: List<String>.from(data['ingredients'] ?? []),
@@ -52,8 +47,8 @@ class PhotoSearchService {
             List<Map<String, dynamic>>.from(data['suggested_recipes'] ?? []),
         confidenceScore: (data['confidence_score'] ?? 0.0).toDouble(),
       );
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+    } on ApiError {
+      rethrow;
     } catch (e) {
       throw Exception('Photo search failed: $e');
     }
@@ -129,69 +124,25 @@ class PhotoSearchService {
       // Use text search endpoint with ingredient names
       final query = ingredients.join(' ');
 
-      final response = await _dio.get('/text', queryParameters: {
-        'q': query,
-        if (chefId != null) 'chef_id': chefId,
-        'limit': maxResults,
-        'offset': 0,
-      });
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/search/text',
+        queryParameters: {
+          'q': query,
+          if (chefId != null) 'chef_id': chefId,
+          'limit': maxResults,
+          'offset': 0,
+        },
+      );
 
-      final data = response.data as Map<String, dynamic>;
+      final data = response.data!;
       final recipesData =
           List<Map<String, dynamic>>.from(data['recipes'] ?? []);
 
       return parseSuggestedRecipes(recipesData);
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+    } on ApiError {
+      rethrow;
     } catch (e) {
       throw Exception('Recipe search failed: $e');
-    }
-  }
-
-  /// Handle Dio errors with user-friendly messages
-  Exception _handleDioError(DioException e) {
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return Exception(
-            'Request timed out. Please check your internet connection.');
-
-      case DioExceptionType.badResponse:
-        final statusCode = e.response?.statusCode;
-        final message = e.response?.data?['detail'] ?? 'Server error';
-
-        switch (statusCode) {
-          case 400:
-            return Exception('Invalid image. Please try a different photo.');
-          case 413:
-            return Exception('Image is too large. Please use a smaller image.');
-          case 429:
-            return Exception(
-                'Too many requests. Please wait a moment and try again.');
-          case 500:
-            return Exception('Server error. Please try again later.');
-          default:
-            return Exception('Error: $message');
-        }
-
-      case DioExceptionType.cancel:
-        return Exception('Request was cancelled.');
-
-      case DioExceptionType.unknown:
-      default:
-        return Exception(
-            'Network error. Please check your internet connection.');
-    }
-  }
-
-  /// Test connection to the API
-  Future<bool> testConnection() async {
-    try {
-      final response = await _dio.get('/health');
-      return response.statusCode == 200;
-    } catch (e) {
-      return false;
     }
   }
 }

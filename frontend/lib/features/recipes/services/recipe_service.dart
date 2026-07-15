@@ -1,34 +1,19 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
 import '../models/recipe.dart';
-import '../../../core/config/app_config.dart';
-import '../../auth/services/auth_service.dart';
+import '../../../core/api/api_client.dart';
+import 'package:dio/dio.dart';
 
 class RecipeService {
-  final AuthService _authService = AuthService();
+  RecipeService(this._apiClient);
 
-  // Get auth headers for API calls
-  Future<Map<String, String>> _getAuthHeaders() async {
-    final token = await _authService.getIdToken();
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
+  final ApiClient _apiClient;
 
   // Get all recipes
   Future<List<Recipe>> getRecipes() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse(AppConfig.recipesEndpoint),
-        headers: headers,
-      );
-
+      final response =
+          await _apiClient.get<Map<String, dynamic>>('/api/v1/recipes');
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final responseData = response.data!;
         final List<dynamic> recipesData =
             responseData['recipes'] as List<dynamic>;
         return recipesData.map((json) => Recipe.fromJson(json)).toList();
@@ -43,14 +28,10 @@ class RecipeService {
   // Get featured recipes
   Future<List<Recipe>> getFeaturedRecipes() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse('${AppConfig.recipesEndpoint}/featured'),
-        headers: headers,
-      );
-
+      final response =
+          await _apiClient.get<List<dynamic>>('/api/v1/recipes/featured');
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final data = response.data!;
         return data.map((json) => Recipe.fromJson(json)).toList();
       } else {
         throw Exception(
@@ -64,14 +45,10 @@ class RecipeService {
   // Get recipe by ID
   Future<Recipe> getRecipe(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse('${AppConfig.recipesEndpoint}/$id'),
-        headers: headers,
-      );
-
+      final response =
+          await _apiClient.get<Map<String, dynamic>>('/api/v1/recipes/$id');
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = response.data!;
         return Recipe.fromJson(data);
       } else {
         throw Exception('Failed to load recipe: ${response.statusCode}');
@@ -84,15 +61,10 @@ class RecipeService {
   // Create new recipe
   Future<Recipe> createRecipe(Recipe recipe) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse(AppConfig.recipesEndpoint),
-        headers: headers,
-        body: jsonEncode(recipe.toJson()),
-      );
-
+      final response = await _apiClient
+          .post<Map<String, dynamic>>('/api/v1/recipes', data: recipe.toJson());
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = response.data!;
         return Recipe.fromJson(data);
       } else {
         throw Exception('Failed to create recipe: ${response.statusCode}');
@@ -105,15 +77,11 @@ class RecipeService {
   // Update recipe
   Future<Recipe> updateRecipe(String id, Recipe recipe) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${AppConfig.recipesEndpoint}/$id'),
-        headers: headers,
-        body: jsonEncode(recipe.toJson()),
-      );
-
+      final response = await _apiClient.put<Map<String, dynamic>>(
+          '/api/v1/recipes/$id',
+          data: recipe.toJson());
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = response.data!;
         return Recipe.fromJson(data);
       } else {
         throw Exception('Failed to update recipe: ${response.statusCode}');
@@ -126,11 +94,7 @@ class RecipeService {
   // Delete recipe
   Future<void> deleteRecipe(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${AppConfig.recipesEndpoint}/$id'),
-        headers: headers,
-      );
+      final response = await _apiClient.delete<void>('/api/v1/recipes/$id');
 
       if (response.statusCode != 204) {
         throw Exception('Failed to delete recipe: ${response.statusCode}');
@@ -141,17 +105,18 @@ class RecipeService {
   }
 
   // Search recipes
-  Future<List<Recipe>> searchRecipes(String query) async {
+  Future<List<Recipe>> searchRecipes(
+    String query, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse(
-            '${AppConfig.searchEndpoint}/text?q=${Uri.encodeComponent(query)}'),
-        headers: headers,
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/search/text',
+        queryParameters: {'q': query},
+        cancelToken: cancelToken,
       );
-
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = response.data!;
         final List<dynamic> recipes = data['recipes'] ?? [];
         return recipes.map((json) => Recipe.fromJson(json)).toList();
       } else {
@@ -165,14 +130,10 @@ class RecipeService {
   // Get user's favorite recipes
   Future<List<Recipe>> getFavoriteRecipes() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.get(
-        Uri.parse('${AppConfig.recipesEndpoint}/favorites'),
-        headers: headers,
-      );
-
+      final response =
+          await _apiClient.get<List<dynamic>>('/api/v1/recipes/favorites');
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final data = response.data!;
         return data.map((json) => Recipe.fromJson(json)).toList();
       } else {
         throw Exception('Failed to load favorites: ${response.statusCode}');
@@ -185,11 +146,8 @@ class RecipeService {
   // Toggle recipe favorite status
   Future<void> toggleFavorite(String recipeId) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${AppConfig.recipesEndpoint}/$recipeId/favorite'),
-        headers: headers,
-      );
+      final response =
+          await _apiClient.post<void>('/api/v1/recipes/$recipeId/favorite');
 
       if (response.statusCode != 200) {
         throw Exception('Failed to toggle favorite: ${response.statusCode}');
