@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/widgets/state_views.dart';
-import '../models/subscription.dart';
-import '../providers/subscription_provider.dart';
-import '../widgets/premium_badge.dart';
+import '../../../app/theme/brand_theme.dart';
+import '../../../app/theme/tokens/app_tokens.dart';
+import '../../../core/branding/brand_assets.dart';
+import '../../../core/branding/brand_providers.dart';
+import '../../../core/widgets/design_system.dart';
+import '../purchase_adapter.dart';
+import '../paywall_provider.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -17,259 +20,336 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => ref.read(subscriptionProvider.notifier).loadSubscriptionStatus(),
-    );
+    Future.microtask(() => ref.read(paywallProvider.notifier).load());
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(subscriptionProvider);
-
+    final snapshot = ref.watch(paywallProvider);
+    final isDialog = MediaQuery.sizeOf(context).width >= 600;
+    final child = _PaywallCard(snapshot: snapshot);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Підписка'),
-      ),
+      backgroundColor:
+          isDialog ? Colors.black45 : Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: state.isLoading
-            ? const StateView.loading(
-                title: 'Завантажуємо підписку',
-                subtitle: 'Перевіряємо поточний рівень доступу.',
-              )
-            : state.hasError
-                ? StateView.error(
-                    title: 'Не вдалося завантажити підписку',
-                    subtitle: state.error,
-                    onRetry: () =>
-                        ref.read(subscriptionProvider.notifier).refresh(),
-                  )
-                : state.hasStatus
-                    ? _SubscriptionContent(status: state.status!)
-                    : StateView.empty(
-                        title: 'Немає даних підписки',
-                        subtitle: 'Повторіть завантаження статусу акаунта.',
-                        icon: Icons.credit_card_off_outlined,
-                        onRetry: () =>
-                            ref.read(subscriptionProvider.notifier).refresh(),
-                        actionLabel: 'Оновити',
-                      ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: isDialog
+                ? Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: AppRadius.lg,
+                    child: child)
+                : child,
+          ),
+        ),
       ),
     );
   }
 }
 
-class _SubscriptionContent extends ConsumerWidget {
-  const _SubscriptionContent({required this.status});
+class _PaywallCard extends ConsumerWidget {
+  const _PaywallCard({required this.snapshot});
 
-  final SubscriptionStatusResponse status;
+  final PaywallSnapshot snapshot;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final brand = ref.watch(tenantBootstrapProvider).brandConfig.brand;
+    final purchasing = snapshot.phase == PaywallPhase.purchasing;
+    final active = _isEntitled(snapshot.phase);
+    final unavailable = snapshot.phase == PaywallPhase.productsUnavailable;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _CurrentTierCard(status: status),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Що дає Premium',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                const _ValueItem(
-                  icon: Icons.auto_awesome_outlined,
-                  title: 'AI-помічник на кухні',
-                  subtitle:
-                      'Підказки, заміни інгредієнтів і поради під час приготування.',
-                ),
-                const _ValueItem(
-                  icon: Icons.workspace_premium_outlined,
-                  title: 'Premium-каталог',
-                  subtitle: 'Доступ до складніших рецептів і шеф-рівня.',
-                ),
-                const _ValueItem(
-                  icon: Icons.filter_alt_outlined,
-                  title: 'Розширений пошук',
-                  subtitle:
-                      'Більше фільтрів, щоб швидше знаходити потрібні рецепти.',
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _FeaturesSummary(features: status.features),
-      ],
-    );
-  }
-}
-
-class _CurrentTierCard extends StatelessWidget {
-  const _CurrentTierCard({required this.status});
-
-  final SubscriptionStatusResponse status;
-
-  @override
-  Widget build(BuildContext context) {
-    final isPremium = status.hasPremiumAccess;
-    final subscription = status.subscription;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isPremium)
-              const PremiumBadge(size: 28)
-            else
-              const Icon(Icons.workspace_premium_outlined, size: 28),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Поточний план',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subscription.tier.displayName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text('Статус: ${subscription.status.displayName}'),
-                  if (subscription.endDate != null)
-                    Text(
-                      'Діє до: ${_formatDate(subscription.endDate!)}',
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF16130F),
+        borderRadius:
+            MediaQuery.sizeOf(context).width >= 600 ? AppRadius.lg : null,
       ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
-  }
-}
-
-class _ValueItem extends StatelessWidget {
-  const _ValueItem({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
         children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+          Row(children: [
+            AppIconButton(
+              icon: Icons.close,
+              tooltip: 'Закрити',
+              onPressed: purchasing ? null : () => Navigator.maybePop(context),
             ),
-          ),
+            const Spacer(),
+            Text('ПІДПИСКА',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: context.brandTheme.accentOnDark,
+                    letterSpacing: 1.4)),
+          ]),
+          const SizedBox(height: 10),
+          SizedBox(
+              height: 130,
+              child: ClipRRect(
+                  borderRadius: AppRadius.md,
+                  child: BrandHero(brand: brand, role: 'paywall'))),
+          const SizedBox(height: 18),
+          if (active)
+            _ActivePanel(snapshot: snapshot)
+          else ...[
+            Text(brand.voice.paywallTitle,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: const Color(0xFFF3E9DA),
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('— ${brand.creatorName}, ${brand.name}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.brandTheme.accentOnDark,
+                    fontStyle: FontStyle.italic)),
+            const SizedBox(height: 16),
+            const _Benefit(
+                icon: Icons.check_circle, text: 'Premium-колекції та рецепти'),
+            const _Benefit(
+                icon: Icons.check_circle,
+                text: 'AI-поради й пошук за фото без лімітів'),
+            const SizedBox(height: 14),
+            if (snapshot.phase == PaywallPhase.productsLoading)
+              const _ProductsLoading()
+            else if (unavailable)
+              _Unavailable(message: snapshot.message)
+            else ...[
+              for (final product in snapshot.products)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _ProductOption(
+                    product: product,
+                    selected: product == snapshot.products.firstOrNull,
+                    enabled: !purchasing,
+                    onTap: () =>
+                        ref.read(paywallProvider.notifier).purchase(product),
+                  ),
+                ),
+              const SizedBox(height: 4),
+              AppButton(
+                label: _ctaLabel(snapshot.products.firstOrNull),
+                expand: true,
+                isLoading: purchasing,
+                onPressed: purchasing || snapshot.products.isEmpty
+                    ? null
+                    : () => ref
+                        .read(paywallProvider.notifier)
+                        .purchase(snapshot.products.first),
+              ),
+            ],
+          ],
+          if (_needsMessage(snapshot.phase)) ...[
+            const SizedBox(height: 14),
+            _StatusMessage(
+                snapshot: snapshot,
+                onRetry: snapshot.phase == PaywallPhase.error ||
+                        snapshot.phase == PaywallPhase.billingRetry
+                    ? () => ref.read(paywallProvider.notifier).load
+                    : null),
+          ],
+          const SizedBox(height: 12),
+          if (active)
+            AppButton(
+                label: 'Керувати підпискою',
+                icon: Icons.open_in_new,
+                variant: AppButtonVariant.secondary,
+                expand: true,
+                onPressed: () =>
+                    ref.read(paywallProvider.notifier).manageSubscription())
+          else
+            AppButton(
+                label: 'Відновити покупку',
+                variant: AppButtonVariant.text,
+                expand: true,
+                isLoading: purchasing,
+                onPressed: unavailable || purchasing
+                    ? null
+                    : () => ref.read(paywallProvider.notifier).restore()),
+          const SizedBox(height: 4),
+          Text('Умови · Конфіденційність',
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: const Color(0xFF8D8271))),
         ],
       ),
     );
   }
 }
 
-class _FeaturesSummary extends StatelessWidget {
-  const _FeaturesSummary({required this.features});
+bool _isEntitled(PaywallPhase phase) =>
+    phase == PaywallPhase.active ||
+    phase == PaywallPhase.grace ||
+    phase == PaywallPhase.billingRetry;
+bool _needsMessage(PaywallPhase phase) =>
+    phase == PaywallPhase.success ||
+    phase == PaywallPhase.error ||
+    phase == PaywallPhase.userCancelled ||
+    phase == PaywallPhase.grace ||
+    phase == PaywallPhase.billingRetry ||
+    phase == PaywallPhase.expired ||
+    phase == PaywallPhase.cancelled;
+String _ctaLabel(PurchaseProduct? product) =>
+    product?.trial ??
+    (product == null
+        ? 'Оформити підписку'
+        : 'Продовжити з ${product.title.toLowerCase()}');
 
-  final SubscriptionFeatures features;
-
+class _ProductsLoading extends StatelessWidget {
+  const _ProductsLoading();
   @override
-  Widget build(BuildContext context) {
-    final items = <({String name, bool enabled})>[
-      (name: 'Базові рецепти', enabled: features.basicRecipes),
-      (name: 'Базовий пошук', enabled: features.basicSearch),
-      (name: 'Збережене', enabled: features.favorites),
-      (name: 'Premium-рецепти', enabled: features.premiumRecipes),
-      (name: 'Розширений пошук', enabled: features.advancedSearch),
-      (name: 'AI-генерація рецептів', enabled: features.aiRecipeGeneration),
-      (name: 'AI-поради під час готування', enabled: features.aiCookingTips),
-      (name: 'AI-заміни інгредієнтів', enabled: features.aiSubstitutions),
-      (name: 'Аналіз поживності', enabled: features.aiNutritionAnalysis),
-    ];
+  Widget build(BuildContext context) => const Column(children: [
+        AppSkeleton(height: 76),
+        SizedBox(height: 8),
+        AppSkeleton(height: 76)
+      ]);
+}
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Поточний доступ',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 12),
-            ...items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.enabled ? Icons.check_circle : Icons.lock_outline,
-                      size: 18,
-                      color: item.enabled
-                          ? Colors.green
-                          : Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(item.name)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class _Unavailable extends StatelessWidget {
+  const _Unavailable({this.message});
+  final String? message;
+  @override
+  Widget build(BuildContext context) => _Notice(
+      icon: Icons.phone_android_outlined,
+      message: message ?? 'Продукти зараз недоступні.');
+}
+
+class _ActivePanel extends StatelessWidget {
+  const _ActivePanel({required this.snapshot});
+  final PaywallSnapshot snapshot;
+  @override
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _Notice(
+            icon: Icons.workspace_premium,
+            message: _entitlementLabel(snapshot)),
+        const SizedBox(height: 16),
+        const _Benefit(
+            icon: Icons.check_circle, text: 'Premium-контент відкрито'),
+        const _Benefit(icon: Icons.check_circle, text: 'AI-поради без лімітів'),
+      ]);
+}
+
+String _entitlementLabel(PaywallSnapshot snapshot) => switch (snapshot.phase) {
+      PaywallPhase.grace => 'Пільговий період активний. Оновіть спосіб оплати.',
+      PaywallPhase.billingRetry =>
+        'Повторюємо оплату. Premium-доступ поки активний.',
+      _ =>
+        'Premium активний${snapshot.renewsOn == null ? '' : ' · до ${snapshot.renewsOn!.day}.${snapshot.renewsOn!.month}.${snapshot.renewsOn!.year}'}',
+    };
+
+class _ProductOption extends StatelessWidget {
+  const _ProductOption(
+      {required this.product,
+      required this.selected,
+      required this.enabled,
+      required this.onTap});
+  final PurchaseProduct product;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: '${product.title}, ${product.price}',
+        child: InkWell(
+            onTap: enabled ? onTap : null,
+            borderRadius: AppRadius.md,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                  border: Border.all(
+                      color: selected
+                          ? context.brandTheme.accentOnDark
+                          : const Color(0xFF4A4234),
+                      width: selected ? 2 : 1),
+                  borderRadius: AppRadius.md),
+              child: Row(children: [
+                Icon(
+                    selected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: context.brandTheme.accentOnDark),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('${product.title} · ${product.price}',
+                          style: const TextStyle(
+                              color: Color(0xFFF3E9DA),
+                              fontWeight: FontWeight.w700)),
+                      if (product.detail != null)
+                        Text(product.detail!,
+                            style: const TextStyle(
+                                color: Color(0xFFB9AC98), fontSize: 12))
+                    ])),
+                if (product.badge != null) AppBadge(label: product.badge!)
+              ]),
+            )),
+      );
+}
+
+class _Benefit extends StatelessWidget {
+  const _Benefit({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Icon(icon, size: 18, color: context.brandTheme.accentOnDark),
+        const SizedBox(width: 9),
+        Expanded(
+            child: Text(text, style: const TextStyle(color: Color(0xFFE0D4BF))))
+      ]));
+}
+
+class _StatusMessage extends StatelessWidget {
+  const _StatusMessage({required this.snapshot, this.onRetry});
+  final PaywallSnapshot snapshot;
+  final VoidCallback? onRetry;
+  @override
+  Widget build(BuildContext context) => _Notice(
+      icon: snapshot.phase == PaywallPhase.success
+          ? Icons.check_circle
+          : snapshot.phase == PaywallPhase.userCancelled
+              ? Icons.info_outline
+              : Icons.error_outline,
+      message: snapshot.message ??
+          switch (snapshot.phase) {
+            PaywallPhase.success => 'Premium активовано.',
+            PaywallPhase.userCancelled =>
+              'Покупку скасовано. Кошти не списано.',
+            PaywallPhase.grace => 'Потрібно оновити спосіб оплати.',
+            PaywallPhase.billingRetry => 'Повторюємо оплату.',
+            PaywallPhase.expired => 'Підписка завершилась.',
+            PaywallPhase.cancelled => 'Автопоновлення вимкнено.',
+            _ => 'Покупку не завершено. Кошти не списано.'
+          },
+      action: onRetry == null
+          ? null
+          : TextButton(onPressed: onRetry, child: const Text('Повторити')));
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.icon, required this.message, this.action});
+  final IconData icon;
+  final String message;
+  final Widget? action;
+  @override
+  Widget build(BuildContext context) => Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+          color: const Color(0xFF2A1A17),
+          border: Border.all(color: const Color(0xFF6B3A31)),
+          borderRadius: AppRadius.md),
+      child: Row(children: [
+        Icon(icon, color: const Color(0xFFD67A6B)),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text(message,
+                style: const TextStyle(color: Color(0xFFF3E9DA)))),
+        if (action != null) action!
+      ]));
 }
