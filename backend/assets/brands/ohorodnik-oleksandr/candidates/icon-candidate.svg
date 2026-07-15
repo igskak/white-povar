@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Огороднік Олександр native icon candidate">
+  <defs><linearGradient id="background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5D7183"/><stop offset="1" stop-color="#4B5E70"/></linearGradient></defs>
+  <rect width="1024" height="1024" rx="512" fill="url(#background)"/>
+  <circle cx="512" cy="512" r="425" fill="none" stroke="#F5EEE1" stroke-opacity=".45" stroke-width="8"/>
+  <text x="512" y="614" fill="#FFFFFF" font-family="Georgia, serif" font-size="440" font-weight="700" text-anchor="middle">О</text>
+</svg>

@@ -78,6 +78,25 @@ The API will be available at:
 ### Runtime bootstrap
 - `GET /api/v1/bootstrap/{tenant_slug}` - Active tenant BrandConfig and product config; supports `If-None-Match` / `304`
 
+### Studio config CLI (internal)
+
+`tools/brand_config_cli.py` is the pre-Studio, fail-closed path for brand
+configuration and build assets. Run it from `backend/` using the project venv:
+
+```bash
+.venv/bin/python3 tools/brand_config_cli.py validate --config tests/fixtures/ohorodnik-oleksandr.brand-config.json
+.venv/bin/python3 tools/brand_config_cli.py publish --config tests/fixtures/ohorodnik-oleksandr.brand-config.json --dry-run
+.venv/bin/python3 tools/brand_config_cli.py avatar --tenant-slug ohorodnik-oleksandr --source /path/to/avatar-512.png
+.venv/bin/python3 tools/brand_config_cli.py candidates --config tests/fixtures/ohorodnik-oleksandr.brand-config.json
+.venv/bin/python3 tools/brand_config_cli.py bundle --config tests/fixtures/ohorodnik-oleksandr.brand-config.json --tenant-id <uuid>
+```
+
+`publish` and `rollback` invoke the corresponding migration RPCs using the
+service key. `--dry-run` validates without touching Supabase. A rollback creates
+a new immutable published version rather than mutating history. Asset candidates
+are native build inputs only: icons, splash screens and favicons do not update at
+runtime and must go through the platform release pipeline.
+
 ### Authentication
 - `POST /auth/login` - Login with email/password
 - `POST /auth/register` - Register new user
