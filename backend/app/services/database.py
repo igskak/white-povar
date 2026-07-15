@@ -144,6 +144,61 @@ class SupabaseService:
             'user_preference_profiles', 'delete',
             filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
         )
+
+    async def get_pantry_items(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
+        client = self.get_client(use_service_key=True)
+        result = (client.table('pantry_items').select('*').eq('user_id', user_id)
+                  .eq('chef_id', chef_id).order('name').execute())
+        return result.data or []
+
+    async def create_pantry_item(self, user_id: str, chef_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).table('pantry_items').insert(
+            {'user_id': user_id, 'chef_id': chef_id, **data}
+        ).execute()
+        return result.data[0]
+
+    async def update_pantry_item(self, item_id: str, user_id: str, chef_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('pantry_items').update(data)
+                  .eq('id', item_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
+        return (result.data or [None])[0]
+
+    async def delete_pantry_item(self, item_id: str, user_id: str, chef_id: str):
+        return await self.execute_query('pantry_items', 'delete', filters={'id': item_id, 'user_id': user_id, 'chef_id': chef_id}, use_service_key=True)
+
+    async def get_shopping_list_items(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('shopping_list_items').select('*')
+                  .eq('user_id', user_id).eq('chef_id', chef_id).order('checked').order('category').order('name').execute())
+        return result.data or []
+
+    async def create_shopping_list_item(self, user_id: str, chef_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).table('shopping_list_items').insert(
+            {'user_id': user_id, 'chef_id': chef_id, **data}
+        ).execute()
+        return result.data[0]
+
+    async def update_shopping_list_item(self, item_id: str, user_id: str, chef_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('shopping_list_items').update(data)
+                  .eq('id', item_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
+        return (result.data or [None])[0]
+
+    async def add_recipe_missing_ingredients(self, user_id: str, chef_id: str, recipe: Dict[str, Any], servings: int) -> List[Dict[str, Any]]:
+        pantry = await self.get_pantry_items(user_id, chef_id)
+        pantry_names = {str(item['name']).strip().lower() for item in pantry}
+        factor = servings / max(int(recipe.get('servings') or 1), 1)
+        missing = []
+        for ingredient in recipe.get('recipe_ingredients') or []:
+            name = str(ingredient.get('display_name') or '').strip().lower()
+            if not name or name in pantry_names:
+                continue
+            amount = ingredient.get('amount')
+            missing.append({
+                'user_id': user_id, 'chef_id': chef_id, 'recipe_id': recipe['id'], 'name': name,
+                'quantity': float(amount) * factor if amount else None,
+                'unit': ingredient.get('unit_id'), 'category': 'Інше', 'checked': False,
+            })
+        if missing:
+            self.get_client(use_service_key=True).table('shopping_list_items').insert(missing).execute()
+        return await self.get_shopping_list_items(user_id, chef_id)
     
     async def get_recipe_by_id(self, recipe_id: str, chef_id: str) -> Dict[str, Any]:
         """Get one recipe only inside an already resolved tenant."""

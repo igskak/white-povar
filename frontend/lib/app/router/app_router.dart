@@ -10,6 +10,7 @@ import '../../features/camera/presentation/pages/camera_capture_page.dart';
 import '../../features/camera/presentation/pages/ingredient_review_page.dart';
 import '../../features/camera/presentation/pages/photo_search_results_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
+import '../../features/pantry/presentation/pages/pantry_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/preferences_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
@@ -31,6 +32,7 @@ class AppRoutePaths {
   static const profile = '/profile';
   static const settings = '/settings';
   static const preferences = '/preferences';
+  static const pantry = '/pantry';
   static const camera = '/camera';
   static const cameraReview = '/camera/review';
   static const cameraResults = '/camera/results';
@@ -78,6 +80,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutePaths.preferences,
         builder: (_, __) => const PreferencesPage(),
       ),
+      GoRoute(
+          path: AppRoutePaths.pantry, builder: (_, __) => const PantryPage()),
       GoRoute(
         path: AppRoutePaths.offer,
         builder: (_, state) => SubscriptionScreen(

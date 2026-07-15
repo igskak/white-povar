@@ -10,6 +10,7 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../pantry/providers/pantry_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
@@ -61,6 +62,19 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
             recipe: recipe,
             locked: locked,
             onUnlock: () => _openGate(context, auth.isAuthenticated),
+            onAddToShopping: locked || !auth.isAuthenticated
+                ? null
+                : () async {
+                    await ref
+                        .read(pantryServiceProvider)
+                        .addRecipe(recipe.id, recipe.servings);
+                    ref.invalidate(shoppingProvider);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                            content: Text(
+                                'Відсутні інгредієнти додано до покупок')));
+                  },
           );
         },
       ),
@@ -99,18 +113,25 @@ bool _isOffline(Object error) =>
 
 class _RecipeDetailContent extends StatelessWidget {
   const _RecipeDetailContent(
-      {required this.recipe, required this.locked, required this.onUnlock});
+      {required this.recipe,
+      required this.locked,
+      required this.onUnlock,
+      this.onAddToShopping});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
+  final Future<void> Function()? onAddToShopping;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= 1024;
           final hero = _RecipeHero(recipe: recipe);
-          final body =
-              _RecipeBody(recipe: recipe, locked: locked, onUnlock: onUnlock);
+          final body = _RecipeBody(
+              recipe: recipe,
+              locked: locked,
+              onUnlock: onUnlock,
+              onAddToShopping: onAddToShopping);
           if (desktop) {
             return Row(children: [
               SizedBox(width: 520, child: hero),
@@ -173,10 +194,14 @@ class _RecipeHero extends StatelessWidget {
 
 class _RecipeBody extends StatelessWidget {
   const _RecipeBody(
-      {required this.recipe, required this.locked, required this.onUnlock});
+      {required this.recipe,
+      required this.locked,
+      required this.onUnlock,
+      this.onAddToShopping});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
+  final Future<void> Function()? onAddToShopping;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -194,6 +219,14 @@ class _RecipeBody extends StatelessWidget {
                       ?.copyWith(color: AppColorsV2.textSecondary)),
               const SizedBox(height: AppSpacing.lg),
               _StatsRow(recipe: recipe),
+              if (!locked) ...[
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                    label: 'Додати відсутнє до покупок',
+                    icon: Icons.add_shopping_cart_outlined,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: onAddToShopping),
+              ],
               const SizedBox(height: AppSpacing.xl),
               if (locked)
                 _PremiumGate(onUnlock: onUnlock)

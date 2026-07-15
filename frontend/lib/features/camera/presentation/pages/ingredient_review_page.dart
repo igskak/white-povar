@@ -10,6 +10,8 @@ import '../../../../core/widgets/state_views.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/photo_search_provider.dart';
+import '../../../pantry/models/pantry_models.dart';
+import '../../../pantry/providers/pantry_provider.dart';
 import '../widgets/camera_flow_scaffold.dart';
 import '../widgets/ingredient_edit_dialog.dart';
 import '../widgets/ingredient_list_widget.dart';
@@ -60,15 +62,25 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: ElevatedButton.icon(
-          onPressed: confirmedCount == 0 ||
-                  needsConfirmation ||
-                  photoSearchState.isLoading
-              ? null
-              : _searchRecipes,
-          icon: const Icon(Icons.search),
-          label: const Text('Знайти рецепти'),
-        ),
+        child: Row(children: [
+          Expanded(
+              child: OutlinedButton.icon(
+                  onPressed: confirmedCount == 0 || needsConfirmation
+                      ? null
+                      : _addConfirmedToPantry,
+                  icon: const Icon(Icons.kitchen_outlined),
+                  label: const Text('До кладової'))),
+          const SizedBox(width: 8),
+          Expanded(
+              child: ElevatedButton.icon(
+                  onPressed: confirmedCount == 0 ||
+                          needsConfirmation ||
+                          photoSearchState.isLoading
+                      ? null
+                      : _searchRecipes,
+                  icon: const Icon(Icons.search),
+                  label: const Text('Знайти'))),
+        ]),
       ),
       child: _buildContent(
         photoSearchState: photoSearchState,
@@ -228,5 +240,22 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
     }
 
     context.push('/camera/results');
+  }
+
+  Future<void> _addConfirmedToPantry() async {
+    final items =
+        ref.read(ingredientEditProvider.notifier).getConfirmedIngredients();
+    for (final item in items) {
+      await ref.read(pantryServiceProvider).addPantry(PantryItem(
+          id: '',
+          name: item.name,
+          source: 'camera',
+          confidence: item.confidence));
+    }
+    ref.invalidate(pantryProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Підтверджені продукти додано до кладової')));
+    }
   }
 }
