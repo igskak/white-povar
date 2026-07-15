@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
@@ -14,7 +15,6 @@ class SavedPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isSignedIn = ref.watch(currentUserProvider) != null;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Збережене')),
       body: SafeArea(
@@ -30,7 +30,6 @@ class _SavedRecipesBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favorites = ref.watch(favoriteRecipesProvider);
-
     return favorites.when(
       loading: () => const StateView.loading(
         title: 'Відкриваємо колекцію',
@@ -52,7 +51,6 @@ class _SavedRecipesBody extends ConsumerWidget {
             onRetry: () => context.go('/search'),
           );
         }
-
         return RefreshIndicator(
           onRefresh: () async => ref.refresh(favoriteRecipesProvider.future),
           child: CustomScrollView(
@@ -60,43 +58,34 @@ class _SavedRecipesBody extends ConsumerWidget {
             slivers: [
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                ),
+                    AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
                 sliver: SliverToBoxAdapter(
-                  child: Text(
-                    'Ваша колекція',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
+                  child: Text('Ваша колекція',
+                      style: Theme.of(context).textTheme.headlineMedium),
                 ),
               ),
               SliverPadding(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 sliver: SliverLayoutBuilder(
                   builder: (context, constraints) {
-                    final width = constraints.crossAxisExtent;
-                    final columns = width >= 900
+                    final columns = constraints.crossAxisExtent >= 900
                         ? 3
-                        : width >= 600
+                        : constraints.crossAxisExtent >= 600
                             ? 2
                             : 1;
                     return SliverGrid(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
-                        childAspectRatio: columns == 1 ? 0.92 : 0.72,
+                        childAspectRatio: columns == 1 ? .92 : .72,
                         crossAxisSpacing: AppSpacing.md,
                         mainAxisSpacing: AppSpacing.md,
                       ),
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final recipe = recipes[index];
-                          return RecipeCard(
-                            recipe: recipe,
-                            onTap: () => context.push('/recipes/${recipe.id}'),
-                          );
-                        },
+                        (context, index) => RecipeCard(
+                          recipe: recipes[index],
+                          onTap: () =>
+                              context.push('/recipes/${recipes[index].id}'),
+                        ),
                         childCount: recipes.length,
                       ),
                     );
@@ -115,54 +104,35 @@ class _GuestState extends StatelessWidget {
   const _GuestState();
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: const BoxDecoration(
-                  color: AppColorsV2.surfaceStrong,
-                  shape: BoxShape.circle,
+  Widget build(BuildContext context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const UserAvatar(radius: 36),
+                const SizedBox(height: AppSpacing.lg),
+                Text('Тримайте улюблені рецепти поруч',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                    'Каталог і пошук доступні без входу. Увійдіть, коли захочете зберігати рецепти та синхронізувати їх між пристроями.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: AppSpacing.lg),
+                AppButton(
+                  label: 'Увійти, щоб зберігати',
+                  icon: Icons.login,
+                  expand: true,
+                  onPressed: () => context
+                      .go('/login?returnTo=${Uri.encodeComponent('/saved')}'),
                 ),
-                child: const Icon(
-                  Icons.bookmark_add_outlined,
-                  size: 38,
-                  color: AppColorsV2.ink,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Тримайте улюблені рецепти поруч',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineMedium,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Каталог і пошук доступні без входу. Увійдіть, коли захочете зберігати рецепти та синхронізувати їх між пристроями.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: AppColorsV2.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              FilledButton.icon(
-                onPressed: () => context.go('/login'),
-                icon: const Icon(Icons.login),
-                label: const Text('Увійти, щоб зберігати'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }

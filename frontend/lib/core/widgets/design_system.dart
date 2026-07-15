@@ -291,13 +291,18 @@ class UserAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final initials =
         (name ?? '').trim().characters.take(2).join().toUpperCase();
+    final hasName = initials.isNotEmpty;
     return Semantics(
       image: true,
       label: name == null ? 'Профіль користувача' : 'Профіль: $name',
       child: CircleAvatar(
         radius: radius,
         backgroundImage: image,
-        child: image == null ? Text(initials.isEmpty ? '?' : initials) : null,
+        child: image == null
+            ? hasName
+                ? Text(initials)
+                : const Icon(Icons.person_outline)
+            : null,
       ),
     );
   }
