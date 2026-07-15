@@ -552,6 +552,52 @@ class SupabaseService:
         }).execute()
         return (result.data or [None])[0]
 
+    async def studio_content_rows(self, chef_id: str) -> list[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).table('recipes').select('*').eq('chef_id', chef_id).order('updated_at', desc=True).execute()
+        return result.data or []
+
+    async def studio_collection_rows(self, chef_id: str) -> list[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).table('collections').select('*, collection_items(recipe_id,position,is_preview)').eq('chef_id', chef_id).order('updated_at', desc=True).execute()
+        return result.data or []
+
+    async def studio_save_content(self, *, chef_id: str, user_id: str, content_id: str | None, values: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).rpc('studio_save_content', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_content_id': content_id, 'p_values': values,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def studio_publish_content(self, *, chef_id: str, user_id: str, content_id: str) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).rpc('studio_publish_content', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_content_id': content_id,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def studio_delete_content_impact(self, chef_id: str, content_id: str) -> Dict[str, Any]:
+        client = self.get_client(use_service_key=True)
+        collections = client.table('collection_items').select('collection_id, collections!inner(id,chef_id,status,title_i18n)').eq('recipe_id', content_id).eq('collections.chef_id', chef_id).execute().data or []
+        collection_ids = [row['collection_id'] for row in collections]
+        buyers = (client.table('commerce_entitlements').select('id', count='exact').eq('chef_id', chef_id)
+                  .in_('collection_id', collection_ids).execute()) if collection_ids else None
+        return {'collections': collections, 'buyer_count': (buyers.count or 0) if buyers else 0}
+
+    async def studio_save_collection(self, *, chef_id: str, user_id: str, collection_id: str | None, values: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).rpc('studio_save_collection', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_collection_id': collection_id, 'p_values': values,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def studio_publish_collection(self, *, chef_id: str, user_id: str, collection_id: str) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).rpc('studio_publish_collection', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_collection_id': collection_id,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def studio_save_merchandising(self, *, chef_id: str, user_id: str, values: Dict[str, Any]) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).rpc('studio_save_merchandising', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_values': values,
+        }).execute()
+        return (result.data or [None])[0]
+
     # Video-related methods
     async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new recipe video record"""

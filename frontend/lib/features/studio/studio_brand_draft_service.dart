@@ -93,6 +93,64 @@ class StudioBrandDraftService {
         data: {'kind': kind, if (platform != null) 'platform': platform});
     return StudioRelease.fromJson(response.data!);
   }
+
+  Future<List<StudioContentItem>> content() async {
+    final response =
+        await _client.get<Map<String, dynamic>>('/api/v1/studio/content');
+    return (response.data!['content'] as List<dynamic>? ?? const [])
+        .map((value) =>
+            StudioContentItem.fromJson(Map<String, dynamic>.from(value as Map)))
+        .toList();
+  }
+
+  Future<void> publishContent(String id) async =>
+      _client.post<Map<String, dynamic>>('/api/v1/studio/content/$id/publish');
+
+  Future<List<StudioCollectionItem>> collections() async {
+    final response =
+        await _client.get<Map<String, dynamic>>('/api/v1/studio/collections');
+    return (response.data!['collections'] as List<dynamic>? ?? const [])
+        .map((value) => StudioCollectionItem.fromJson(
+            Map<String, dynamic>.from(value as Map)))
+        .toList();
+  }
+}
+
+class StudioContentItem {
+  const StudioContentItem(
+      {required this.id,
+      required this.title,
+      required this.kind,
+      required this.isPublic,
+      required this.isPremium});
+  final String id, title, kind;
+  final bool isPublic, isPremium;
+  factory StudioContentItem.fromJson(Map<String, dynamic> json) =>
+      StudioContentItem(
+          id: json['id'].toString(),
+          title: json['title']?.toString() ?? '',
+          kind: json['content_kind']?.toString() ?? 'recipe',
+          isPublic: json['is_public'] == true,
+          isPremium: json['is_premium'] == true);
+}
+
+class StudioCollectionItem {
+  const StudioCollectionItem(
+      {required this.id,
+      required this.title,
+      required this.status,
+      required this.itemCount});
+  final String id, title, status;
+  final int itemCount;
+  factory StudioCollectionItem.fromJson(Map<String, dynamic> json) {
+    final titleI18n = json['title_i18n'];
+    final items = json['collection_items'] as List<dynamic>? ?? const [];
+    return StudioCollectionItem(
+        id: json['id'].toString(),
+        title: titleI18n is Map ? (titleI18n['uk']?.toString() ?? '') : '',
+        status: json['status']?.toString() ?? 'draft',
+        itemCount: items.length);
+  }
 }
 
 class StudioPublishResult {
@@ -103,7 +161,12 @@ class StudioPublishResult {
 }
 
 class StudioRelease {
-  const StudioRelease({required this.id, required this.kind, required this.status, required this.storeStatus, required this.configVersion});
+  const StudioRelease(
+      {required this.id,
+      required this.kind,
+      required this.status,
+      required this.storeStatus,
+      required this.configVersion});
   final String id, kind, status, storeStatus;
   final int configVersion;
   factory StudioRelease.fromJson(Map<String, dynamic> json) => StudioRelease(
@@ -115,7 +178,12 @@ class StudioRelease {
 }
 
 class StudioReleaseStatus {
-  const StudioReleaseStatus({this.configVersion, this.web, this.mobile, this.store, this.history = const []});
+  const StudioReleaseStatus(
+      {this.configVersion,
+      this.web,
+      this.mobile,
+      this.store,
+      this.history = const []});
   final int? configVersion;
   final StudioRelease? web, mobile, store;
   final List<StudioRelease> history;
@@ -130,7 +198,8 @@ class StudioReleaseStatus {
         mobile: item('mobileBuild'),
         store: item('storeRelease'),
         history: (json['history'] as List<dynamic>? ?? const [])
-            .map((value) => StudioRelease.fromJson(Map<String, dynamic>.from(value as Map)))
+            .map((value) =>
+                StudioRelease.fromJson(Map<String, dynamic>.from(value as Map)))
             .toList());
   }
 }

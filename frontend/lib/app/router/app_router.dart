@@ -22,6 +22,7 @@ import '../../features/saved/presentation/pages/saved_page.dart';
 import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/subscription/screens/subscription_screen.dart';
 import '../../features/studio/presentation/pages/studio_brand_page.dart';
+import '../../features/studio/presentation/pages/studio_content_page.dart';
 import 'route_guards.dart';
 import 'route_models.dart';
 
@@ -47,6 +48,7 @@ class AppRoutePaths {
   static const offer = '/offers/:offerId';
   static const legacySubscription = '/subscription';
   static const studioBrand = '/studio/brand';
+  static const studioContent = '/studio/content';
 
   static const tabLocations = <String>[home, search, saved, profile];
 }
@@ -76,6 +78,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutePaths.studioBrand,
         builder: (_, __) => const StudioBrandPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.studioContent,
+        builder: (_, __) => const StudioContentPage(),
       ),
       GoRoute(
         path: AppRoutePaths.legacySubscription,

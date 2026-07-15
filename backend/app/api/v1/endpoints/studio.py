@@ -17,6 +17,7 @@ from app.schemas.studio import (
     StudioPublishResult, StudioRelease, StudioReleaseRequest,
     StudioReleaseStatusView, StudioReleaseUpdate, StudioRollbackRequest,
     StudioSession,
+    StudioContentUpsert, StudioCollectionUpsert, StudioMerchandisingUpsert,
 )
 from app.services.database import supabase_service
 
@@ -40,6 +41,11 @@ def _require_admin(membership: tuple[User, TenantContext, str]) -> tuple[User, T
     if membership[2] != 'admin':
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Studio admin access is required for releases')
     return membership
+
+
+def _studio_row(row: dict) -> dict:
+    """Keep internal rows explicit; do not reuse consumer serializers for drafts."""
+    return {**row, 'id': str(row['id']), 'chef_id': str(row['chef_id'])}
 
 
 @router.get('/session', response_model=StudioSession)
@@ -143,6 +149,88 @@ async def update_release(release_id: str, payload: StudioReleaseUpdate, membersh
     if job is None:
         raise HTTPException(status_code=404, detail='Release job was not found for this tenant')
     return _release_response(job)
+
+
+@router.get('/content')
+async def list_content(membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    _, tenant, _ = membership
+    return {'content': [_studio_row(row) for row in await supabase_service.studio_content_rows(tenant.chef_id)]}
+
+
+@router.post('/content')
+async def create_content(payload: StudioContentUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_save_content(chef_id=tenant.chef_id, user_id=user.id, content_id=None, values=payload.model_dump(by_alias=False))
+    if payload.publish_at and payload.publish_at <= datetime.now(timezone.utc):
+        row = await supabase_service.studio_publish_content(chef_id=tenant.chef_id, user_id=user.id, content_id=str(row['id']))
+    return _studio_row(row)
+
+
+@router.put('/content/{content_id}')
+async def update_content(content_id: str, payload: StudioContentUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_save_content(chef_id=tenant.chef_id, user_id=user.id, content_id=content_id, values=payload.model_dump(by_alias=False))
+    if row is None:
+        raise HTTPException(status_code=404, detail='Content was not found for this tenant')
+    if payload.publish_at and payload.publish_at <= datetime.now(timezone.utc):
+        row = await supabase_service.studio_publish_content(chef_id=tenant.chef_id, user_id=user.id, content_id=content_id)
+    return _studio_row(row)
+
+
+@router.post('/content/{content_id}/publish')
+async def publish_content(content_id: str, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_publish_content(chef_id=tenant.chef_id, user_id=user.id, content_id=content_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail='Content was not found for this tenant')
+    return _studio_row(row)
+
+
+@router.get('/content/{content_id}/delete-impact')
+async def content_delete_impact(content_id: str, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    _, tenant, _ = membership
+    return await supabase_service.studio_delete_content_impact(tenant.chef_id, content_id)
+
+
+@router.get('/collections')
+async def list_studio_collections(membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    _, tenant, _ = membership
+    return {'collections': [_studio_row(row) for row in await supabase_service.studio_collection_rows(tenant.chef_id)]}
+
+
+@router.post('/collections')
+async def create_collection(payload: StudioCollectionUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_save_collection(chef_id=tenant.chef_id, user_id=user.id, collection_id=None, values=payload.model_dump(by_alias=False))
+    if payload.publish_at and payload.publish_at <= datetime.now(timezone.utc):
+        row = await supabase_service.studio_publish_collection(chef_id=tenant.chef_id, user_id=user.id, collection_id=str(row['id']))
+    return _studio_row(row)
+
+
+@router.put('/collections/{collection_id}')
+async def update_collection(collection_id: str, payload: StudioCollectionUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_save_collection(chef_id=tenant.chef_id, user_id=user.id, collection_id=collection_id, values=payload.model_dump(by_alias=False))
+    if row is None:
+        raise HTTPException(status_code=404, detail='Collection was not found for this tenant')
+    if payload.publish_at and payload.publish_at <= datetime.now(timezone.utc):
+        row = await supabase_service.studio_publish_collection(chef_id=tenant.chef_id, user_id=user.id, collection_id=collection_id)
+    return _studio_row(row)
+
+
+@router.post('/collections/{collection_id}/publish')
+async def publish_collection(collection_id: str, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = membership
+    row = await supabase_service.studio_publish_collection(chef_id=tenant.chef_id, user_id=user.id, collection_id=collection_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail='Collection was not found for this tenant')
+    return _studio_row(row)
+
+
+@router.put('/merchandising')
+async def save_merchandising(payload: StudioMerchandisingUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    user, tenant, _ = _require_admin(membership)
+    return await supabase_service.studio_save_merchandising(chef_id=tenant.chef_id, user_id=user.id, values=payload.model_dump(by_alias=False))
 
 
 @router.get('/assets', response_model=list[StudioAsset])
