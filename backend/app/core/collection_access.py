@@ -1,4 +1,4 @@
-"""One collection access decision point, ready for COM-01 scoped products."""
+"""One collection access decision point for subscription and one-off products."""
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -18,9 +18,8 @@ async def resolve_collection_access(
 ) -> CollectionAccess:
     """Resolve a collection without accepting client product or ownership claims.
 
-    COL-02 recognizes the existing tenant subscription entitlement. COM-01 will
-    extend this single boundary with product-to-collection one-off scopes; it
-    must not be duplicated in a route or client.
+    Product ownership is resolved only by the server entitlement service; a
+    one-off grant is accepted only when the product is mapped to this collection.
     """
     if str(collection.get('chef_id')) != tenant.chef_id:
         return CollectionAccess(False, False)
@@ -30,5 +29,7 @@ async def resolve_collection_access(
         return CollectionAccess(True, True)
     if user is None:
         return CollectionAccess(True, False)
-    allowed = await subscription_service.has_tenant_entitlement(user.id, tenant.chef_id)
+    allowed = await subscription_service.has_collection_entitlement(
+        user.id, tenant.chef_id, str(collection.get('id')),
+    )
     return CollectionAccess(True, allowed)

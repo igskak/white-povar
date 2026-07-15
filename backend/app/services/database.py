@@ -144,6 +144,15 @@ class SupabaseService:
             .limit(1).execute()
         )
 
+    async def get_commerce_entitlements(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
+        """Read entitlement scope and authoritative product-content mapping together."""
+        result = (
+            self.get_client(use_service_key=True).table('commerce_entitlements')
+            .select('*, product:products(kind,product_content(collection_id))')
+            .eq('user_id', user_id).eq('chef_id', chef_id).execute()
+        )
+        return result.data or []
+
     async def get_preference_profile(self, user_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
         result = await self.execute_query(
             'user_preference_profiles', 'select',

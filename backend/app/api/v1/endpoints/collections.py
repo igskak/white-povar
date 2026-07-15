@@ -103,7 +103,11 @@ async def get_collection(
         content = item.get('content')
         if not content:
             continue
-        if not access.can_read_items and not item.get('is_preview', False):
+        if access.can_read_items:
+            # A collection entitlement authorizes its ordered contents only in
+            # this collection projection; it does not broaden recipe access.
+            projected = _content_item_from_row(content)
+        elif not item.get('is_preview', False):
             projected = _premium_teaser(content)
         else:
             content_access = await resolve_recipe_access(content, tenant, current_user)

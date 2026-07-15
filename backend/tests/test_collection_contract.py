@@ -12,7 +12,10 @@ from app.core.tenant import TenantContext
 
 
 def _request(language='uk'):
-    return Request({'type': 'http', 'method': 'GET', 'headers': [(b'accept-language', language.encode())]})
+    return Request({
+        'type': 'http', 'method': 'GET', 'query_string': b'',
+        'headers': [(b'accept-language', language.encode())],
+    })
 
 
 def _content(recipe_id, chef_id):

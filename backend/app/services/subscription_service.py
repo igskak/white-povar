@@ -3,7 +3,7 @@ Subscription service for managing premium access and subscription lifecycle
 """
 import logging
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from app.schemas.subscription import (
@@ -137,21 +137,64 @@ class SubscriptionService:
         return result
 
     async def has_tenant_entitlement(self, user_id: str, chef_id: str) -> bool:
-        """Return a server-side entitlement for one tenant only.
+        """Return active subscription scope for exactly one tenant."""
+        return await self._has_commerce_access(user_id, chef_id)
 
-        Legacy global subscription columns are intentionally not consulted here:
-        they cannot safely prove access to another tenant's catalogue.
-        """
+    async def has_collection_entitlement(self, user_id: str, chef_id: str, collection_id: str) -> bool:
+        """Return subscription or explicitly mapped one-off access to one collection."""
+        return await self._has_commerce_access(user_id, chef_id, collection_id)
+
+    async def _has_commerce_access(
+        self, user_id: str, chef_id: str, collection_id: Optional[str] = None,
+    ) -> bool:
+        """Pure, idempotent access decision over server-issued entitlement rows."""
         try:
-            result = await self.db_service.execute_query(
-                'tenant_entitlements', 'select',
-                filters={'user_id': user_id, 'chef_id': chef_id},
-                use_service_key=True,
-            )
-            return any(row.get('is_active', False) for row in (result.data or []))
-        except Exception:
-            logger.exception('Could not resolve entitlement for user %s and tenant %s', user_id, chef_id)
+            entitlements = await self.db_service.get_commerce_entitlements(user_id, chef_id)
+            for entitlement in entitlements:
+                if not self._is_accessible_entitlement(entitlement):
+                    continue
+                product = entitlement.get('product') or {}
+                if product.get('kind') == 'subscription' and entitlement.get('scope_type') == 'tenant':
+                    return True
+                if collection_id is None or product.get('kind') != 'one_off':
+                    continue
+                if (entitlement.get('scope_type') != 'collection'
+                        or str(entitlement.get('collection_id')) != collection_id):
+                    continue
+                mappings = product.get('product_content') or []
+                if any(str(mapping.get('collection_id')) == collection_id for mapping in mappings):
+                    return True
             return False
+        except Exception:
+            logger.exception('Could not resolve commerce access for user %s and tenant %s', user_id, chef_id)
+            return False
+
+    @staticmethod
+    def _is_accessible_entitlement(entitlement: Dict[str, Any]) -> bool:
+        if entitlement.get('status') not in {'active', 'trial', 'grace'}:
+            return False
+        raw_starts_at = entitlement.get('starts_at')
+        starts_at = SubscriptionService._as_utc_datetime(raw_starts_at)
+        if raw_starts_at and starts_at is None:
+            return False
+        if starts_at is not None and starts_at > datetime.now(timezone.utc):
+            return False
+        expires_at = entitlement.get('expires_at')
+        if not expires_at:
+            return True
+        expires_at = SubscriptionService._as_utc_datetime(expires_at)
+        return expires_at is not None and expires_at > datetime.now(timezone.utc)
+
+    @staticmethod
+    def _as_utc_datetime(value: Any) -> Optional[datetime]:
+        if isinstance(value, str):
+            try:
+                value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except ValueError:
+                return None
+        if not isinstance(value, datetime):
+            return None
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
     
     async def update_subscription(
         self,
