@@ -28,10 +28,12 @@ class RecipeCard extends ConsumerWidget {
 
     return Semantics(
       button: onTap != null,
-      label: 'Відкрити рецепт ${recipe.title}',
+      label:
+          'Відкрити ${_contentKindLabel(recipe.contentKind)} ${recipe.title}',
       child: ContentCard(
         onTap: onTap,
-        semanticLabel: 'Відкрити рецепт ${recipe.title}',
+        semanticLabel:
+            'Відкрити ${_contentKindLabel(recipe.contentKind)} ${recipe.title}',
         padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,6 +116,10 @@ class RecipeCard extends ConsumerWidget {
                     runSpacing: AppSpacing.xs,
                     children: [
                       _InfoChip(
+                        icon: _contentKindIcon(recipe.contentKind),
+                        label: _contentKindLabel(recipe.contentKind),
+                      ),
+                      _InfoChip(
                         icon: Icons.schedule_rounded,
                         label: '${recipe.totalTimeMinutes} хв',
                       ),
@@ -140,6 +146,20 @@ class RecipeCard extends ConsumerWidget {
     );
   }
 }
+
+String _contentKindLabel(ContentKind kind) => switch (kind) {
+      ContentKind.recipe => 'Рецепт',
+      ContentKind.technique => 'Техніка',
+      ContentKind.process => 'Процес',
+      ContentKind.video => 'Відео',
+    };
+
+IconData _contentKindIcon(ContentKind kind) => switch (kind) {
+      ContentKind.recipe => Icons.restaurant_menu_rounded,
+      ContentKind.technique => Icons.auto_awesome_outlined,
+      ContentKind.process => Icons.format_list_numbered_rounded,
+      ContentKind.video => Icons.play_circle_outline_rounded,
+    };
 
 class _ImageFallback extends StatelessWidget {
   const _ImageFallback({this.isLoading = false});

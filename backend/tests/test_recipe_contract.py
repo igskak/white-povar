@@ -15,6 +15,7 @@ from app.schemas.recipe import RecipeCreate
 def test_public_payload_maps_to_canonical_recipe_tables():
     rows = recipes._recipe_payload_to_rows({
         'title': 'Pasta',
+        'content_kind': 'process',
         'description': 'Fast dinner',
         'cuisine': 'Italian',
         'category': 'Second Courses',
@@ -32,6 +33,7 @@ def test_public_payload_maps_to_canonical_recipe_tables():
     })
 
     assert rows['difficulty_level'] == 2
+    assert rows['content_kind'] == 'process'
     assert rows['instructions'] == 'Boil water\nCook pasta'
     assert rows['instructions_structured'] == ['Boil water', 'Cook pasta']
     assert rows['image_url'] == 'https://example.com/pasta.jpg'
@@ -59,6 +61,7 @@ def test_canonical_row_maps_back_to_frontend_contract():
         'id': recipe_id,
         'chef_id': chef_id,
         'title': 'Pasta',
+        'content_kind': 'process',
         'description': 'Fast dinner',
         'category_id': '20000000-0000-0000-0000-000000000003',
         'difficulty_level': 2,
@@ -92,6 +95,33 @@ def test_canonical_row_maps_back_to_frontend_contract():
     assert recipe.ingredients[0].name == 'Pasta'
     assert recipe.ingredients[0].unit == 'g'
     assert recipe.nutrition.calories == 450
+    assert recipe.content_kind == 'process'
+
+
+@pytest.mark.parametrize('kind', ['technique', 'process'])
+def test_non_recipe_content_allows_empty_ingredients(kind):
+    content = RecipeCreate(
+        chef_id=uuid4(), title='Knife work', description='Practice safely',
+        cuisine='Українська', category='other', difficulty=1,
+        prep_time_minutes=0, cook_time_minutes=0, servings=1,
+        content_kind=kind, ingredients=[], instructions=['Повторіть рух'],
+    )
+    assert content.content_kind == kind
+    assert content.ingredients == []
+
+
+def test_recipe_content_requires_ingredients_and_video_requires_source():
+    common = dict(
+        chef_id=uuid4(), title='Content', description='Body', cuisine='Українська',
+        category='other', difficulty=1, prep_time_minutes=0, cook_time_minutes=0,
+        servings=1, instructions=[], ingredients=[],
+    )
+    with pytest.raises(ValueError, match='ingredient'):
+        RecipeCreate(**common)
+    with pytest.raises(ValueError, match='Video content requires'):
+        RecipeCreate(**common, content_kind='video')
+    video = RecipeCreate(**common, content_kind='video', video_url='https://youtu.be/abc')
+    assert video.content_kind == 'video'
 
 
 def test_create_recipe_uses_explicit_current_user_chef_link(monkeypatch):

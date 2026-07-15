@@ -90,6 +90,10 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
               onUnlock: () => _openGate(context, isAuthenticated),
             );
           }
+          if (recipe.contentKind != ContentKind.recipe &&
+              recipe.contentKind != ContentKind.process) {
+            return const _CookingEmpty();
+          }
           if (recipe.instructions.isEmpty) return const _CookingEmpty();
           _step = _step.clamp(0, recipe.instructions.length - 1);
           if (!_sessionStored) {

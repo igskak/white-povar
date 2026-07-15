@@ -72,7 +72,7 @@ def _recipe_payload_to_rows(payload: Dict[str, Any], *, partial: bool = False) -
     rows: Dict[str, Any] = {}
 
     direct_fields = (
-        'title', 'description', 'prep_time_minutes', 'cook_time_minutes',
+        'title', 'description', 'content_kind', 'prep_time_minutes', 'cook_time_minutes',
         'servings', 'video_url', 'video_file_path', 'is_featured',
     )
     for field in direct_fields:
@@ -229,8 +229,13 @@ def _normalize_video_file_path(video_file_path_data):
     return None
 
 
-def _recipe_from_row(recipe_data: Dict[str, Any]) -> Recipe:
-    """Build the public Recipe model from a canonical database row."""
+def _content_item_from_row(recipe_data: Dict[str, Any]) -> Recipe:
+    """Map a recipes row to the shared content-item contract.
+
+    The public route and DTO deliberately remain named Recipe while collections
+    are not available yet.  Keeping this mapper separate lets COL-02 reuse the
+    exact same item contract without a parallel content table.
+    """
     row = dict(recipe_data)
     ingredient_rows = row.pop('recipe_ingredients', []) or []
     nutrition_rows = row.pop('recipe_nutrition', []) or []
@@ -271,6 +276,7 @@ def _recipe_from_row(recipe_data: Dict[str, Any]) -> Recipe:
         'chef_id': row['chef_id'],
         'title': row.get('title', ''),
         'description': row.get('description') or '',
+        'content_kind': row.get('content_kind') or 'recipe',
         'cuisine': _extract_cuisine_from_tags(row.get('tags', [])),
         'category': _get_category_name_from_id(row.get('category_id')),
         'difficulty': row.get('difficulty_level', 1),
@@ -290,6 +296,10 @@ def _recipe_from_row(recipe_data: Dict[str, Any]) -> Recipe:
         'ingredients': ingredients,
         'nutrition': nutrition,
     })
+
+
+# Backwards-compatible internal name used by existing recipe/search endpoints.
+_recipe_from_row = _content_item_from_row
 
 
 def _premium_teaser(recipe_data: Dict[str, Any]) -> Recipe:
@@ -358,67 +368,7 @@ async def get_recipes(
                 if not access.can_read_body:
                     recipes.append(_premium_teaser(recipe_data))
                     continue
-                # Ingredients are now included via JOIN, no need for separate query
-                recipe_ingredients = recipe_data.pop('recipe_ingredients', [])
-
-                # Convert string UUIDs to UUID objects
-                if isinstance(recipe_data.get('id'), str):
-                    recipe_data['id'] = UUID(recipe_data['id'])
-                if isinstance(recipe_data.get('chef_id'), str):
-                    recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
-
-                # Handle field name mapping and data type conversion
-                normalized_data = {
-                    'id': recipe_data['id'],
-                    'chef_id': recipe_data['chef_id'],
-                    'title': recipe_data.get('title', ''),
-                    'description': recipe_data.get('description', ''),
-                    'cuisine': _extract_cuisine_from_tags(recipe_data.get('tags', [])),
-                    'category': _get_category_name_from_id(recipe_data.get('category_id')),
-                    'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
-                    'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
-                    'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
-                    'total_time_minutes': recipe_data.get('total_time_minutes',
-                        recipe_data.get('prep_time_minutes', 0) + recipe_data.get('cook_time_minutes', 0)),
-                    'servings': recipe_data.get('servings', 1),
-                    'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
-                    'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
-                    'video_url': _normalize_video_url(recipe_data.get('video_url')),
-                    'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
-                    'tags': recipe_data.get('tags', []),
-                    'is_featured': recipe_data.get('is_featured', False),
-                    'is_premium': recipe_data.get('is_premium', False),
-                    'created_at': recipe_data.get('created_at'),
-                    'updated_at': recipe_data.get('updated_at'),
-                    'ingredients': []  # Will be populated below
-                }
-
-                # Convert ingredients
-                for ingredient_data in recipe_ingredients:
-                    try:
-                        if isinstance(ingredient_data.get('id'), str):
-                            ingredient_data['id'] = UUID(ingredient_data['id'])
-                        if isinstance(ingredient_data.get('recipe_id'), str):
-                            ingredient_data['recipe_id'] = UUID(ingredient_data['recipe_id'])
-
-                        # Map ingredient fields
-                        ingredient = {
-                            'id': ingredient_data['id'],
-                            'recipe_id': ingredient_data['recipe_id'],
-                            'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
-                            'amount': float(ingredient_data.get('amount', 0)) if ingredient_data.get('amount') is not None else 0,
-                            'unit': _get_unit_name_from_id(ingredient_data.get('unit_id')) if ingredient_data.get('unit_id') else ingredient_data.get('unit', 'unit'),
-                            'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
-                            'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
-                        }
-                        normalized_data['ingredients'].append(ingredient)
-                    except Exception as e:
-                        logger.warning(f"Error converting ingredient: {str(e)}")
-                        continue
-
-                # Convert to Recipe model
-                recipe = Recipe(**normalized_data)
-                recipes.append(recipe)
+                recipes.append(_content_item_from_row(recipe_data))
             except Exception as e:
                 logger.error(f"Error converting recipe data to model: {str(e)}")
                 logger.error(f"Recipe data: {recipe_data}")
@@ -468,67 +418,7 @@ async def get_featured_recipes(
                 if not access.can_read_body:
                     recipes.append(_premium_teaser(recipe_data))
                     continue
-                # Get ingredients for each recipe
-                ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
-                recipe_ingredients = ingredients_result.get('data', [])
-
-                # Convert string UUIDs to UUID objects
-                if isinstance(recipe_data.get('id'), str):
-                    recipe_data['id'] = UUID(recipe_data['id'])
-                if isinstance(recipe_data.get('chef_id'), str):
-                    recipe_data['chef_id'] = UUID(recipe_data['chef_id'])
-
-                # Handle field name mapping and data type conversion
-                normalized_data = {
-                    'id': recipe_data['id'],
-                    'chef_id': recipe_data['chef_id'],
-                    'title': recipe_data.get('title', ''),
-                    'description': recipe_data.get('description', ''),
-                    'cuisine': _extract_cuisine_from_tags(recipe_data.get('tags', [])),
-                    'category': _get_category_name_from_id(recipe_data.get('category_id')),
-                    'difficulty': recipe_data.get('difficulty', recipe_data.get('difficulty_level', 1)),
-                    'prep_time_minutes': recipe_data.get('prep_time_minutes', 0),
-                    'cook_time_minutes': recipe_data.get('cook_time_minutes', 0),
-                    'total_time_minutes': recipe_data.get('total_time_minutes',
-                        recipe_data.get('prep_time_minutes', 0) + recipe_data.get('cook_time_minutes', 0)),
-                    'servings': recipe_data.get('servings', 1),
-                    'instructions': _normalize_instructions(recipe_data.get('instructions', [])),
-                    'images': _normalize_images(recipe_data.get('images', recipe_data.get('image_url'))),
-                    'video_url': _normalize_video_url(recipe_data.get('video_url')),
-                    'video_file_path': _normalize_video_file_path(recipe_data.get('video_file_path')),
-                    'tags': recipe_data.get('tags', []),
-                    'is_featured': recipe_data.get('is_featured', False),
-                    'is_premium': recipe_data.get('is_premium', False),
-                    'created_at': recipe_data.get('created_at'),
-                    'updated_at': recipe_data.get('updated_at'),
-                    'ingredients': []  # Will be populated below
-                }
-
-                # Convert ingredients
-                for ingredient_data in recipe_ingredients:
-                    try:
-                        if isinstance(ingredient_data.get('id'), str):
-                            ingredient_data['id'] = UUID(ingredient_data['id'])
-                        if isinstance(ingredient_data.get('recipe_id'), str):
-                            ingredient_data['recipe_id'] = UUID(ingredient_data['recipe_id'])
-
-                        # Map ingredient fields
-                        ingredient = {
-                            'id': ingredient_data['id'],
-                            'recipe_id': ingredient_data['recipe_id'],
-                            'name': ingredient_data.get('display_name', ingredient_data.get('name', '')),
-                            'amount': float(ingredient_data.get('amount', 0)) if ingredient_data.get('amount') is not None else 0,
-                            'unit': _get_unit_name_from_id(ingredient_data.get('unit_id')) if ingredient_data.get('unit_id') else ingredient_data.get('unit', 'unit'),
-                            'notes': ingredient_data.get('preparation_notes', ingredient_data.get('notes')),
-                            'order': ingredient_data.get('sort_order', ingredient_data.get('order', 0))
-                        }
-                        normalized_data['ingredients'].append(ingredient)
-                    except Exception as e:
-                        logger.warning(f"Error converting ingredient: {str(e)}")
-                        continue
-
-                recipe = Recipe(**normalized_data)
-                recipes.append(recipe)
+                recipes.append(_content_item_from_row(recipe_data))
             except Exception as e:
                 logger.error(f"Error converting featured recipe data to model: {str(e)}")
                 logger.error(f"Recipe data: {recipe_data}")

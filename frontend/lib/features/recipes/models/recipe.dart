@@ -1,5 +1,14 @@
 import 'package:equatable/equatable.dart';
 
+enum ContentKind { recipe, technique, process, video }
+
+ContentKind _contentKindFromJson(dynamic value) => switch (value) {
+      'technique' => ContentKind.technique,
+      'process' => ContentKind.process,
+      'video' => ContentKind.video,
+      _ => ContentKind.recipe,
+    };
+
 class Recipe extends Equatable {
   final String id;
   final String title;
@@ -7,6 +16,7 @@ class Recipe extends Equatable {
   final String chefId;
   final String cuisine;
   final String category;
+  final ContentKind contentKind;
   final int difficulty;
   final int prepTimeMinutes;
   final int cookTimeMinutes;
@@ -30,6 +40,7 @@ class Recipe extends Equatable {
     required this.chefId,
     required this.cuisine,
     required this.category,
+    this.contentKind = ContentKind.recipe,
     required this.difficulty,
     required this.prepTimeMinutes,
     required this.cookTimeMinutes,
@@ -55,6 +66,7 @@ class Recipe extends Equatable {
       chefId: json['chef_id'].toString(), // Handle UUID conversion
       cuisine: json['cuisine']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
+      contentKind: _contentKindFromJson(json['content_kind']),
       difficulty: _parseIntSafely(json['difficulty']) ?? 1,
       prepTimeMinutes: _parseIntSafely(json['prep_time_minutes']) ?? 0,
       cookTimeMinutes: _parseIntSafely(json['cook_time_minutes']) ?? 0,
@@ -113,6 +125,7 @@ class Recipe extends Equatable {
       'chef_id': chefId,
       'cuisine': cuisine,
       'category': category,
+      'content_kind': contentKind.name,
       'difficulty': difficulty,
       'prep_time_minutes': prepTimeMinutes,
       'cook_time_minutes': cookTimeMinutes,
@@ -139,6 +152,7 @@ class Recipe extends Equatable {
         chefId,
         cuisine,
         category,
+        contentKind,
         difficulty,
         prepTimeMinutes,
         cookTimeMinutes,

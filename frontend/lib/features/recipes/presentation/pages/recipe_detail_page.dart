@@ -81,8 +81,12 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
       bottomNavigationBar: recipeAsync.maybeWhen(
         data: (recipe) {
           final locked = recipe.isPremium && !hasPremiumAccess;
+          final canCook = (recipe.contentKind == ContentKind.recipe ||
+                  recipe.contentKind == ContentKind.process) &&
+              recipe.instructions.isNotEmpty;
+          if (!locked && !canCook) return null;
           return _BottomAction(
-            enabled: !locked && recipe.instructions.isNotEmpty,
+            enabled: locked || canCook,
             label: locked ? 'Відкрити Premium' : 'Почати готувати',
             icon:
                 locked ? Icons.workspace_premium : Icons.soup_kitchen_outlined,

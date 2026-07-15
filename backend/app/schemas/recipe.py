@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, validator
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, root_validator, validator
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from uuid import UUID
 import uuid
@@ -39,6 +39,7 @@ class Nutrition(NutritionBase):
         from_attributes = True
 
 class RecipeBase(BaseModel):
+    content_kind: Literal['recipe', 'technique', 'process', 'video'] = 'recipe'
     title: str = Field(..., min_length=1, max_length=200)
     description: str = Field(..., min_length=1, max_length=1000)
     cuisine: str = Field(..., min_length=1, max_length=100)
@@ -90,16 +91,27 @@ class RecipeBase(BaseModel):
 
 class RecipeCreate(RecipeBase):
     chef_id: UUID
-    ingredients: List[IngredientCreate] = Field(..., min_items=1)
+    ingredients: List[IngredientCreate] = Field(default_factory=list)
     nutrition: Optional[NutritionBase] = None
 
-    @validator('instructions')
-    def create_requires_instructions(cls, value):
-        if not value:
-            raise ValueError('At least one instruction is required')
-        return value
+    @root_validator(skip_on_failure=True)
+    def validate_content_kind_requirements(cls, values):
+        kind = values.get('content_kind', 'recipe')
+        ingredients = values.get('ingredients') or []
+        instructions = values.get('instructions') or []
+        has_video = bool(values.get('video_url') or values.get('video_file_path'))
+
+        if kind == 'recipe':
+            if not ingredients:
+                raise ValueError('Recipe content requires at least one ingredient')
+            if not instructions:
+                raise ValueError('Recipe content requires at least one instruction')
+        elif kind == 'video' and not has_video:
+            raise ValueError('Video content requires video_url or video_file_path')
+        return values
 
 class RecipeUpdate(BaseModel):
+    content_kind: Optional[Literal['recipe', 'technique', 'process', 'video']] = None
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, min_length=1, max_length=1000)
     cuisine: Optional[str] = Field(None, min_length=1, max_length=100)
