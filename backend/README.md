@@ -48,8 +48,15 @@ Required environment variables:
 ### 3. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements-dev.txt
 ```
+
+`requirements-dev.txt` includes the production pins plus test and lint tools.
+Use this isolated environment rather than globally installed packages: the
+Starlette test client in this project requires the pinned `httpx==0.25.2`.
 
 ### 4. Run the Server
 
@@ -110,11 +117,9 @@ backend/
 ### Testing
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-asyncio httpx
-
-# Run tests
-pytest
+# From the activated .venv created above
+python3 -m pytest tests/ -v
+python3 -m flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
 ```
 
 ### Code Quality
