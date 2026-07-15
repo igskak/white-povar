@@ -5,6 +5,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/app_config.dart';
+import '../core/branding/brand_bootstrapper.dart';
+import '../core/branding/brand_providers.dart';
 import '../firebase_options.dart';
 import 'app.dart';
 
@@ -23,9 +25,16 @@ Future<void> bootstrap() async {
 
   await Hive.initFlutter();
 
+  final tenantBootstrap = await BrandBootstrapper(
+    tenantSlug: AppConfig.tenantSlug,
+    storage: const SharedPreferencesBrandBootstrapStorage(),
+    remoteLoader: HttpBrandBootstrapRemoteLoader(),
+  ).load();
+
   runApp(
-    const ProviderScope(
-      child: WhitePovarAppV2(),
+    ProviderScope(
+      overrides: [tenantBootstrapProvider.overrideWithValue(tenantBootstrap)],
+      child: const WhitePovarAppV2(),
     ),
   );
 }
