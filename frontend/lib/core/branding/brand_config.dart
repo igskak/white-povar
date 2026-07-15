@@ -49,6 +49,7 @@ class BrandDetails {
     required this.voice,
     required this.derived,
     required this.heroPhotos,
+    this.courseTag,
     this.logo,
   });
 
@@ -60,6 +61,7 @@ class BrandDetails {
   final BrandVoice voice;
   final DerivedBrandColors derived;
   final List<BrandHeroPhoto> heroPhotos;
+  final String? courseTag;
   final String? logo;
 
   factory BrandDetails.fromJson(Map<String, dynamic> json) {
@@ -71,15 +73,23 @@ class BrandDetails {
     if (!const {'serif', 'grotesque', 'humanist'}.contains(font)) {
       throw const FormatException('Invalid BrandConfig font.');
     }
+    final voice = BrandVoice.fromJson(_requiredMap(json, 'voice'));
+    final courseTag = _optionalString(json['courseTag'], 'courseTag');
+    if ((voice.courseName == null) != (courseTag == null)) {
+      throw const FormatException(
+        'BrandConfig courseName and courseTag must be provided together.',
+      );
+    }
     return BrandDetails(
       name: _requiredString(json, 'name'),
       creatorName: _requiredString(json, 'creatorName'),
       avatar: _requiredString(json, 'avatar'),
       accent: accent.toUpperCase(),
       font: font,
-      voice: BrandVoice.fromJson(_requiredMap(json, 'voice')),
+      voice: voice,
       derived: DerivedBrandColors.fromJson(_requiredMap(json, 'derived')),
       heroPhotos: _heroPhotos(json['heroPhotos']),
+      courseTag: courseTag,
       logo: _optionalUrl(json['logo'], 'logo'),
     );
   }
@@ -110,16 +120,19 @@ class BrandVoice {
     required this.greeting,
     required this.loginTitle,
     required this.paywallTitle,
+    this.courseName,
   });
 
   final String greeting;
   final String loginTitle;
   final String paywallTitle;
+  final String? courseName;
 
   factory BrandVoice.fromJson(Map<String, dynamic> json) => BrandVoice(
         greeting: _requiredString(json, 'greeting'),
         loginTitle: _requiredString(json, 'loginTitle'),
         paywallTitle: _requiredString(json, 'paywallTitle'),
+        courseName: _optionalString(json['courseName'], 'courseName'),
       );
 }
 
@@ -208,6 +221,14 @@ List<BrandHeroPhoto> _heroPhotos(dynamic value) {
 }
 
 String? _optionalUrl(dynamic value, String key) {
+  if (value == null) return null;
+  if (value is! String || value.trim().isEmpty) {
+    throw FormatException('Invalid BrandConfig $key.');
+  }
+  return value;
+}
+
+String? _optionalString(dynamic value, String key) {
   if (value == null) return null;
   if (value is! String || value.trim().isEmpty) {
     throw FormatException('Invalid BrandConfig $key.');

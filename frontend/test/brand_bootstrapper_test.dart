@@ -16,7 +16,8 @@ const _bundled = '''
       "name": "Огороднік Олександр", "creatorName": "Олександр",
       "avatar": "PENDING:/brands/ohorodnik-oleksandr/avatar-512.png",
       "accent": "#5D7183", "font": "grotesque",
-      "voice": {"greeting": "Ой, друзі", "loginTitle": "Готуйте", "paywallTitle": "Колекції"},
+      "voice": {"greeting": "Ой, друзі", "loginTitle": "Готуйте", "paywallTitle": "Колекції", "courseName": "Майстерня Олександра"},
+      "courseTag": "maisternia-oleksandra",
       "derived": {"accentPressed": "#4B5E70", "accentOnDark": "#6B8092", "onAccent": "#FFFFFF", "lightCtaMode": "accentFill"}
     }
   },
@@ -30,6 +31,8 @@ void main() {
 
     expect(result.tenantSlug, _tenant);
     expect(result.brandConfig.brand.name, 'Огороднік Олександр');
+    expect(result.brandConfig.brand.voice.courseName, 'Майстерня Олександра');
+    expect(result.brandConfig.brand.courseTag, 'maisternia-oleksandra');
     expect(result.configVersion, 'bundled-pilot-1');
   });
 

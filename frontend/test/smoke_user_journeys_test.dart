@@ -4,10 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 
 import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/core/branding/brand_providers.dart';
+import 'package:frontend/core/branding/tenant_bootstrap.dart';
+import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/features/camera/models/detected_ingredient.dart';
 import 'package:frontend/features/camera/presentation/pages/photo_search_results_page.dart';
 import 'package:frontend/features/camera/providers/photo_search_provider.dart';
 import 'package:frontend/features/camera/services/photo_search_service.dart';
+import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/home/presentation/pages/home_page.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
@@ -15,6 +20,7 @@ import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
 import 'package:frontend/features/search/presentation/pages/search_page.dart';
 import 'package:frontend/features/search/providers/search_provider.dart';
+import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
 void main() {
   group('Smoke user journeys', () {
@@ -25,9 +31,13 @@ void main() {
         ProviderScope(
           overrides: [
             recipeServiceProvider.overrideWithValue(_FakeRecipeService()),
+            tenantBootstrapProvider.overrideWithValue(_tenantBootstrap),
+            currentUserProvider.overrideWithValue(null),
+            isPremiumProvider.overrideWithValue(false),
           ],
-          child: const MaterialApp(
-            home: HomePage(),
+          child: MaterialApp(
+            theme: AppThemeV2.light(_brandConfig),
+            home: const HomePage(),
           ),
         ),
       );
@@ -36,12 +46,42 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Сканувати інгредієнти'), findsOneWidget);
+      expect(find.text('Ой, друзі, ну це щось...'), findsOneWidget);
+      expect(find.text('Майстерня Олександра'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Test Pasta'),
         300,
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('Test Pasta'), findsOneWidget);
+    });
+
+    testWidgets('Home has no layout exceptions at design breakpoints', (
+      WidgetTester tester,
+    ) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final width in [390.0, 768.0, 1280.0]) {
+        tester.view.physicalSize = Size(width, 1000);
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              recipeServiceProvider.overrideWithValue(_FakeRecipeService()),
+              tenantBootstrapProvider.overrideWithValue(_tenantBootstrap),
+              currentUserProvider.overrideWithValue(null),
+              isPremiumProvider.overrideWithValue(false),
+            ],
+            child: MaterialApp(
+              theme: AppThemeV2.light(_brandConfig),
+              home: const HomePage(),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.takeException(), isNull, reason: 'width: $width');
+      }
     });
 
     testWidgets('Search journey: typing query shows search results', (
@@ -98,6 +138,39 @@ void main() {
     });
   });
 }
+
+const _brandConfig = BrandConfig(
+  schemaVersion: 1,
+  tenantSlug: 'ohorodnik-oleksandr',
+  locale: 'uk',
+  brand: BrandDetails(
+    name: 'Огороднік Олександр',
+    creatorName: 'Олександр',
+    avatar: 'PENDING:/avatar.png',
+    accent: '#5D7183',
+    font: 'grotesque',
+    voice: BrandVoice(
+      greeting: 'Ой, друзі, ну це щось...',
+      loginTitle: 'Готуйте з Олександром',
+      paywallTitle: 'Колекції Олександра',
+      courseName: 'Майстерня Олександра',
+    ),
+    derived: DerivedBrandColors(
+      accentPressed: '#4B5E70',
+      accentOnDark: '#6B8092',
+      onAccent: '#FFFFFF',
+      lightCtaMode: 'accentFill',
+    ),
+    heroPhotos: [],
+    courseTag: 'maisternia-oleksandra',
+  ),
+);
+
+const _tenantBootstrap = TenantBootstrap(
+  tenantSlug: 'ohorodnik-oleksandr',
+  brandConfig: _brandConfig,
+  configVersion: 'test',
+);
 
 class _FakeRecipeService implements RecipeService {
   @override
