@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/presentation/pages/recipe_detail_page.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
@@ -57,6 +58,9 @@ Widget _app({required Recipe recipe, bool hasPremiumAccess = false}) =>
       overrides: [
         recipeDetailProvider(recipe.id).overrideWith((_) async => recipe),
         isPremiumProvider.overrideWithValue(hasPremiumAccess),
+        authProvider.overrideWith(
+          (ref) => AuthNotifier.testing(),
+        ),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brand),
