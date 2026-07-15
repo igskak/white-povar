@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/theme_mode_controller.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -41,29 +41,10 @@ class SettingsPage extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    SegmentedButton<ThemeMode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: ThemeMode.system,
-                          icon: Icon(Icons.brightness_auto_outlined),
-                          label: Text('Система'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: Icon(Icons.light_mode_outlined),
-                          label: Text('Світла'),
-                        ),
-                        ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: Icon(Icons.dark_mode_outlined),
-                          label: Text('Темна'),
-                        ),
-                      ],
-                      selected: {themeMode},
-                      onSelectionChanged: (selection) {
-                        ref.read(appThemeModeProvider.notifier).state =
-                            selection.first;
-                      },
+                    _ThemeModeOptions(
+                      selected: themeMode,
+                      onChanged: (mode) =>
+                          ref.read(appThemeModeProvider.notifier).setMode(mode),
                     ),
                   ],
                 ),
@@ -89,4 +70,38 @@ class SettingsPage extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ThemeModeOptions extends StatelessWidget {
+  const _ThemeModeOptions({required this.selected, required this.onChanged});
+
+  final ThemeMode selected;
+  final ValueChanged<ThemeMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.system,
+            groupValue: selected,
+            onChanged: (mode) => onChanged(mode!),
+            secondary: const Icon(Icons.brightness_auto_outlined),
+            title: const Text('Система'),
+          ),
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.light,
+            groupValue: selected,
+            onChanged: (mode) => onChanged(mode!),
+            secondary: const Icon(Icons.light_mode_outlined),
+            title: const Text('Світла'),
+          ),
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.dark,
+            groupValue: selected,
+            onChanged: (mode) => onChanged(mode!),
+            secondary: const Icon(Icons.dark_mode_outlined),
+            title: const Text('Темна'),
+          ),
+        ],
+      );
 }

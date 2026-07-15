@@ -48,6 +48,8 @@ class BrandDetails {
     required this.font,
     required this.voice,
     required this.derived,
+    required this.heroPhotos,
+    this.logo,
   });
 
   final String name;
@@ -57,6 +59,8 @@ class BrandDetails {
   final String font;
   final BrandVoice voice;
   final DerivedBrandColors derived;
+  final List<BrandHeroPhoto> heroPhotos;
+  final String? logo;
 
   factory BrandDetails.fromJson(Map<String, dynamic> json) {
     final accent = _requiredString(json, 'accent');
@@ -75,6 +79,28 @@ class BrandDetails {
       font: font,
       voice: BrandVoice.fromJson(_requiredMap(json, 'voice')),
       derived: DerivedBrandColors.fromJson(_requiredMap(json, 'derived')),
+      heroPhotos: _heroPhotos(json['heroPhotos']),
+      logo: _optionalUrl(json['logo'], 'logo'),
+    );
+  }
+}
+
+class BrandHeroPhoto {
+  const BrandHeroPhoto({required this.url, required this.roles});
+
+  final String url;
+  final Set<String> roles;
+
+  bool hasRole(String role) => roles.contains(role);
+
+  factory BrandHeroPhoto.fromJson(Map<String, dynamic> json) {
+    final roles = json['roles'];
+    if (roles is! List || roles.any((role) => role is! String)) {
+      throw const FormatException('Invalid BrandConfig hero photo roles.');
+    }
+    return BrandHeroPhoto(
+      url: _requiredString(json, 'url'),
+      roles: roles.cast<String>().toSet(),
     );
   }
 }
@@ -164,6 +190,27 @@ Map<String, dynamic> _requiredMap(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value is! Map<String, dynamic>) {
     throw FormatException('Missing or invalid BrandConfig $key.');
+  }
+  return value;
+}
+
+List<BrandHeroPhoto> _heroPhotos(dynamic value) {
+  if (value == null) return const [];
+  if (value is! List) {
+    throw const FormatException('Invalid BrandConfig heroPhotos.');
+  }
+  return value.map((photo) {
+    if (photo is! Map<String, dynamic>) {
+      throw const FormatException('Invalid BrandConfig hero photo.');
+    }
+    return BrandHeroPhoto.fromJson(photo);
+  }).toList(growable: false);
+}
+
+String? _optionalUrl(dynamic value, String key) {
+  if (value == null) return null;
+  if (value is! String || value.trim().isEmpty) {
+    throw FormatException('Invalid BrandConfig $key.');
   }
   return value;
 }

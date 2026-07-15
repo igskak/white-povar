@@ -1,8 +1,8 @@
 # White Povar — детальный план имплементации
 
 Дата: 15 июля 2026  
-Статус: FND-02 выполнена; BrandConfig валидируется и пилотный seed подготовлен.  
-Следующая задача: `FND-03`  
+Статус: FND-04 выполнена; dynamic themes, bundled fonts и asset fallbacks готовы.
+Следующая задача: `FND-05`
 Канонический consumer-клиент: `frontend/`  
 Backend: `backend/`  
 Design source of truth: `White povar redesign brief document/Handoff Spec.dc.html` и `Stage 1 - Foundations.dc.html`, версия 1.2
@@ -158,7 +158,7 @@ Design source of truth: `White povar redesign brief document/Handoff Spec.dc.htm
 | 2 | FND-01 | Published BrandConfig schema и bootstrap API | FND-00 | DONE |
 | 3 | FND-02 | Brand validator, color derivation и pilot seed | FND-01 | DONE |
 | 4 | FND-03 | Flutter bootstrap, cache и bundled fallback | FND-02 | DONE |
-| 5 | FND-04 | Dynamic themes, fonts и brand assets | FND-03 | TODO |
+| 5 | FND-04 | Dynamic themes, fonts и brand assets | FND-03 | DONE |
 | 6 | FND-05 | Единый API client и tenant context | FND-03 | TODO |
 | 7 | SEC-01 | Tenant isolation и premium teaser contract | FND-05 | TODO |
 | 8 | DS-01 | Shared design-system primitives | FND-04 | TODO |
@@ -698,6 +698,7 @@ python3 -c "from app.main import app; print(app.title)"
 
 | Дата | ID | Результат | Проверки | Примечания |
 |---|---|---|---|---|
+| 2026-07-15 | FND-04 | Добавлены bundled Figtree, JetBrains Mono, Source Serif 4, Golos Text и Lora; `BrandThemeExtension` строит light/dark темы из validated derived tokens, а `ThemeMode.system/light/dark` сохраняется в SharedPreferences. Добавлены безопасные avatar/logo/hero fallbacks и доступный при 200% text scale выбор темы; camera flow сохраняет dark contract и использует dark brand accent при наличии brand theme. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter test` — PASS (18); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | Premium gold и system success/warning/error остаются system tokens, не tenant-brand roles. Полноценное подключение новых asset widgets к экранным компонентам и перевод legacy screen-level colours — scope последующих DS-01/UI packages; FND-04 не меняет product flows. |
 | 2026-07-15 | FND-03 | Добавлены immutable Dart-модели BrandConfig/TenantBootstrap с fail-closed parsing, bundled validated pilot bootstrap и monogram SVG. Startup выбирает bundled → valid cache, запрашивает remote не дольше 3 секунд и сохраняет валидный ответ только для следующего cold start; app получает tenant bootstrap через Riverpod до `MaterialApp`. | `dart format` — PASS; `flutter test` — PASS (14); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | Remote brand намеренно не применяется в активной сессии. Corrupt/mismatched cache и invalid/timeout remote безопасно оставляют cached или bundled tenant; generic White Povar fallback не используется. Dynamic theme/assets rendering остаются FND-04, общий API client — FND-05. |
 | 2026-07-15 | FND-02 | Добавлен единый Pydantic publish-gate BrandConfig: лимиты, кириллица, URL, `courseName`/`courseTag`, font enum, hero roles/focal и вычисляемые OKLCH tokens. Bootstrap fail-closed для невалидного published config. Добавлены pilot JSON fixture, optional SQL seed и monogram avatar 512×512. | `test_brand_config.py` + `test_bootstrap_contract.py`: 19 passed; FastAPI import и `compileall` — PASS; полный `pytest tests/ -v`: 113 passed, 4 failed, 3 errors. | Полный suite сохраняет известный внешний blocker локального Python 3.13: несовместимые Starlette `TestClient`/httpx ломают старые middleware/video-тесты. Seed migration не применялась: в workspace нет `psql`/изолированной БД; production/staging не затрагивались. Reference color tests фиксируют правило из раздела 3 (`OKLCH L × 0.88`) и contrast gates; Flutter parsing/theme и Studio UI остаются FND-03/FND-04/STUDIO-01. |
 | 2026-07-15 | FND-01 | Добавлены unique `chefs.slug`, versioned `brand_configs` и отдельные `product_configs` с одним published config на tenant, RLS и published indexes. Реализован публичный `GET /api/v1/bootstrap/{tenant_slug}` с ETag/config version, 304 и fail-closed 404/409. | Новый contract suite: 7 passed; FastAPI bootstrap import и compileall — PASS; полный `pytest tests/ -v`: 103 passed, 4 failed, 3 errors. | Остаточный внешний blocker не изменился: локальный Python 3.13 имеет несовместимые Starlette `TestClient`/httpx (`Client.__init__(app=...)`), из-за чего падают старые middleware/video-тесты. CI закреплён на Python 3.11. Schema-level BrandConfig validation, derivation и pilot seed остаются FND-02. |

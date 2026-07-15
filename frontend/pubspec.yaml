@@ -116,6 +116,39 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/branding/
+    - assets/fonts/
+
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-Variable.ttf
+          weight: 700
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+          weight: 700
+    - family: Source Serif 4
+      fonts:
+        - asset: assets/fonts/SourceSerif4-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/SourceSerif4-Variable.ttf
+          weight: 700
+    - family: Golos Text
+      fonts:
+        - asset: assets/fonts/GolosText-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/GolosText-Variable.ttf
+          weight: 700
+    - family: Lora
+      fonts:
+        - asset: assets/fonts/Lora-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Lora-Variable.ttf
+          weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

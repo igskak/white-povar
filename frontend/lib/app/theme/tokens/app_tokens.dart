@@ -31,8 +31,11 @@ class AppColorsV2 {
   static const Color surfaceStrong = Color(0xFFEBE0CC);
   static const Color textPrimary = Color(0xFF1C1710);
   static const Color textSecondary = Color(0xFF7C7159);
-  static const Color accent = Color(0xFFA87B24);
-  static const Color accentDark = Color(0xFF7A5A1A);
+
+  /// Product-tier colour, deliberately not a tenant brand role.
+  static const Color premiumGold = Color(0xFFD9A441);
+  static const Color accent = premiumGold;
+  static const Color accentDark = Color(0xFFC7902F);
   static const Color ink = Color(0xFF16130F);
   static const Color onInk = Color(0xFFF3E9DA);
   static const Color success = Color(0xFF3E6B4A);

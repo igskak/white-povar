@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:frontend/app/theme/app_theme.dart';
+import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/core/widgets/state_views.dart';
 
 void main() {
@@ -10,7 +11,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppThemeV2.light(),
+        theme: AppThemeV2.light(_brandConfig),
         home: const Scaffold(
           body: StateView.loading(
             title: 'Loading recipes',
@@ -32,7 +33,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppThemeV2.light(),
+        theme: AppThemeV2.light(_brandConfig),
         home: Scaffold(
           body: StateView.error(
             title: 'Failed',
@@ -54,7 +55,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        theme: AppThemeV2.light(),
+        theme: AppThemeV2.light(_brandConfig),
         home: Scaffold(
           body: Center(
             child: ElevatedButton(
@@ -71,3 +72,27 @@ void main() {
     expect(buttonSize.width, greaterThanOrEqualTo(44));
   });
 }
+
+final _brandConfig = BrandConfig.fromJson({
+  'schemaVersion': 1,
+  'tenantSlug': 'test-brand',
+  'locale': 'uk',
+  'brand': {
+    'name': 'Test Brand',
+    'creatorName': 'Test',
+    'avatar': 'PENDING:/avatar.png',
+    'accent': '#5D7183',
+    'font': 'grotesque',
+    'voice': {
+      'greeting': 'Hi',
+      'loginTitle': 'Login',
+      'paywallTitle': 'Paywall'
+    },
+    'derived': {
+      'accentPressed': '#4B5E70',
+      'accentOnDark': '#6B8092',
+      'onAccent': '#FFFFFF',
+      'lightCtaMode': 'accentFill'
+    },
+  },
+});

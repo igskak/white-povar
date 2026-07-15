@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../app/theme/brand_theme.dart';
 import '../../../../core/widgets/state_views.dart';
 
 enum CameraFlowStep {
@@ -115,7 +116,10 @@ class _CameraStepHeader extends StatelessWidget {
           final isDone = stepNumber < currentStep;
           final isCurrent = stepNumber == currentStep;
           final color = isDone || isCurrent
-              ? AppColorsV2.accent
+              ? Theme.of(context)
+                      .extension<BrandThemeExtension>()
+                      ?.accentOnDark ??
+                  AppColorsV2.premiumGold
               : AppColorsV2.onInk.withOpacity(.18);
 
           return Expanded(
