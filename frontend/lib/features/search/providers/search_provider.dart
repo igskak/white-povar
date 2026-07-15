@@ -58,9 +58,11 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
       return;
     }
 
-    state = state.copyWith(
+    // Start a fresh state so an earlier error cannot remain visible while a
+    // newer request is being debounced.
+    state = SimpleSearchState(
+      results: state.results,
       isLoading: true,
-      error: null,
       query: query,
     );
 
@@ -73,16 +75,23 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
           cancelToken: cancelToken,
         );
         if (identical(_cancelToken, cancelToken)) {
-          state = state.copyWith(results: results, isLoading: false);
+          state = SimpleSearchState(results: results, query: query);
         }
       } on RecipeRepositoryException catch (e) {
         if (identical(_cancelToken, cancelToken)) {
-          state = state.copyWith(isLoading: false, error: e.message);
+          state = SimpleSearchState(
+            results: state.results,
+            error: e.message,
+            query: query,
+          );
         }
       } catch (_) {
         if (identical(_cancelToken, cancelToken) && !cancelToken.isCancelled) {
-          state = state.copyWith(
-              isLoading: false, error: 'An unexpected error occurred');
+          state = SimpleSearchState(
+            results: state.results,
+            error: 'Не вдалося виконати пошук. Спробуйте ще раз.',
+            query: query,
+          );
         }
       }
     });

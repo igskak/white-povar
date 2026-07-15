@@ -1,8 +1,8 @@
 # White Povar — детальный план имплементации
 
 Дата: 15 июля 2026  
-Статус: UI-03 выполнена; paywall visual states готовы без real billing.
-Следующая задача: `UI-04`
+Статус: UI-04 выполнена; Search/discovery design parity готова поверх существующего text-search contract.
+Следующая задача: `UI-05`
 Канонический consumer-клиент: `frontend/`  
 Backend: `backend/`  
 Design source of truth: `White povar redesign brief document/Handoff Spec.dc.html` и `Stage 1 - Foundations.dc.html`, версия 1.2
@@ -166,7 +166,7 @@ Design source of truth: `White povar redesign brief document/Handoff Spec.dc.htm
 | 10 | UI-01 | Home + brand header + collection promo | DS-02, SEC-01 | DONE |
 | 11 | UI-02 | Login/signup/forgot-password states | DS-01, FND-03 | DONE |
 | 12 | UI-03 | Paywall visual states без real billing | DS-01, FND-03 | DONE |
-| 13 | UI-04 | Search/discovery design parity | DS-02, SEC-01 | TODO |
+| 13 | UI-04 | Search/discovery design parity | DS-02, SEC-01 | DONE |
 | 14 | UI-05 | Recipe detail и cooking design parity | DS-01, SEC-01 | TODO |
 | 15 | UI-06 | Saved, Profile и Settings design parity | DS-02 | TODO |
 | 16 | UI-07 | Camera flow design parity | DS-01 | TODO |
@@ -698,6 +698,7 @@ python3 -c "from app.main import app; print(app.title)"
 
 | Дата | ID | Результат | Проверки | Примечания |
 |---|---|---|---|---|
+| 2026-07-15 | UI-04 | Изменены `search_page.dart`, `search_provider.dart`, `search_page_test.dart`, plan. Search `/search` переведён на discovery composition: search field, session recent/suggestions, filter controls, прямой deep link `tag=maisternia-oleksandra`, premium teaser, recovery для no-results, skeleton loading и error/retry. Query и tag теперь сериализуются в web URL. Реализованы mobile 1-column, tablet 3-column и desktop 420px master-detail layouts; notifier сохраняет только актуальный результат после debounce/cancel. Добавлены UI-04 tests для URL, tag deep link, 390/768/1280 и stale-result cancellation. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (56); `scripts/build-web.sh` с test `API_BASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Server-side filters, pagination, persisted search history и расширение search API намеренно не добавлялись: это CORE-02. Detail остаётся существующим route/UI-05 scope; premium payload по-прежнему определяется SEC-01 server contract. |
 | 2026-07-15 | UI-03 | Paywall `/subscription` и `/offers/:offerId` переведён на brand-driven layouts 13h: mobile route и 560px dialog ≥600, paywall hero/fallback, offer/status presentation. Добавлен purchase-adapter boundary: debug/tests получают fake catalog, production до COM-02 показывает products-unavailable и не может начать покупку. Отдельно покрыты idle, loading, unavailable, purchasing, success, error, user-cancel, active, grace, billing retry, expired и cancelled; restore/manage показываются только в релевантных состояниях, повторный tap не запускает вторую покупку. Добавлены goldens 390/768/1280 и 200% text-scale test. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (52), включая UI-03 states и 390/768/1280 goldens; production `scripts/build-web.sh` с test dart-defines и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Реальные StoreKit/Google Play products, checkout, restore verification, entitlement refresh и manage deep links не реализованы: это COM-02/COM-03. Цены существуют только в `FakePurchaseAdapter` для debug/tests; production adapter не содержит product IDs или цен. |
 | 2026-07-15 | UI-02 | Login переведён на brand-driven тёмный layout: `login` hero с fallback, 72px avatar, signup, inline validation, password visibility/autofill/focus, отдельный reset screen с одинаковым sent result, Google/Apple loading/error и guest entry. Desktop ≥1024 использует split hero/form max 440; добавлены 390/768/1280 goldens и 200% text-scale test. User-cancelled/unopened OAuth возвращает нейтральное unauthenticated state; provider collision подготовлен безопасным UI banner до backend CORE-04. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (36), включая UI-02 states, 390/768/1280 goldens и 200%; `scripts/build-web.sh` с production dart-defines и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Не реализовывались email verification, реальное linking/collision resolution, account deletion или guest migration: это CORE-04. Reset intentionally never reveals account existence. |
 | 2026-07-15 | UI-01 | Home переведён на пилотный `BrandConfig`: shared `BrandHeader` показывает блогера, `UserAvatar` — только профиль пользователя; greeting и условное promo берутся из config. Promo без пары `courseName/courseTag` скрыт, а CTA ведёт guest на login, free user на paywall, premium user на tag-filtered search. Добавлены adaptive Home layouts: центрированный 480px mobile/tablet feed и desktop master-detail. Loading/empty/error/offline retry сохранены, bookmark явно disabled до CORE-01. Runtime BrandConfig теперь парсит и валидирует conditional pair. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (31), включая Home на 390/768/1280; `scripts/build-web.sh` с production dart-defines и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Не добавлялись save mutation, collection detail или billing: это scope CORE-01/COL-03/COM-03. Hero photo не требуется для Home и не создаёт новой asset dependency. |
