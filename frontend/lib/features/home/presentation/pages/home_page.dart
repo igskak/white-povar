@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/branding/brand_config.dart';
@@ -11,10 +10,10 @@ import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 import '../../../recipes/presentation/widgets/favorite_button.dart';
-import '../../../subscription/providers/subscription_provider.dart';
 
 /// The public, tenant-branded recipe feed.
 ///
@@ -44,7 +43,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     final brand = bootstrap.brandConfig.brand;
     final recipes = ref.watch(recipeListProvider);
     final user = ref.watch(currentUserProvider);
-    final isPremium = ref.watch(isPremiumProvider);
+    final collections = ref.watch(collectionListProvider);
+    final featuredCollectionId = collections.valueOrNull
+        ?.where((collection) => collection.slug == brand.courseTag)
+        .map((collection) => collection.id)
+        .firstOrNull;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -60,9 +63,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 onScanTap: () => context.go('/camera'),
                 onCollectionTap: () => _openCollection(
                   context,
-                  authenticated: user != null,
-                  isPremium: isPremium,
                   courseTag: brand.courseTag,
+                  collectionId: featuredCollectionId,
                 ),
               ),
             ),
@@ -133,20 +135,14 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   void _openCollection(
     BuildContext context, {
-    required bool authenticated,
-    required bool isPremium,
     required String? courseTag,
+    required String? collectionId,
   }) {
     if (courseTag == null) return;
-    final returnTo = SearchRouteLocation(tag: courseTag).toUri().toString();
-    if (!authenticated) {
-      context.go('/login?returnTo=${Uri.encodeComponent(returnTo)}');
-    } else if (!isPremium) {
-      context
-          .push(OfferRouteLocation.subscription(returnTo: returnTo).location);
-    } else {
-      context.go(returnTo);
-    }
+    // Until a published collection is returned, the collection index is the
+    // truthful fallback rather than a fabricated purchase or success state.
+    context.push(
+        collectionId == null ? '/collections' : '/collections/$collectionId');
   }
 }
 

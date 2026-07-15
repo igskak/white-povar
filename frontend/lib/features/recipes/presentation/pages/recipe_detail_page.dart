@@ -57,7 +57,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 .recordHistory(recipe.id, 'viewed')
                 .catchError((_) {});
           }
-          final locked = recipe.isPremium && !hasPremiumAccess;
+          final locked =
+              recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
           return _RecipeDetailContent(
             recipe: recipe,
             locked: locked,
@@ -80,7 +81,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
       ),
       bottomNavigationBar: recipeAsync.maybeWhen(
         data: (recipe) {
-          final locked = recipe.isPremium && !hasPremiumAccess;
+          final locked =
+              recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
           final canCook = (recipe.contentKind == ContentKind.recipe ||
                   recipe.contentKind == ContentKind.process) &&
               recipe.instructions.isNotEmpty;

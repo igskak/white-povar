@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/auth_state.dart';
 import '../services/auth_service.dart';
 import '../../recipes/services/cooking_progress_store.dart';
+import '../../collections/services/collection_resume_store.dart';
 
 class AuthNotifier extends StateNotifier<AppAuthState> {
   AuthNotifier(this._authService) : super(const AppAuthState.loading()) {
@@ -110,6 +111,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     try {
       await _authService!.signOut();
       await CookingProgressStore().clearPrivateData();
+      await CollectionResumeStore().clearPrivateData();
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }

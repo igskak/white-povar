@@ -9,6 +9,8 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/camera/presentation/pages/camera_capture_page.dart';
 import '../../features/camera/presentation/pages/ingredient_review_page.dart';
 import '../../features/camera/presentation/pages/photo_search_results_page.dart';
+import '../../features/collections/presentation/pages/collection_detail_page.dart';
+import '../../features/collections/presentation/pages/collection_list_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/pantry/presentation/pages/pantry_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -38,6 +40,7 @@ class AppRoutePaths {
   static const cameraResults = '/camera/results';
   static const recipeDetail = '/recipes/:id';
   static const contentDetail = '/content/:id';
+  static const collections = '/collections';
   static const cookingMode = '/recipes/:id/cook';
   static const collectionDetail = '/collections/:id';
   static const offer = '/offers/:offerId';
@@ -89,10 +92,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: AppRoutePaths.collections,
+        builder: (_, __) => const CollectionListPage(),
+      ),
+      GoRoute(
         path: AppRoutePaths.collectionDetail,
-        builder: (_, state) => _CollectionRoutePage(
-          collectionId: state.pathParameters['id']!,
-        ),
+        builder: (_, state) =>
+            CollectionDetailPage(collectionId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: AppRoutePaths.recipeDetail,
@@ -315,19 +321,6 @@ const _navigationDestinations = <NavigationDestination>[
     label: 'Профіль',
   ),
 ];
-
-class _CollectionRoutePage extends StatelessWidget {
-  const _CollectionRoutePage({required this.collectionId});
-
-  final String collectionId;
-
-  @override
-  Widget build(BuildContext context) => _RouteErrorScreen(
-        title: 'Колекція готується',
-        subtitle:
-            'Колекція $collectionId стане доступною після оновлення каталогу.',
-      );
-}
 
 class _RouteErrorScreen extends StatelessWidget {
   const _RouteErrorScreen({required this.title, required this.subtitle});

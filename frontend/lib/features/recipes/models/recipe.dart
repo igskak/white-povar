@@ -30,6 +30,7 @@ class Recipe extends Equatable {
   final List<String> tags;
   final bool isFeatured;
   final bool isPremium;
+  final bool isLocked;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -54,6 +55,7 @@ class Recipe extends Equatable {
     required this.tags,
     required this.isFeatured,
     this.isPremium = false,
+    this.isLocked = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -83,6 +85,7 @@ class Recipe extends Equatable {
       tags: _parseStringList(json['tags']),
       isFeatured: json['is_featured'] == true,
       isPremium: json['is_premium'] == true,
+      isLocked: json['is_locked'] == true,
       createdAt: _parseDateTime(json['created_at']) ?? DateTime.now(),
       updatedAt: _parseDateTime(json['updated_at']) ?? DateTime.now(),
     );
@@ -139,6 +142,7 @@ class Recipe extends Equatable {
       'tags': tags,
       'is_featured': isFeatured,
       'is_premium': isPremium,
+      'is_locked': isLocked,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -166,6 +170,7 @@ class Recipe extends Equatable {
         tags,
         isFeatured,
         isPremium,
+        isLocked,
         createdAt,
         updatedAt,
       ];
