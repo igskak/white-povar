@@ -2,7 +2,6 @@ import json
 import asyncio
 from typing import Dict, Any, Optional, Tuple
 import logging
-from openai import AsyncOpenAI
 from app.core.settings import settings
 from app.schemas.ingestion import ParsedRecipe, ParsedIngredient, ParsedNutrition
 
@@ -13,10 +12,19 @@ class AIRecipeParser:
     """AI-powered recipe parser using OpenAI"""
     
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = None
         self.model = "gpt-4o-mini"  # Cost-effective model for structured extraction
         self.max_retries = 2
         self.semaphore = asyncio.Semaphore(4)  # Limit concurrent requests
+
+    @property
+    def client(self):
+        """Create the SDK client only when an ingestion job needs AI parsing."""
+        if self._client is None:
+            from openai import AsyncOpenAI
+
+            self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        return self._client
     
     async def parse_recipe(self, text: str, detected_language: Optional[str] = None) -> Tuple[ParsedRecipe, Dict[str, Any]]:
         """

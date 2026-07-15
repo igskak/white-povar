@@ -1,4 +1,3 @@
-import openai
 from typing import Dict, List, Any, Optional
 import logging
 import json
@@ -18,6 +17,8 @@ class OpenAIService:
     def client(self):
         """Lazy-load OpenAI client to avoid validation during import"""
         if self._client is None:
+            import openai
+
             self._client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
         return self._client
     

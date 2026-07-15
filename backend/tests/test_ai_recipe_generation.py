@@ -1,5 +1,7 @@
 import asyncio
 import json
+import sys
+from types import SimpleNamespace
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -29,6 +31,23 @@ def _row(tenant_id):
 def test_generation_requires_explicit_per_request_consent():
     with pytest.raises(ValidationError):
         RecipeGenerationRequest(prompt='легка вечеря', generation_consent=False)
+
+
+def test_generation_client_loads_openai_only_when_ai_is_requested(monkeypatch):
+    service = RecipeGenerationService()
+    created = []
+
+    class FakeAsyncOpenAI:
+        def __init__(self, **kwargs):
+            created.append(kwargs)
+
+    monkeypatch.setitem(sys.modules, 'openai', SimpleNamespace(AsyncOpenAI=FakeAsyncOpenAI))
+
+    assert service._client is None
+    client = service.client
+    assert isinstance(client, FakeAsyncOpenAI)
+    assert service.client is client
+    assert len(created) == 1
 
 
 def test_unsafe_generation_is_rejected_before_retrieval_or_model(monkeypatch):

@@ -10,9 +10,10 @@ import json
 import logging
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
-from typing import Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
-from openai import AsyncOpenAI
+if TYPE_CHECKING:
+    from openai import AsyncOpenAI
 
 from app.api.v1.endpoints.auth import User
 from app.core.content_access import resolve_recipe_access
@@ -80,12 +81,16 @@ class RecipeGenerationService:
     _max_output_tokens = 1100
 
     def __init__(self) -> None:
-        self._client: AsyncOpenAI | None = None
+        self._client: "AsyncOpenAI | None" = None
         self.budget = GenerationBudget()
 
     @property
-    def client(self) -> AsyncOpenAI:
+    def client(self) -> "AsyncOpenAI":
         if self._client is None:
+            # Importing the generated OpenAI type surface is expensive on some
+            # local Python builds. Startup and non-AI routes must not pay it.
+            from openai import AsyncOpenAI
+
             self._client = AsyncOpenAI(api_key=settings.openai_api_key)
         return self._client
 
