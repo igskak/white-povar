@@ -19,7 +19,7 @@ services:
         value: strict-origin-when-cross-origin
       - path: /*
         name: Permissions-Policy
-        value: camera=(self), microphone=(), geolocation=()
+        value: camera=(self), microphone=(self), geolocation=()
       - path: /index.html
         name: Cache-Control
         value: no-cache

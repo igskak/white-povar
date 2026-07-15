@@ -12,6 +12,8 @@ import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
 import 'package:frontend/features/search/presentation/pages/search_page.dart';
 import 'package:frontend/features/search/providers/search_provider.dart';
+import 'package:frontend/features/voice/providers/voice_input_provider.dart';
+import 'package:frontend/features/voice/services/speech_recognition_service.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
@@ -61,6 +63,63 @@ void main() {
           '/search?q=%D0%B1%D0%BE%D1%80%D1%89');
     });
 
+    testWidgets('voice consent writes an editable final transcript to search',
+        (tester) async {
+      final speech = _FakeSpeechRecognitionService();
+      final repository = _SearchRepository();
+      await tester.pumpWidget(_testApp(
+        repository: repository,
+        speechRecognitionService: speech,
+      ));
+
+      await tester.tap(find.byTooltip('Голосове введення'));
+      await tester.pump();
+      expect(
+        find.textContaining('Аудіо не зберігається та не надсилається'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Дозволити мікрофон'));
+      await tester.pump();
+      expect(speech.permissionRequested, isTrue);
+      expect(find.textContaining('Слухаємо'), findsOneWidget);
+
+      speech.emitTranscript('паста з томатами', true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'паста з томатами',
+      );
+      expect(repository.queries, contains('паста з томатами'));
+    });
+
+    testWidgets('denied microphone keeps typed search available',
+        (tester) async {
+      final speech = _FakeSpeechRecognitionService(
+        permissionState: VoicePermissionState.denied,
+      );
+      await tester.pumpWidget(_testApp(
+        repository: _SearchRepository(),
+        speechRecognitionService: speech,
+      ));
+
+      await tester.tap(find.byTooltip('Голосове введення'));
+      await tester.pump();
+      await tester.tap(find.text('Дозволити мікрофон'));
+      await tester.pump();
+
+      expect(
+          find.textContaining('можете ввести запит текстом'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'борщ');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'борщ',
+      );
+    });
+
     testWidgets('result layouts have no exceptions at 390, 768 and 1280',
         (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
@@ -105,11 +164,15 @@ void main() {
 Widget _testApp({
   required RecipeRepository repository,
   SearchRouteLocation? initialRoute,
+  SpeechRecognitionService? speechRecognitionService,
 }) =>
     ProviderScope(
       overrides: [
         recipeRepositoryProvider.overrideWithValue(repository),
         authProvider.overrideWith((ref) => AuthNotifier.testing()),
+        if (speechRecognitionService != null)
+          speechRecognitionServiceProvider
+              .overrideWithValue(speechRecognitionService),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),
@@ -138,6 +201,48 @@ class _DeferredSearchRepository extends _RepositoryBase {
 
   void complete(String query, List<Recipe> recipes) =>
       _requests[query]!.complete(recipes);
+}
+
+class _FakeSpeechRecognitionService implements SpeechRecognitionService {
+  _FakeSpeechRecognitionService({
+    this.permissionState = VoicePermissionState.granted,
+  });
+
+  final VoicePermissionState permissionState;
+  bool permissionRequested = false;
+  VoiceTranscriptCallback? _onTranscript;
+  VoiceStatusCallback? _onStatus;
+
+  @override
+  Future<void> cancel() async {
+    _onStatus?.call(false);
+  }
+
+  void emitTranscript(String text, bool isFinal) =>
+      _onTranscript?.call(text, isFinal);
+
+  @override
+  Future<VoicePermissionState> requestPermission() async {
+    permissionRequested = true;
+    return permissionState;
+  }
+
+  @override
+  Future<bool> start({
+    required VoiceTranscriptCallback onTranscript,
+    required VoiceStatusCallback onStatus,
+    required VoiceErrorCallback onError,
+  }) async {
+    _onTranscript = onTranscript;
+    _onStatus = onStatus;
+    onStatus(true);
+    return true;
+  }
+
+  @override
+  Future<void> stop() async {
+    _onStatus?.call(false);
+  }
 }
 
 abstract class _RepositoryBase implements RecipeRepository {

@@ -9,6 +9,8 @@ import '../../../../core/widgets/state_views.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
+import '../../../voice/providers/voice_input_provider.dart';
+import '../widgets/voice_input_status.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key, this.initialRoute});
@@ -78,6 +80,63 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     ref.read(simpleTextSearchProvider.notifier).searchRecipes(query);
   }
 
+  void _onTextChanged(String value) {
+    setState(() => _activeTag = null);
+    _updateLocation();
+    if (value.trim().length >= 2) {
+      _performSearch(value);
+    } else if (value.trim().isEmpty) {
+      ref.read(simpleTextSearchProvider.notifier).clearSearch();
+    }
+  }
+
+  Future<void> _requestVoiceConsent() async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Голосовий пошук'),
+        content: const Text(
+          'Ми перетворимо сказане на текст у полі пошуку. Аудіо не '
+          'зберігається та не надсилається до каталогу.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Скасувати'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Дозволити мікрофон'),
+          ),
+        ],
+      ),
+    );
+    if (approved == true && mounted) {
+      await ref.read(voiceInputProvider.notifier).startListening();
+    }
+  }
+
+  void _syncVoiceTranscript(VoiceInputState voiceState) {
+    if (voiceState.transcript.isEmpty ||
+        voiceState.transcript == _searchController.text) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || voiceState.transcript == _searchController.text) return;
+      _searchController.value = TextEditingValue(
+        text: voiceState.transcript,
+        selection:
+            TextSelection.collapsed(offset: voiceState.transcript.length),
+      );
+      setState(() => _activeTag = null);
+      _updateLocation();
+      if (voiceState.isFinalTranscript &&
+          voiceState.transcript.trim().length >= 2) {
+        _performSearch(voiceState.transcript);
+      }
+    });
+  }
+
   void _applySuggestion(String value) {
     setState(() {
       _activeTag = null;
@@ -130,6 +189,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final searchState = ref.watch(simpleTextSearchProvider);
+    final voiceState = ref.watch(voiceInputProvider);
+    _syncVoiceTranscript(voiceState);
 
     return Scaffold(
       body: SafeArea(
@@ -148,20 +209,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   onToggleFilters: () =>
                       setState(() => _showFilters = !_showFilters),
                   onClear: _clearSearch,
-                  onChanged: (value) {
-                    setState(() => _activeTag = null);
-                    _updateLocation();
-                    if (value.trim().length >= 2) {
-                      _performSearch(value);
-                    } else if (value.trim().isEmpty) {
-                      ref.read(simpleTextSearchProvider.notifier).clearSearch();
-                    }
-                  },
+                  onChanged: _onTextChanged,
                   onSubmitted: (value) {
                     _rememberSearch(value);
                     _performSearch(value);
                   },
                   onFilterSelected: _applySuggestion,
+                  voiceState: voiceState,
+                  onStartVoice: _requestVoiceConsent,
+                  onStopVoice: () =>
+                      ref.read(voiceInputProvider.notifier).stopListening(),
+                  onCancelVoice: () =>
+                      ref.read(voiceInputProvider.notifier).cancelListening(),
                 ),
               ),
             ),
@@ -221,7 +280,11 @@ class _SearchHeader extends StatelessWidget {
       required this.onClear,
       required this.onChanged,
       required this.onSubmitted,
-      required this.onFilterSelected});
+      required this.onFilterSelected,
+      required this.voiceState,
+      required this.onStartVoice,
+      required this.onStopVoice,
+      required this.onCancelVoice});
   final TextEditingController controller;
   final bool isLoading;
   final bool showFilters;
@@ -232,6 +295,10 @@ class _SearchHeader extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onFilterSelected;
+  final VoiceInputState voiceState;
+  final VoidCallback onStartVoice;
+  final VoidCallback onStopVoice;
+  final VoidCallback onCancelVoice;
   @override
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -258,10 +325,27 @@ class _SearchHeader extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2))),
               if (controller.text.isNotEmpty)
                 AppIconButton(
-                    icon: Icons.clear, tooltip: 'Очистити', onPressed: onClear)
+                  icon: Icons.clear,
+                  tooltip: 'Очистити',
+                  onPressed: onClear,
+                ),
+              AppIconButton(
+                icon: voiceState.isListening ? Icons.mic : Icons.mic_none,
+                tooltip: voiceState.isListening
+                    ? 'Зупинити голосове введення'
+                    : 'Голосове введення',
+                filled: voiceState.isListening,
+                onPressed: voiceState.isListening ? onStopVoice : onStartVoice,
+              ),
             ]),
             onChanged: onChanged,
             onSubmitted: onSubmitted),
+        VoiceInputStatus(
+          state: voiceState,
+          onRetry: onStartVoice,
+          onStop: onStopVoice,
+          onCancel: onCancelVoice,
+        ),
         const SizedBox(height: AppSpacing.xs),
         Row(children: [
           AppButton(
