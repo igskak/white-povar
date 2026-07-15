@@ -8,7 +8,8 @@ import '../../core/config/app_config.dart';
 /// Fetches server-owned product identifiers. Prices and trial information are
 /// intentionally read from the native store SDK, never from this response.
 class StoreCatalogService {
-  StoreCatalogService({http.Client? client}) : _client = client ?? http.Client();
+  StoreCatalogService({http.Client? client})
+      : _client = client ?? http.Client();
 
   final http.Client _client;
 
@@ -17,10 +18,13 @@ class StoreCatalogService {
         ? 'app_store'
         : 'play_store';
     final response = await _client.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/commerce/store-products?store=$store'),
+      Uri.parse(
+          '${AppConfig.apiBaseUrl}/api/v1/commerce/store-products?store=$store'),
       headers: {'X-Tenant-Slug': AppConfig.tenantSlug},
     );
-    if (response.statusCode != 200) throw StateError('Store catalogue unavailable');
+    if (response.statusCode != 200) {
+      throw StateError('Store catalogue unavailable');
+    }
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
     final products = decoded['products'] as List<dynamic>? ?? const [];
     final ids = products

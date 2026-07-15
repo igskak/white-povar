@@ -1,20 +1,28 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_client.dart';
+import 'commerce_entitlement_service.dart';
 import 'purchase_adapter.dart';
 
 final purchaseAdapterProvider = Provider<PurchaseAdapter>(
   (ref) => createPurchaseAdapter(),
 );
 
+final selectedPurchaseProductProvider = StateProvider<String?>((_) => null);
+
 final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallSnapshot>(
-  (ref) => PaywallNotifier(ref.watch(purchaseAdapterProvider)),
+  (ref) => PaywallNotifier(
+    ref.watch(purchaseAdapterProvider),
+    () => CommerceEntitlementService(ref.read(apiClientProvider)).read(),
+  ),
 );
 
 class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
-  PaywallNotifier(this._adapter)
+  PaywallNotifier(this._adapter, this._readEntitlement)
       : super(const PaywallSnapshot(phase: PaywallPhase.productsLoading));
 
   final PurchaseAdapter _adapter;
+  final Future<PaywallSnapshot> Function() _readEntitlement;
   bool _requestInFlight = false;
 
   Future<void> load() async {
@@ -32,11 +40,15 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
       products: state.products,
     );
     final outcome = await _adapter.purchase(product);
-    state = PaywallSnapshot(
-      phase: outcome.phase,
-      products: state.products,
-      message: outcome.message,
-    );
+    if (outcome.requiresEntitlementConfirmation) {
+      await _confirmEntitlement();
+    } else {
+      state = PaywallSnapshot(
+        phase: outcome.phase,
+        products: state.products,
+        message: outcome.message,
+      );
+    }
     _requestInFlight = false;
   }
 
@@ -48,13 +60,48 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
       products: state.products,
     );
     final outcome = await _adapter.restore();
-    state = PaywallSnapshot(
-      phase: outcome.phase,
-      products: state.products,
-      message: outcome.message,
-    );
+    if (outcome.requiresEntitlementConfirmation) {
+      await _confirmEntitlement();
+    } else {
+      state = PaywallSnapshot(
+        phase: outcome.phase,
+        products: state.products,
+        message: outcome.message,
+      );
+    }
     _requestInFlight = false;
   }
 
   Future<void> manageSubscription() => _adapter.manageSubscription();
+
+  Future<void> _confirmEntitlement() async {
+    final products = state.products;
+    for (var attempt = 0; attempt < 6; attempt++) {
+      try {
+        final entitlement = await _readEntitlement();
+        if (_isEntitled(entitlement.phase)) {
+          state = PaywallSnapshot(
+            phase: entitlement.phase,
+            products: products,
+            renewsOn: entitlement.renewsOn,
+          );
+          return;
+        }
+      } catch (_) {
+        // Webhook delivery can still be in flight; retry without exposing any
+        // transaction detail to the UI or analytics.
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+    state = PaywallSnapshot(
+      phase: PaywallPhase.error,
+      products: products,
+      message: 'Платіж обробляється. Оновіть статус трохи пізніше.',
+    );
+  }
 }
+
+bool _isEntitled(PaywallPhase phase) =>
+    phase == PaywallPhase.active ||
+    phase == PaywallPhase.grace ||
+    phase == PaywallPhase.billingRetry;

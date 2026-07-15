@@ -59,6 +59,11 @@ class _PaywallCard extends ConsumerWidget {
     final purchasing = snapshot.phase == PaywallPhase.purchasing;
     final active = _isEntitled(snapshot.phase);
     final unavailable = snapshot.phase == PaywallPhase.productsUnavailable;
+    final selectedId = ref.watch(selectedPurchaseProductProvider) ??
+        snapshot.products.firstOrNull?.id;
+    final selectedProduct = snapshot.products
+        .where((product) => product.id == selectedId)
+        .firstOrNull;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -117,22 +122,23 @@ class _PaywallCard extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _ProductOption(
                     product: product,
-                    selected: product == snapshot.products.firstOrNull,
+                    selected: product.id == selectedId,
                     enabled: !purchasing,
-                    onTap: () =>
-                        ref.read(paywallProvider.notifier).purchase(product),
+                    onTap: () => ref
+                        .read(selectedPurchaseProductProvider.notifier)
+                        .state = product.id,
                   ),
                 ),
               const SizedBox(height: 4),
               AppButton(
-                label: _ctaLabel(snapshot.products.firstOrNull),
+                label: _ctaLabel(selectedProduct),
                 expand: true,
                 isLoading: purchasing,
-                onPressed: purchasing || snapshot.products.isEmpty
+                onPressed: purchasing || selectedProduct == null
                     ? null
                     : () => ref
                         .read(paywallProvider.notifier)
-                        .purchase(snapshot.products.first),
+                        .purchase(selectedProduct),
               ),
             ],
           ],

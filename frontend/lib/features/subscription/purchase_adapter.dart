@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'store_catalog_service.dart';
 
-/// Boundary for StoreKit / Play Billing. COM-02 replaces the production
-/// implementation; UI-03 only consumes the data and outcomes exposed here.
+/// Boundary for StoreKit / Play Billing and server entitlement confirmation.
 abstract interface class PurchaseAdapter {
   Future<PaywallSnapshot> load();
   Future<PurchaseOutcome> purchase(PurchaseProduct product);
@@ -60,10 +62,18 @@ class PaywallSnapshot {
 }
 
 class PurchaseOutcome {
-  const PurchaseOutcome(this.phase, {this.message});
+  const PurchaseOutcome(
+    this.phase, {
+    this.message,
+    this.requiresEntitlementConfirmation = false,
+  });
 
   final PaywallPhase phase;
   final String? message;
+
+  /// StoreKit/Play completion merely means the store accepted a transaction.
+  /// It never grants access: COM-03 waits for the server-issued entitlement.
+  final bool requiresEntitlementConfirmation;
 }
 
 /// The web does not sell products in the MVP. It can only reflect server-side
@@ -129,19 +139,17 @@ class FakePurchaseAdapter implements PurchaseAdapter {
   Future<void> manageSubscription() async {}
 }
 
-PurchaseAdapter createPurchaseAdapter() =>
-    kDebugMode
-        ? FakePurchaseAdapter()
-        : kIsWeb
-            ? const DisabledPurchaseAdapter()
-            : NativeStoreCatalogAdapter(
-                catalog: StoreCatalogService(),
-                purchases: InAppPurchase.instance,
-              );
+PurchaseAdapter createPurchaseAdapter() => kDebugMode
+    ? FakePurchaseAdapter()
+    : kIsWeb
+        ? const DisabledPurchaseAdapter()
+        : NativeStoreCatalogAdapter(
+            catalog: StoreCatalogService(),
+            purchases: InAppPurchase.instance,
+          );
 
-/// Loads display data from StoreKit / Play Billing. Purchasing, transaction
-/// completion, restore and manage links deliberately remain COM-03 work; no
-/// native purchase result can grant UI access before the billing webhook does.
+/// Loads display data and launches StoreKit / Play Billing. No native purchase
+/// result can grant UI access before the billing webhook creates an entitlement.
 class NativeStoreCatalogAdapter implements PurchaseAdapter {
   NativeStoreCatalogAdapter({
     required StoreCatalogService catalog,
@@ -151,6 +159,9 @@ class NativeStoreCatalogAdapter implements PurchaseAdapter {
 
   final StoreCatalogService _catalog;
   final InAppPurchase _purchases;
+  final Map<String, ProductDetails> _products = {};
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  Completer<PurchaseOutcome>? _pendingOutcome;
 
   @override
   Future<PaywallSnapshot> load() async {
@@ -159,11 +170,21 @@ class NativeStoreCatalogAdapter implements PurchaseAdapter {
     }
     try {
       final ids = await _catalog.loadStoreProductIds();
-      if (ids.isEmpty) return const PaywallSnapshot(phase: PaywallPhase.productsUnavailable);
+      if (ids.isEmpty) {
+        return const PaywallSnapshot(phase: PaywallPhase.productsUnavailable);
+      }
       final response = await _purchases.queryProductDetails(ids);
       if (response.error != null || response.productDetails.isEmpty) {
         return const PaywallSnapshot(phase: PaywallPhase.productsUnavailable);
       }
+      _products
+        ..clear()
+        ..addEntries(response.productDetails
+            .map((detail) => MapEntry(detail.id, detail)));
+      _purchaseSubscription ??= _purchases.purchaseStream.listen(
+        _onPurchaseUpdates,
+        onError: (_, __) => _finish(const PurchaseOutcome(PaywallPhase.error)),
+      );
       return PaywallSnapshot(
         phase: PaywallPhase.idle,
         products: response.productDetails
@@ -171,7 +192,8 @@ class NativeStoreCatalogAdapter implements PurchaseAdapter {
                   id: detail.id,
                   title: detail.title,
                   price: detail.price,
-                  detail: detail.description.isEmpty ? null : detail.description,
+                  detail:
+                      detail.description.isEmpty ? null : detail.description,
                 ))
             .toList(growable: false),
       );
@@ -181,13 +203,78 @@ class NativeStoreCatalogAdapter implements PurchaseAdapter {
   }
 
   @override
-  Future<PurchaseOutcome> purchase(PurchaseProduct product) async =>
-      const PurchaseOutcome(PaywallPhase.productsUnavailable);
+  Future<PurchaseOutcome> purchase(PurchaseProduct product) async {
+    final detail = _products[product.id];
+    if (detail == null || _pendingOutcome != null) {
+      return const PurchaseOutcome(PaywallPhase.productsUnavailable);
+    }
+    final pending = _pendingOutcome = Completer<PurchaseOutcome>();
+    final launched = await _purchases.buyNonConsumable(
+      purchaseParam: PurchaseParam(productDetails: detail),
+    );
+    if (!launched) {
+      _finish(const PurchaseOutcome(PaywallPhase.error));
+    }
+    return pending.future;
+  }
 
   @override
-  Future<PurchaseOutcome> restore() async =>
-      const PurchaseOutcome(PaywallPhase.productsUnavailable);
+  Future<PurchaseOutcome> restore() async {
+    if (_pendingOutcome != null) {
+      return const PurchaseOutcome(PaywallPhase.purchasing);
+    }
+    final pending = _pendingOutcome = Completer<PurchaseOutcome>();
+    await _purchases.restorePurchases();
+    // A store may emit no restored item when nothing is owned. The provider
+    // still refreshes the server entitlement, which is the authority.
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    _finish(const PurchaseOutcome(
+      PaywallPhase.purchasing,
+      requiresEntitlementConfirmation: true,
+    ));
+    return pending.future;
+  }
 
   @override
-  Future<void> manageSubscription() async {}
+  Future<void> manageSubscription() async {
+    await launchUrl(
+      Uri.parse(defaultTargetPlatform == TargetPlatform.iOS
+          ? 'https://apps.apple.com/account/subscriptions'
+          : 'https://play.google.com/store/account/subscriptions'),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  Future<void> _onPurchaseUpdates(List<PurchaseDetails> updates) async {
+    for (final purchase in updates) {
+      if (purchase.pendingCompletePurchase) {
+        await _purchases.completePurchase(purchase);
+      }
+      switch (purchase.status) {
+        case PurchaseStatus.purchased:
+        case PurchaseStatus.restored:
+          _finish(const PurchaseOutcome(
+            PaywallPhase.purchasing,
+            requiresEntitlementConfirmation: true,
+          ));
+        case PurchaseStatus.canceled:
+          _finish(const PurchaseOutcome(PaywallPhase.userCancelled));
+        case PurchaseStatus.error:
+          _finish(PurchaseOutcome(
+            PaywallPhase.error,
+            message: purchase.error?.message,
+          ));
+        case PurchaseStatus.pending:
+          break;
+      }
+    }
+  }
+
+  void _finish(PurchaseOutcome outcome) {
+    final pending = _pendingOutcome;
+    if (pending != null && !pending.isCompleted) {
+      pending.complete(outcome);
+    }
+    _pendingOutcome = null;
+  }
 }
