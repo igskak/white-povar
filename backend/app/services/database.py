@@ -1,6 +1,7 @@
 from supabase import create_client, Client
 from typing import Optional, List, Dict, Any
 import asyncio
+from datetime import datetime, timezone
 from functools import wraps
 import logging
 
@@ -522,6 +523,28 @@ class SupabaseService:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, _execute)
         return True
+
+    async def record_recipe_history(
+        self, user_id: str, chef_id: str, recipe_id: str, event: str
+    ) -> None:
+        """Upsert a private view/cook event scoped to the resolved tenant."""
+        field = {'viewed': 'viewed_at', 'cooked': 'cooked_at'}[event]
+
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            return client.table('user_recipe_history').upsert(
+                {
+                    'user_id': user_id,
+                    'chef_id': chef_id,
+                    'recipe_id': recipe_id,
+                    field: datetime.now(timezone.utc).isoformat(),
+                    'updated_at': datetime.now(timezone.utc).isoformat(),
+                },
+                on_conflict='user_id,chef_id,recipe_id',
+            ).execute()
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _execute)
 
     # Ingestion-related methods
     async def create_ingestion_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:

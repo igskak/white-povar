@@ -57,6 +57,9 @@ class _FavoriteService implements RecipeService {
   }
 
   @override
+  Future<void> recordHistory(String recipeId, String event) async {}
+
+  @override
   Future<Recipe> createRecipe(Recipe recipe) async => recipe;
   @override
   Future<void> deleteRecipe(String id) async {}

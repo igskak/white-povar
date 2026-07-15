@@ -223,6 +223,9 @@ class _FakeRecipeService implements RecipeService {
       isFavorite;
 
   @override
+  Future<void> recordHistory(String recipeId, String event) async {}
+
+  @override
   Future<void> toggleFavorite(String recipeId) async {}
 
   @override

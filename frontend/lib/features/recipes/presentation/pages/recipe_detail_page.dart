@@ -18,13 +18,20 @@ import '../widgets/content_detail_sections.dart';
 import '../widgets/favorite_button.dart';
 import '../widgets/recipe_video_widget.dart';
 
-class RecipeDetailPage extends ConsumerWidget {
+class RecipeDetailPage extends ConsumerStatefulWidget {
   const RecipeDetailPage({super.key, required this.recipeId});
   final String recipeId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recipeAsync = ref.watch(recipeDetailProvider(recipeId));
+  ConsumerState<RecipeDetailPage> createState() => _RecipeDetailPageState();
+}
+
+class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
+  bool _viewRecorded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
     final auth = ref.watch(authProvider);
     final hasPremiumAccess = ref.watch(isPremiumProvider);
 
@@ -38,9 +45,17 @@ class RecipeDetailPage extends ConsumerWidget {
           subtitle: _isOffline(error)
               ? 'Перевірте інтернет і спробуйте ще раз.'
               : 'Спробуйте відкрити рецепт ще раз.',
-          onRetry: () => ref.invalidate(recipeDetailProvider(recipeId)),
+          onRetry: () => ref.invalidate(recipeDetailProvider(widget.recipeId)),
         ),
         data: (recipe) {
+          if (auth.isAuthenticated && !_viewRecorded) {
+            _viewRecorded = true;
+            // Never block rendering or offline access on a private history write.
+            ref
+                .read(recipeServiceProvider)
+                .recordHistory(recipe.id, 'viewed')
+                .catchError((_) {});
+          }
           final locked = recipe.isPremium && !hasPremiumAccess;
           return _RecipeDetailContent(
             recipe: recipe,
@@ -59,7 +74,7 @@ class RecipeDetailPage extends ConsumerWidget {
                 locked ? Icons.workspace_premium : Icons.soup_kitchen_outlined,
             onPressed: () => locked
                 ? _openGate(context, auth.isAuthenticated)
-                : context.push('/recipes/$recipeId/cook'),
+                : context.push('/recipes/${widget.recipeId}/cook'),
           );
         },
         orElse: () => null,
@@ -68,7 +83,7 @@ class RecipeDetailPage extends ConsumerWidget {
   }
 
   void _openGate(BuildContext context, bool authenticated) {
-    final returnTo = '/recipes/$recipeId';
+    final returnTo = '/recipes/${widget.recipeId}';
     if (!authenticated) {
       context.go('/login?returnTo=${Uri.encodeComponent(returnTo)}');
       return;

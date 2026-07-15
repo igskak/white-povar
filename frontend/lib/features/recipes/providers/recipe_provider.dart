@@ -3,6 +3,7 @@ import '../../../core/api/api_client.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
+import '../services/cooking_progress_store.dart';
 
 // Recipe filter state
 class RecipeFilter {
@@ -96,7 +97,14 @@ final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) return const [];
   final recipeService = ref.watch(recipeServiceProvider);
-  return recipeService.getFavoriteRecipes();
+  try {
+    final recipes = await recipeService.getFavoriteRecipes();
+    await CookingProgressStore().saveSavedRecipes(recipes);
+    return recipes;
+  } catch (_) {
+    // Saved recipes remain readable when the device has no connection.
+    return CookingProgressStore().readSavedRecipes();
+  }
 });
 
 /// The single in-memory source of truth for saved state across cards, detail
@@ -145,6 +153,7 @@ class FavoriteNotifier extends StateNotifier<Set<String>> {
     _guestIntentRecipeId = null;
     state = <String>{};
     _ref.invalidate(favoriteRecipesProvider);
+    CookingProgressStore().clearPrivateData();
   }
 
   /// Optimistically changes the local canonical state and serializes writes per

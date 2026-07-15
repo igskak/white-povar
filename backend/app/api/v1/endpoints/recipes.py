@@ -581,6 +581,25 @@ async def set_recipe_favorite(
     return {'recipe_id': recipe_id, 'is_favorite': is_favorite}
 
 
+@router.post("/{recipe_id}/history/{event}", status_code=status.HTTP_204_NO_CONTENT)
+async def record_recipe_history(
+    recipe_id: str,
+    event: str,
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    """Record a viewed/cooked event without exposing another tenant's history."""
+    if event not in {'viewed', 'cooked'}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid history event")
+    try:
+        UUID(recipe_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recipe ID format")
+    if not _result_data(await supabase_service.get_recipe_by_id(recipe_id, tenant.chef_id)):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
+    await supabase_service.record_recipe_history(current_user.id, tenant.chef_id, recipe_id, event)
+
+
 @router.get("/{recipe_id}", response_model=Recipe)
 async def get_recipe(
     recipe_id: str,

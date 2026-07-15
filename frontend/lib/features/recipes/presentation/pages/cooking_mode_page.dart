@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
@@ -8,6 +11,8 @@ import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 import '../../providers/recipe_provider.dart';
+import '../../services/cooking_progress_store.dart';
+import '../../models/recipe.dart';
 
 class CookingModePage extends ConsumerStatefulWidget {
   const CookingModePage({super.key, required this.recipeId});
@@ -19,6 +24,55 @@ class CookingModePage extends ConsumerStatefulWidget {
 class _CookingModePageState extends ConsumerState<CookingModePage> {
   int _step = 0;
   bool _complete = false;
+  bool _sessionStored = false;
+  DateTime? _timerEndsAt;
+  Timer? _clock;
+  final _progressStore = CookingProgressStore();
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreProgress();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _timerEndsAt != null) setState(() {});
+    });
+    WakelockPlus.enable();
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  Future<void> _restoreProgress() async {
+    final saved = await _progressStore.read();
+    if (!mounted || saved?.recipe.id != widget.recipeId) return;
+    setState(() {
+      _step = saved!.step;
+      _timerEndsAt = saved.timerEndsAt;
+    });
+  }
+
+  Future<void> _saveProgress(Recipe recipe) => _progressStore.save(
+        CookingProgress(
+            recipe: recipe,
+            step: _step,
+            updatedAt: DateTime.now().toUtc(),
+            timerEndsAt: _timerEndsAt),
+      );
+
+  Future<void> _startTimer(Recipe recipe) async {
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (context) => const _TimerDialog(),
+    );
+    if (minutes == null || !mounted) return;
+    setState(
+        () => _timerEndsAt = DateTime.now().add(Duration(minutes: minutes)));
+    await _saveProgress(recipe);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +92,11 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
           }
           if (recipe.instructions.isEmpty) return const _CookingEmpty();
           _step = _step.clamp(0, recipe.instructions.length - 1);
+          if (!_sessionStored) {
+            _sessionStored = true;
+            // Persist immediately so even the first step survives a restart.
+            _saveProgress(recipe);
+          }
           if (_complete) {
             return _CookingComplete(
               title: recipe.title,
@@ -49,12 +108,25 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             step: _step,
             steps: recipe.instructions,
             onExit: _confirmExit,
+            onTimer: () => _startTimer(recipe),
+            timerLabel: _timerLabel(),
             onPrevious: _step == 0 ? null : () => setState(() => _step--),
-            onNext: () {
+            onNext: () async {
               if (_step == recipe.instructions.length - 1) {
                 setState(() => _complete = true);
+                await _progressStore.clear();
+                if (isAuthenticated) {
+                  try {
+                    await ref
+                        .read(recipeServiceProvider)
+                        .recordHistory(recipe.id, 'cooked');
+                  } catch (_) {
+                    // Completion stays local; a network retry must not undo it.
+                  }
+                }
               } else {
                 setState(() => _step++);
+                await _saveProgress(recipe);
               }
             },
           );
@@ -81,7 +153,8 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Завершити приготування?'),
-        content: const Text('Прогрес кроків буде втрачено.'),
+        content: const Text(
+            'Прогрес збережено на цьому пристрої — ви зможете продовжити без мережі.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -94,6 +167,16 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     );
     if (exit == true && mounted) context.pop();
   }
+
+  String? _timerLabel() {
+    final endsAt = _timerEndsAt;
+    if (endsAt == null) return null;
+    final remaining = endsAt.difference(DateTime.now());
+    if (remaining.isNegative) return 'Таймер завершено';
+    final minutes = remaining.inMinutes.toString().padLeft(2, '0');
+    final seconds = (remaining.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 }
 
 class _CookingStep extends StatelessWidget {
@@ -102,12 +185,16 @@ class _CookingStep extends StatelessWidget {
       required this.step,
       required this.steps,
       required this.onExit,
+      required this.onTimer,
+      required this.timerLabel,
       required this.onPrevious,
       required this.onNext});
   final String title;
   final int step;
   final List<String> steps;
   final VoidCallback onExit;
+  final VoidCallback onTimer;
+  final String? timerLabel;
   final VoidCallback? onPrevious;
   final VoidCallback onNext;
   @override
@@ -120,6 +207,8 @@ class _CookingStep extends StatelessWidget {
       step: step,
       steps: steps,
       onExit: onExit,
+      onTimer: onTimer,
+      timerLabel: timerLabel,
       onPrevious: onPrevious,
       onNext: onNext,
     );
@@ -147,11 +236,15 @@ class _StepContent extends StatelessWidget {
       {required this.step,
       required this.steps,
       required this.onExit,
+      required this.onTimer,
+      required this.timerLabel,
       required this.onPrevious,
       required this.onNext});
   final int step;
   final List<String> steps;
   final VoidCallback onExit;
+  final VoidCallback onTimer;
+  final String? timerLabel;
   final VoidCallback? onPrevious;
   final VoidCallback onNext;
   @override
@@ -164,8 +257,19 @@ class _StepContent extends StatelessWidget {
               onPressed: onExit,
               filled: true),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: _Progress(step: step, total: steps.length))
+          Expanded(child: _Progress(step: step, total: steps.length)),
+          IconButton(
+            tooltip: 'Поставити таймер',
+            onPressed: onTimer,
+            icon: const Icon(Icons.timer_outlined, color: AppColorsV2.onInk),
+          ),
         ]),
+        if (timerLabel != null)
+          Semantics(
+              liveRegion: true,
+              child: Text(timerLabel!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColorsV2.onInk))),
         const Spacer(),
         Text('КРОК ${step + 1}',
             textAlign: TextAlign.center,
@@ -298,4 +402,35 @@ class _CookingError extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Center(child: AppButton(label: 'Повернутися', onPressed: onExit));
+}
+
+class _TimerDialog extends StatefulWidget {
+  const _TimerDialog();
+  @override
+  State<_TimerDialog> createState() => _TimerDialogState();
+}
+
+class _TimerDialogState extends State<_TimerDialog> {
+  int _minutes = 5;
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Таймер'),
+        content: DropdownButton<int>(
+          value: _minutes,
+          isExpanded: true,
+          items: const [1, 5, 10, 15, 30]
+              .map((minutes) =>
+                  DropdownMenuItem(value: minutes, child: Text('$minutes хв')))
+              .toList(),
+          onChanged: (value) => setState(() => _minutes = value ?? _minutes),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Скасувати')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, _minutes),
+              child: const Text('Почати')),
+        ],
+      );
 }

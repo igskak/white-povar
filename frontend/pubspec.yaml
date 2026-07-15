@@ -84,6 +84,7 @@ dependencies:
   video_player: ^2.8.1
   url_launcher: ^6.2.2
   chewie: ^1.10.0
+  wakelock_plus: ^1.2.8
 
 dev_dependencies:
   flutter_test:

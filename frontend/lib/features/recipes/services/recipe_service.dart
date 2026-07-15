@@ -190,6 +190,12 @@ class RecipeService {
     }
   }
 
+  /// History is best-effort: offline cooking must remain available even when
+  /// this private event cannot be uploaded immediately.
+  Future<void> recordHistory(String recipeId, String event) async {
+    await _apiClient.post<void>('/api/v1/recipes/$recipeId/history/$event');
+  }
+
   @Deprecated('Use setFavorite with an explicit desired state.')
   Future<void> toggleFavorite(String recipeId) async {
     await setFavorite(recipeId, true);
