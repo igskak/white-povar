@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     # Search and AI Settings
     search_language: str = "uk"
     ai_target_lang: str = "uk"
+    ai_recipe_generation_model: str = "gpt-4o-mini"
+    ai_recipe_generation_requests_per_minute: int = 3
+    ai_recipe_generation_daily_token_budget: int = 4400
 
     # Pagination
     default_page_size: int = 20

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +14,8 @@ import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
 import '../../../voice/providers/voice_input_provider.dart';
 import '../widgets/voice_input_status.dart';
+import '../../../ai/models/generated_recipe.dart';
+import '../../../ai/services/recipe_generation_service.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key, this.initialRoute});
@@ -283,20 +287,129 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Future<void> _showAiGenerationConsent() async {
-    await showDialog<void>(
+    final approved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Створити AI-рецепт?'),
         content: const Text(
-            'AI-генерація ще не увімкнена. У наступному кроці вона завжди вимагатиме окремої згоди й створюватиме приватну чернетку, а не рецепт Олександра.'),
+            'За вашим запитом ми надішлемо текст до AI, щоб створити новий рецепт у загальному стилі автора. Це не опублікований рецепт Олександра і не буде збережено без окремої дії.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Зрозуміло'))
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Скасувати')),
+          FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Погоджуюсь і створюю')),
         ],
       ),
     );
+    if (approved != true || !mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _AiRecipeGenerationDialog(
+        prompt: _searchController.text.trim(),
+        service: ref.read(recipeGenerationServiceProvider),
+      ),
+    );
   }
+}
+
+class _AiRecipeGenerationDialog extends StatefulWidget {
+  const _AiRecipeGenerationDialog(
+      {required this.prompt, required this.service});
+  final String prompt;
+  final RecipeGenerationService service;
+
+  @override
+  State<_AiRecipeGenerationDialog> createState() =>
+      _AiRecipeGenerationDialogState();
+}
+
+class _AiRecipeGenerationDialogState extends State<_AiRecipeGenerationDialog> {
+  String _status = 'Готуємо AI-генерацію…';
+  String? _error;
+  GeneratedRecipe? _recipe;
+  StreamSubscription<RecipeGenerationEvent>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = widget.service.generate(widget.prompt).listen((event) {
+      if (!mounted) return;
+      setState(() {
+        switch (event) {
+          case RecipeGenerationStatus(:final message):
+            _status = message;
+          case RecipeGenerationComplete(:final recipe):
+            _recipe = recipe;
+          case RecipeGenerationFailure(:final message):
+            _error = message;
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(_recipe == null ? 'Створюємо AI-рецепт' : _recipe!.title),
+        content: SizedBox(
+          width: 440,
+          child: _error != null
+              ? Text(_error!)
+              : _recipe == null
+                  ? Row(children: [
+                      const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(child: Text(_status)),
+                    ])
+                  : SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_recipe!.attribution,
+                              style: Theme.of(context).textTheme.labelLarge),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(_recipe!.description),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                              '${_recipe!.servings} порц. · ${_recipe!.totalTimeMinutes} хв'),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text('Інгредієнти',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          ..._recipe!.ingredients.map(
+                              (item) => Text('• ${item.amount} ${item.name}')),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text('Кроки',
+                              style: Theme.of(context).textTheme.titleSmall),
+                          ..._recipe!.steps.indexed.map(
+                              (item) => Text('${item.$1 + 1}. ${item.$2}')),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(_recipe!.safetyNote,
+                              style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+                _recipe == null && _error == null ? 'Скасувати' : 'Закрити'),
+          ),
+        ],
+      );
 }
 
 class _SearchHeader extends StatelessWidget {

@@ -7,6 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/router/route_models.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/features/ai/models/generated_recipe.dart';
+import 'package:frontend/features/ai/services/recipe_generation_service.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
@@ -120,6 +123,42 @@ void main() {
       );
     });
 
+    testWidgets('AI recipe generation needs separate consent before streaming',
+        (tester) async {
+      final speech = _FakeSpeechRecognitionService();
+      final generation = _FakeRecipeGenerationService();
+      await tester.pumpWidget(_testApp(
+        repository: _NoMatchVoiceRepository(),
+        speechRecognitionService: speech,
+        recipeGenerationService: generation,
+      ));
+
+      await tester.tap(find.byTooltip('Голосове введення'));
+      await tester.pump();
+      await tester.tap(find.text('Дозволити мікрофон'));
+      await tester.pump();
+      speech.emitTranscript('щось нове з томатами', true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Створити AI-рецепт'));
+      await tester.pump();
+
+      expect(find.text('Погоджуюсь і створюю'), findsOneWidget);
+      expect(generation.prompts, isEmpty);
+      await tester.tap(find.text('Скасувати'));
+      await tester.pump();
+      expect(generation.prompts, isEmpty);
+
+      await tester.tap(find.text('Створити AI-рецепт'));
+      await tester.pump();
+      await tester.tap(find.text('Погоджуюсь і створюю'));
+      await tester.pump();
+      await tester.pump();
+      expect(generation.prompts, ['щось нове з томатами']);
+      expect(find.text('Створено AI, не опублікований рецепт автора'),
+          findsOneWidget);
+    });
+
     testWidgets('result layouts have no exceptions at 390, 768 and 1280',
         (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
@@ -165,6 +204,7 @@ Widget _testApp({
   required RecipeRepository repository,
   SearchRouteLocation? initialRoute,
   SpeechRecognitionService? speechRecognitionService,
+  RecipeGenerationService? recipeGenerationService,
 }) =>
     ProviderScope(
       overrides: [
@@ -173,6 +213,9 @@ Widget _testApp({
         if (speechRecognitionService != null)
           speechRecognitionServiceProvider
               .overrideWithValue(speechRecognitionService),
+        if (recipeGenerationService != null)
+          recipeGenerationServiceProvider
+              .overrideWithValue(recipeGenerationService),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),
@@ -201,6 +244,41 @@ class _DeferredSearchRepository extends _RepositoryBase {
 
   void complete(String query, List<Recipe> recipes) =>
       _requests[query]!.complete(recipes);
+}
+
+class _NoMatchVoiceRepository extends _SearchRepository {
+  @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+          {CancelToken? cancelToken}) async =>
+      const VoiceIntentSearchResult(recipes: [], confirmationRequired: []);
+}
+
+class _FakeRecipeGenerationService extends RecipeGenerationService {
+  _FakeRecipeGenerationService()
+      : super(ApiClient(
+          baseUrl: 'https://example.invalid',
+          tokenProvider: () async => null,
+          tenantSlug: 'ohorodnik-oleksandr',
+          locale: 'uk',
+        ));
+
+  final List<String> prompts = [];
+
+  @override
+  Stream<RecipeGenerationEvent> generate(String prompt) async* {
+    prompts.add(prompt);
+    yield const RecipeGenerationStatus('Створюємо структуру рецепта…');
+    yield const RecipeGenerationComplete(GeneratedRecipe(
+      title: 'Томатна вечеря',
+      description: 'Тестовий AI-рецепт.',
+      servings: 2,
+      totalTimeMinutes: 20,
+      ingredients: [GeneratedIngredient(name: 'томати', amount: '400 г')],
+      steps: ['Прогрійте томати.'],
+      safetyNote: 'Перевірте склад продуктів.',
+      attribution: 'Створено AI, не опублікований рецепт автора',
+    ));
+  }
 }
 
 class _FakeSpeechRecognitionService implements SpeechRecognitionService {

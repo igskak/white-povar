@@ -1,15 +1,59 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 from app.services.ai_service import ai_service
 from app.core.premium_access import require_ai_access
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext, require_tenant_context
+from app.schemas.ai_generation import RecipeGenerationRequest
+from app.services.recipe_generation_service import (
+    GenerationRejected,
+    recipe_generation_service,
+)
+import asyncio
+import json
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.post('/recipe-generation/stream')
+async def stream_recipe_generation(
+    request: RecipeGenerationRequest,
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    """Generate an ephemeral, explicitly AI-labelled recipe preview via SSE."""
+    async def events():
+        statuses: asyncio.Queue[str] = asyncio.Queue()
+
+        async def report(message: str) -> None:
+            await statuses.put(message)
+
+        task = asyncio.create_task(
+            recipe_generation_service.generate(request, current_user, tenant, report)
+        )
+        try:
+            while not task.done() or not statuses.empty():
+                try:
+                    message = await asyncio.wait_for(statuses.get(), timeout=.1)
+                    yield f'event: status\ndata: {json.dumps({"message": message}, ensure_ascii=False)}\n\n'
+                except asyncio.TimeoutError:
+                    pass
+            recipe = await task
+            yield f'event: recipe\ndata: {recipe.model_dump_json()}\n\n'
+        except GenerationRejected as exc:
+            yield f'event: error\ndata: {json.dumps({"message": str(exc)}, ensure_ascii=False)}\n\n'
+        except Exception:
+            logger.exception('AI recipe stream failed tenant=%s', tenant.slug)
+            yield 'event: error\ndata: {"message":"Не вдалося створити рецепт. Спробуйте ще раз."}\n\n'
+
+    return StreamingResponse(events(), media_type='text/event-stream', headers={
+        'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no',
+    })
 
 # Request models
 class RecipeSuggestionRequest(BaseModel):
