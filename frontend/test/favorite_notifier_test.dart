@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
+import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
 
 void main() {
@@ -55,6 +56,11 @@ void main() {
 
 class _FavoriteService implements RecipeService {
   final requests = <bool>[];
+
+  @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+          {CancelToken? cancelToken}) async =>
+      const VoiceIntentSearchResult(recipes: [], confirmationRequired: []);
 
   @override
   Future<bool> setFavorite(String recipeId, bool isFavorite) async {

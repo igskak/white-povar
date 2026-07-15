@@ -1,6 +1,7 @@
 import '../models/recipe.dart';
 import '../../../core/api/api_client.dart';
 import 'package:dio/dio.dart';
+import '../repositories/recipe_repository.dart';
 
 class RecipeService {
   RecipeService(this._apiClient);
@@ -143,6 +144,31 @@ class RecipeService {
     } catch (e) {
       throw Exception('Failed to search recipes: $e');
     }
+  }
+
+  Future<VoiceIntentSearchResult> searchVoiceIntent(
+    String transcript, {
+    CancelToken? cancelToken,
+  }) async {
+    final response = await _apiClient.post<Map<String, dynamic>>(
+      '/api/v1/search/intent/retrieve',
+      data: {'transcript': transcript},
+      cancelToken: cancelToken,
+    );
+    if (response.statusCode != 200 || response.data == null) {
+      throw Exception(
+          'Failed to retrieve voice intent: ${response.statusCode}');
+    }
+    final data = response.data!;
+    return VoiceIntentSearchResult(
+      recipes: (data['recipes'] as List<dynamic>? ?? [])
+          .map((json) => Recipe.fromJson(json as Map<String, dynamic>))
+          .toList(),
+      confirmationRequired:
+          (data['confirmation_required'] as List<dynamic>? ?? [])
+              .map((value) => value.toString())
+              .toList(),
+    );
   }
 
   /// Discovery facets are calculated by the tenant-scoped search API.

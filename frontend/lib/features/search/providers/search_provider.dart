@@ -13,12 +13,14 @@ class SimpleSearchState {
   final bool isLoading;
   final String? error;
   final String query;
+  final List<String> confirmationRequired;
 
   const SimpleSearchState({
     this.results = const [],
     this.isLoading = false,
     this.error,
     this.query = '',
+    this.confirmationRequired = const [],
   });
 
   SimpleSearchState copyWith({
@@ -26,12 +28,14 @@ class SimpleSearchState {
     bool? isLoading,
     String? error,
     String? query,
+    List<String>? confirmationRequired,
   }) {
     return SimpleSearchState(
       results: results ?? this.results,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       query: query ?? this.query,
+      confirmationRequired: confirmationRequired ?? this.confirmationRequired,
     );
   }
 }
@@ -95,6 +99,30 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
         }
       }
     });
+  }
+
+  Future<void> searchVoiceIntent(String transcript) async {
+    _debounce?.cancel();
+    _cancelToken?.cancel('Superseded by voice intent retrieval.');
+    final cancelToken = CancelToken();
+    _cancelToken = cancelToken;
+    state = SimpleSearchState(
+        results: state.results, isLoading: true, query: transcript);
+    try {
+      final result = await _recipeRepository.searchVoiceIntent(transcript,
+          cancelToken: cancelToken);
+      if (identical(_cancelToken, cancelToken)) {
+        state = SimpleSearchState(
+            results: result.recipes,
+            query: transcript,
+            confirmationRequired: result.confirmationRequired);
+      }
+    } on RecipeRepositoryException catch (e) {
+      if (identical(_cancelToken, cancelToken)) {
+        state = SimpleSearchState(
+            results: state.results, error: e.message, query: transcript);
+      }
+    }
   }
 
   void clearSearch() {

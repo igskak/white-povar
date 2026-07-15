@@ -132,7 +132,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _updateLocation();
       if (voiceState.isFinalTranscript &&
           voiceState.transcript.trim().length >= 2) {
-        _performSearch(voiceState.transcript);
+        ref
+            .read(simpleTextSearchProvider.notifier)
+            .searchVoiceIntent(voiceState.transcript);
       }
     });
   }
@@ -212,10 +214,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   onChanged: _onTextChanged,
                   onSubmitted: (value) {
                     _rememberSearch(value);
-                    _performSearch(value);
+                    if (searchState.confirmationRequired.isNotEmpty) {
+                      ref
+                          .read(simpleTextSearchProvider.notifier)
+                          .searchVoiceIntent(value);
+                    } else {
+                      _performSearch(value);
+                    }
                   },
                   onFilterSelected: _applySuggestion,
                   voiceState: voiceState,
+                  confirmationRequired: searchState.confirmationRequired,
                   onStartVoice: _requestVoiceConsent,
                   onStopVoice: () =>
                       ref.read(voiceInputProvider.notifier).stopListening(),
@@ -265,6 +274,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       recipes: searchState.results,
       selectedRecipeId: _selectedRecipeId,
       onSelected: (recipe) => setState(() => _selectedRecipeId = recipe.id),
+      confirmationRequired: searchState.confirmationRequired,
     );
   }
 }
@@ -282,6 +292,7 @@ class _SearchHeader extends StatelessWidget {
       required this.onSubmitted,
       required this.onFilterSelected,
       required this.voiceState,
+      required this.confirmationRequired,
       required this.onStartVoice,
       required this.onStopVoice,
       required this.onCancelVoice});
@@ -296,6 +307,7 @@ class _SearchHeader extends StatelessWidget {
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onFilterSelected;
   final VoiceInputState voiceState;
+  final List<String> confirmationRequired;
   final VoidCallback onStartVoice;
   final VoidCallback onStopVoice;
   final VoidCallback onCancelVoice;
@@ -346,6 +358,14 @@ class _SearchHeader extends StatelessWidget {
           onStop: onStopVoice,
           onCancel: onCancelVoice,
         ),
+        if (confirmationRequired.contains('servings'))
+          const Padding(
+            padding: EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              'Уточніть кількість порцій у запиті, щоб звузити рекомендації.',
+              semanticsLabel: 'Потрібно підтвердити кількість порцій',
+            ),
+          ),
         const SizedBox(height: AppSpacing.xs),
         Row(children: [
           AppButton(
@@ -518,11 +538,13 @@ class _SearchResults extends StatelessWidget {
     required this.recipes,
     required this.selectedRecipeId,
     required this.onSelected,
+    this.confirmationRequired = const [],
   });
 
   final List<Recipe> recipes;
   final String? selectedRecipeId;
   final ValueChanged<Recipe> onSelected;
+  final List<String> confirmationRequired;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(

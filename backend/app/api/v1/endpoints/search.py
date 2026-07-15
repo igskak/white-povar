@@ -6,7 +6,10 @@ import io
 from PIL import Image, ImageFile
 from pydantic import BaseModel
 
-from app.schemas.search import CatalogSearchResponse, PhotoSearchRequest, PhotoSearchResponse, TextSearchRequest, TextSearchResponse
+from app.schemas.search import (CatalogSearchResponse, PhotoSearchRequest,
+                                PhotoSearchResponse, TextSearchRequest,
+                                TextSearchResponse, VoiceIntentRequest,
+                                VoiceIntentRetrievalResponse)
 from app.schemas.recipe import Recipe
 from app.services.database import supabase_service
 from app.services.openai_service import openai_service
@@ -16,6 +19,7 @@ from app.core.tenant import TenantContext, require_tenant_context
 from app.core.content_access import resolve_recipe_access
 from app.api.v1.endpoints.auth import get_optional_user, User
 from app.api.v1.endpoints.recipes import _premium_teaser, _recipe_from_row
+from app.services.voice_intent_service import parse_voice_intent
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -33,6 +37,35 @@ def _row_contains_any(row: Dict[str, Any], terms: List[str]) -> bool:
         for ingredient in row.get('recipe_ingredients', [])
     )
     return any(term in value for term in terms for value in haystack)
+
+
+def _row_matches_voice_intent(row: Dict[str, Any], intent) -> bool:
+    """Apply typed intent only to rows already retrieved inside this tenant."""
+    ingredients = [str(item.get('display_name') or item.get('name') or '').lower()
+                   for item in row.get('recipe_ingredients', [])]
+    metadata = ' '.join([
+        str(row.get('title') or ''), str(row.get('description') or ''),
+        *[str(tag) for tag in row.get('tags', [])], *ingredients,
+    ]).lower()
+
+    def includes(value: str) -> bool:
+        return value.lower() in metadata
+
+    if intent.available_ingredients and not all(includes(item) for item in intent.available_ingredients):
+        return False
+    if intent.excluded_ingredients and any(includes(item) for item in intent.excluded_ingredients):
+        return False
+    for field in ('occasion', 'dish_type', 'protein'):
+        value = getattr(intent, field)
+        if value and not includes(value):
+            return False
+    if intent.lightness == 'light' and not any(token in metadata for token in ('light', 'легк', 'дієтич')):
+        return False
+    if intent.lightness == 'hearty' and not any(token in metadata for token in ('hearty', 'ситн')):
+        return False
+    if intent.servings and row.get('servings') and int(row['servings']) != intent.servings:
+        return False
+    return True
 
 # Helper functions for data mapping
 async def _get_category_name_from_id(category_id: str) -> str:
@@ -437,6 +470,65 @@ async def search_catalog(
         logger.error(f'Catalog search error: {str(e)}')
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail='Catalog search failed')
+
+
+@router.post('/intent/retrieve', response_model=VoiceIntentRetrievalResponse)
+async def retrieve_for_voice_intent(
+    request: VoiceIntentRequest,
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    """Parse a spoken/typed cooking request and retrieve only tenant recipes.
+
+    The parser is local and schema-backed.  It has no capability to interpret
+    transcript text as instructions, choose a tenant, or bypass access checks.
+    """
+    try:
+        intent, confirmation_required = parse_voice_intent(
+            request.transcript, request.confirmed_servings,
+        )
+        profile = await supabase_service.get_preference_profile(
+            current_user.id, tenant.chef_id,
+        ) if current_user else None
+        consented = bool(profile and profile.get('personalization_consent'))
+        profile_allergens = profile.get('allergens', []) if consented else []
+        profile_dislikes = profile.get('dislikes', []) if consented else []
+        profile_diets = profile.get('diets', []) if consented else []
+        profile_time = profile.get('preferred_max_total_time') if consented else None
+        result = await supabase_service.search_catalog_recipes(
+            chef_id=tenant.chef_id,
+            # Retrieval starts broad; VOICE-03 owns scoring/ranking.
+            query_text=None,
+            tags=(intent.diets + profile_diets) or None,
+            difficulty=None,
+            max_total_time=min(value for value in [intent.max_total_time, profile_time]
+                               if value is not None)
+            if intent.max_total_time is not None or profile_time is not None else None,
+            is_featured=None,
+            limit=100,
+            offset=0,
+        )
+        exclusions = list({*profile_allergens, *profile_dislikes, *intent.allergens})
+        rows = [row for row in result.data or []
+                if not _row_contains_any(row, exclusions)
+                and _row_matches_voice_intent(row, intent)]
+        recipes = []
+        for row in rows:
+            access = await resolve_recipe_access(row, tenant, current_user)
+            if access.exists_in_tenant:
+                recipes.append(_recipe_from_row(row) if access.can_read_body else _premium_teaser(row))
+        return VoiceIntentRetrievalResponse(
+            intent=intent,
+            confirmation_required=confirmation_required,
+            recipes=recipes,
+            total_count=len(recipes),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error('Voice intent retrieval error: %s', str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Voice intent retrieval failed')
 
 async def _find_recipes_by_ingredients(
     ingredients: List[str],

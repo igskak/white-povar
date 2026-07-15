@@ -45,6 +45,34 @@ class CatalogSearchResponse(TextSearchResponse):
 
     facets: Dict[str, List[str]] = Field(default_factory=dict)
 
+
+class VoiceIntent(BaseModel):
+    """A deliberately small, validated representation of a cooking request."""
+
+    occasion: Optional[str] = Field(None, max_length=40)
+    available_ingredients: List[str] = Field(default_factory=list, max_items=12)
+    excluded_ingredients: List[str] = Field(default_factory=list, max_items=12)
+    dish_type: Optional[str] = Field(None, max_length=40)
+    protein: Optional[str] = Field(None, max_length=40)
+    lightness: Optional[str] = Field(None, pattern='^(light|hearty)$')
+    max_total_time: Optional[int] = Field(None, ge=1, le=1440)
+    diets: List[str] = Field(default_factory=list, max_items=12)
+    allergens: List[str] = Field(default_factory=list, max_items=24)
+    servings: Optional[int] = Field(None, ge=1, le=30)
+    search_terms: List[str] = Field(default_factory=list, max_items=12)
+
+
+class VoiceIntentRequest(BaseModel):
+    transcript: str = Field(..., min_length=2, max_length=500)
+    confirmed_servings: Optional[int] = Field(None, ge=1, le=30)
+
+
+class VoiceIntentRetrievalResponse(BaseModel):
+    intent: VoiceIntent
+    confirmation_required: List[str] = Field(default_factory=list)
+    recipes: List[Recipe]
+    total_count: int
+
 class IngredientMatch(BaseModel):
     ingredient: str
     confidence: float = Field(..., ge=0, le=1)

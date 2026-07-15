@@ -31,6 +31,20 @@ class ApiRecipeRepository implements RecipeRepository {
   }
 
   @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+      {CancelToken? cancelToken}) async {
+    try {
+      return await _recipeService.searchVoiceIntent(transcript,
+          cancelToken: cancelToken);
+    } on ApiError catch (e) {
+      throw _handleApiError(e);
+    } catch (e) {
+      throw RecipeRepositoryException('Failed to retrieve voice intent',
+          originalError: e);
+    }
+  }
+
+  @override
   Future<List<Recipe>> getRecipes({
     String? cuisine,
     String? category,

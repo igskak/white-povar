@@ -174,6 +174,11 @@ const _tenantBootstrap = TenantBootstrap(
 
 class _FakeRecipeService implements RecipeService {
   @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+          {CancelToken? cancelToken}) async =>
+      const VoiceIntentSearchResult(recipes: [], confirmationRequired: []);
+
+  @override
   Future<Recipe> createRecipe(Recipe recipe) async => recipe;
 
   @override
@@ -233,6 +238,11 @@ class _FakeRecipeService implements RecipeService {
 }
 
 class _FakeRecipeRepository implements RecipeRepository {
+  @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+          {CancelToken? cancelToken}) async =>
+      const VoiceIntentSearchResult(recipes: [], confirmationRequired: []);
+
   @override
   Future<Recipe> createRecipe(Recipe recipe) async => recipe;
 

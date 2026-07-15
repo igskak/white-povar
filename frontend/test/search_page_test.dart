@@ -247,6 +247,14 @@ class _FakeSpeechRecognitionService implements SpeechRecognitionService {
 
 abstract class _RepositoryBase implements RecipeRepository {
   @override
+  Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
+          {CancelToken? cancelToken}) async =>
+      VoiceIntentSearchResult(
+        recipes: await searchRecipes(transcript, cancelToken: cancelToken),
+        confirmationRequired: const [],
+      );
+
+  @override
   Future<Recipe> createRecipe(Recipe recipe) async => recipe;
   @override
   Future<void> deleteRecipe(String id) async {}
