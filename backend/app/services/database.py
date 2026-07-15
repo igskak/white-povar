@@ -471,6 +471,36 @@ class SupabaseService:
             logger.exception('Unable to load bootstrap for tenant slug %s', tenant_slug)
             raise
 
+    async def get_studio_role(self, user_id: str, chef_id: str) -> Optional[str]:
+        result = (self.get_client(use_service_key=True).table('studio_memberships').select('role')
+                  .eq('user_id', user_id).eq('chef_id', chef_id).limit(1).execute())
+        rows = result.data or []
+        return rows[0].get('role') if rows else None
+
+    async def get_studio_brand_draft(self, chef_id: str) -> Optional[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('studio_brand_drafts')
+                  .select('config,version,updated_at').eq('chef_id', chef_id).limit(1).execute())
+        rows = result.data or []
+        return rows[0] if rows else None
+
+    async def get_published_brand_draft_seed(self, chef_id: str) -> Optional[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('brand_configs').select('config,version,published_at')
+                  .eq('chef_id', chef_id).eq('status', 'published').order('version', desc=True).limit(1).execute())
+        rows = result.data or []
+        if not rows:
+            return None
+        row = rows[0]
+        return {'config': row['config'], 'version': row['version'], 'updated_at': row.get('published_at')}
+
+    async def save_studio_brand_draft(self, *, chef_id: str, user_id: str, config: Dict[str, Any], expected_version: int) -> Optional[Dict[str, Any]]:
+        """Compare-and-swap a draft so concurrent Studio edits cannot overwrite."""
+        result = self.get_client(use_service_key=True).rpc('save_studio_brand_draft', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_config': config,
+            'p_expected_version': expected_version,
+        }).execute()
+        rows = result.data or []
+        return rows[0] if rows else None
+
     # Video-related methods
     async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new recipe video record"""

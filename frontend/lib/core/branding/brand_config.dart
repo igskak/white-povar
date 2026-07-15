@@ -16,6 +16,13 @@ class BrandConfig {
   final String locale;
   final BrandDetails brand;
 
+  Map<String, dynamic> toJson() => {
+        'schemaVersion': schemaVersion,
+        'tenantSlug': tenantSlug,
+        'locale': locale,
+        'brand': brand.toJson(),
+      };
+
   factory BrandConfig.fromJson(Map<String, dynamic> json) {
     final schemaVersion = _requiredInt(json, 'schemaVersion');
     if (schemaVersion != 1) {
@@ -64,6 +71,19 @@ class BrandDetails {
   final String? courseTag;
   final String? logo;
 
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'creatorName': creatorName,
+        'avatar': avatar,
+        'accent': accent,
+        'font': font,
+        'voice': voice.toJson(),
+        if (courseTag != null) 'courseTag': courseTag,
+        'heroPhotos': heroPhotos.map((photo) => photo.toJson()).toList(),
+        'logo': logo,
+        'derived': derived.toJson(),
+      };
+
   factory BrandDetails.fromJson(Map<String, dynamic> json) {
     final accent = _requiredString(json, 'accent');
     if (!RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(accent)) {
@@ -103,6 +123,8 @@ class BrandHeroPhoto {
 
   bool hasRole(String role) => roles.contains(role);
 
+  Map<String, dynamic> toJson() => {'url': url, 'roles': roles.toList()};
+
   factory BrandHeroPhoto.fromJson(Map<String, dynamic> json) {
     final roles = json['roles'];
     if (roles is! List || roles.any((role) => role is! String)) {
@@ -128,6 +150,13 @@ class BrandVoice {
   final String paywallTitle;
   final String? courseName;
 
+  Map<String, dynamic> toJson() => {
+        'greeting': greeting,
+        'loginTitle': loginTitle,
+        'paywallTitle': paywallTitle,
+        if (courseName != null) 'courseName': courseName,
+      };
+
   factory BrandVoice.fromJson(Map<String, dynamic> json) => BrandVoice(
         greeting: _requiredString(json, 'greeting'),
         loginTitle: _requiredString(json, 'loginTitle'),
@@ -148,6 +177,13 @@ class DerivedBrandColors {
   final String accentOnDark;
   final String onAccent;
   final String lightCtaMode;
+
+  Map<String, dynamic> toJson() => {
+        'accentPressed': accentPressed,
+        'accentOnDark': accentOnDark,
+        'onAccent': onAccent,
+        'lightCtaMode': lightCtaMode,
+      };
 
   factory DerivedBrandColors.fromJson(Map<String, dynamic> json) {
     final onAccent = _requiredString(json, 'onAccent');
