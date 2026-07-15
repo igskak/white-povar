@@ -6,7 +6,7 @@ import io
 from PIL import Image, ImageFile
 from pydantic import BaseModel
 
-from app.schemas.search import PhotoSearchRequest, PhotoSearchResponse, TextSearchRequest, TextSearchResponse
+from app.schemas.search import CatalogSearchResponse, PhotoSearchRequest, PhotoSearchResponse, TextSearchRequest, TextSearchResponse
 from app.schemas.recipe import Recipe
 from app.services.database import supabase_service
 from app.services.openai_service import openai_service
@@ -15,6 +15,7 @@ from app.schemas.chef import Chef
 from app.core.tenant import TenantContext, require_tenant_context
 from app.core.content_access import resolve_recipe_access
 from app.api.v1.endpoints.auth import get_optional_user, User
+from app.api.v1.endpoints.recipes import _premium_teaser, _recipe_from_row
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -235,8 +236,8 @@ async def search_by_photo(
 @router.get("/text", response_model=TextSearchResponse)
 async def search_by_text(
     q: str,
-    limit: int = 20,
-    offset: int = 0,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     current_user: Optional[User] = Depends(get_optional_user),
     tenant: TenantContext = Depends(require_tenant_context),
 ):
@@ -332,7 +333,11 @@ async def search_by_text(
         return TextSearchResponse(
             recipes=recipes,
             total_count=len(recipes),
-            query=q
+            query=q,
+            limit=limit,
+            offset=offset,
+            next_offset=offset + limit if len(recipes) == limit else None,
+            has_more=len(recipes) == limit,
         )
         
     except HTTPException:
@@ -343,6 +348,68 @@ async def search_by_text(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Text search failed"
         )
+
+
+@router.get("/catalog", response_model=CatalogSearchResponse)
+async def search_catalog(
+    q: Optional[str] = Query(None, min_length=2, max_length=200),
+    tags: Optional[List[str]] = Query(None),
+    difficulty: Optional[int] = Query(None, ge=1, le=5),
+    max_total_time: Optional[int] = Query(None, ge=0),
+    is_featured: Optional[bool] = None,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    """Search and filter a public tenant catalog on the server.
+
+    `chef_id` is intentionally absent from the public contract: it always comes
+    from the resolved tenant context.  The row projection deliberately retains
+    premium metadata so discovery can render a locked teaser.
+    """
+    try:
+        result = await supabase_service.search_catalog_recipes(
+            chef_id=tenant.chef_id,
+            query_text=q.strip() if q else None,
+            tags=[tag.strip().lower() for tag in tags or [] if tag.strip()] or None,
+            difficulty=difficulty,
+            max_total_time=max_total_time,
+            is_featured=is_featured,
+            limit=limit,
+            offset=offset,
+        )
+        rows = result.data or []
+        recipes = []
+        for row in rows[:limit]:
+            access = await resolve_recipe_access(row, tenant, current_user)
+            if not access.exists_in_tenant:
+                continue
+            recipes.append(_recipe_from_row(row) if access.can_read_body else _premium_teaser(row))
+
+        total_count = getattr(result, 'count', None)
+        if total_count is None:
+            total_count = len(rows)
+        has_more = offset + len(recipes) < total_count
+        facets = {
+            'tags': sorted({tag for row in rows for tag in row.get('tags', [])}),
+        }
+        return CatalogSearchResponse(
+            recipes=recipes,
+            total_count=total_count,
+            query=q or '',
+            limit=limit,
+            offset=offset,
+            next_offset=offset + limit if has_more else None,
+            has_more=has_more,
+            facets=facets,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f'Catalog search error: {str(e)}')
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail='Catalog search failed')
 
 async def _find_recipes_by_ingredients(
     ingredients: List[str],

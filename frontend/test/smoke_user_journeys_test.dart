@@ -180,9 +180,20 @@ class _FakeRecipeService implements RecipeService {
   Future<void> deleteRecipe(String id) async {}
 
   @override
-  Future<List<Recipe>> getRecipes() async {
+  Future<List<Recipe>> getRecipes({
+    String? cuisine,
+    String? category,
+    int? difficulty,
+    int? maxTime,
+    bool? isFeatured,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     return [_testRecipe(id: 'home-1', title: 'Test Pasta')];
   }
+
+  @override
+  Future<Map<String, dynamic>> getSearchFilterOptions() async => const {};
 
   @override
   Future<Recipe> getRecipe(String id) async {

@@ -41,30 +41,15 @@ class ApiRecipeRepository implements RecipeRepository {
     int offset = 0,
   }) async {
     try {
-      // Note: Current RecipeService doesn't support filtering parameters
-      // This is a limitation that should be addressed in the service layer
-      // For now, we'll get all recipes and filter client-side if needed
-      final allRecipes = await _recipeService.getRecipes();
-
-      // Apply client-side filtering if parameters are provided
-      var filteredRecipes = allRecipes.where((recipe) {
-        if (cuisine != null && recipe.cuisine != cuisine) return false;
-        if (category != null && recipe.category != category) return false;
-        if (difficulty != null && recipe.difficulty != difficulty) return false;
-        if (maxTime != null && recipe.totalTimeMinutes > maxTime) return false;
-        if (isFeatured != null && recipe.isFeatured != isFeatured) return false;
-        return true;
-      }).toList();
-
-      // Apply pagination
-      if (offset > 0) {
-        filteredRecipes = filteredRecipes.skip(offset).toList();
-      }
-      if (limit > 0 && filteredRecipes.length > limit) {
-        filteredRecipes = filteredRecipes.take(limit).toList();
-      }
-
-      return filteredRecipes;
+      return await _recipeService.getRecipes(
+        cuisine: cuisine,
+        category: category,
+        difficulty: difficulty,
+        maxTime: maxTime,
+        isFeatured: isFeatured,
+        limit: limit,
+        offset: offset,
+      );
     } on ApiError catch (e) {
       throw _handleApiError(e);
     } catch (e) {
@@ -152,24 +137,9 @@ class ApiRecipeRepository implements RecipeRepository {
   Future<List<Recipe>> getRecipesByChef(String chefId,
       {int limit = 20, int offset = 0}) async {
     try {
-      // Note: Current RecipeService doesn't support chef filtering
-      // This is a limitation that should be addressed in the service layer
-      // For now, we'll get all recipes and filter by chef client-side
-      final allRecipes = await _recipeService.getRecipes();
-
-      var chefRecipes = allRecipes
-          .where((recipe) => recipe.chefId.toString() == chefId)
-          .toList();
-
-      // Apply pagination
-      if (offset > 0) {
-        chefRecipes = chefRecipes.skip(offset).toList();
-      }
-      if (limit > 0 && chefRecipes.length > limit) {
-        chefRecipes = chefRecipes.take(limit).toList();
-      }
-
-      return chefRecipes;
+      // Consumer catalog access is always scoped by X-Tenant-Slug.  Accepting
+      // a caller-selected chef here would reintroduce cross-tenant discovery.
+      return await _recipeService.getRecipes(limit: limit, offset: offset);
     } on ApiError catch (e) {
       throw _handleApiError(e);
     } catch (e) {

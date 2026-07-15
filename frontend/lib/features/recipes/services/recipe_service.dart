@@ -7,11 +7,29 @@ class RecipeService {
 
   final ApiClient _apiClient;
 
-  // Get all recipes
-  Future<List<Recipe>> getRecipes() async {
+  // Get a tenant-scoped catalog page. Filters are applied by the API.
+  Future<List<Recipe>> getRecipes({
+    String? cuisine,
+    String? category,
+    int? difficulty,
+    int? maxTime,
+    bool? isFeatured,
+    int limit = 20,
+    int offset = 0,
+  }) async {
     try {
-      final response =
-          await _apiClient.get<Map<String, dynamic>>('/api/v1/recipes');
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/recipes',
+        queryParameters: {
+          if (cuisine != null) 'cuisine': cuisine,
+          if (category != null) 'category': category,
+          if (difficulty != null) 'difficulty': difficulty,
+          if (maxTime != null) 'max_time': maxTime,
+          if (isFeatured != null) 'is_featured': isFeatured,
+          'limit': limit,
+          'offset': offset,
+        },
+      );
       if (response.statusCode == 200) {
         final responseData = response.data!;
         final List<dynamic> recipesData =
@@ -111,8 +129,8 @@ class RecipeService {
   }) async {
     try {
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/api/v1/search/text',
-        queryParameters: {'q': query},
+        '/api/v1/search/catalog',
+        queryParameters: {'q': query, 'limit': 20, 'offset': 0},
         cancelToken: cancelToken,
       );
       if (response.statusCode == 200) {
@@ -125,6 +143,17 @@ class RecipeService {
     } catch (e) {
       throw Exception('Failed to search recipes: $e');
     }
+  }
+
+  /// Discovery facets are calculated by the tenant-scoped search API.
+  Future<Map<String, dynamic>> getSearchFilterOptions() async {
+    final response = await _apiClient.get<Map<String, dynamic>>(
+      '/api/v1/search/filters',
+    );
+    if (response.statusCode != 200 || response.data == null) {
+      throw Exception('Failed to load search filters: ${response.statusCode}');
+    }
+    return response.data!;
   }
 
   // Get user's favorite recipes

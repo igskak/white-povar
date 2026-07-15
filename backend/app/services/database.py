@@ -196,6 +196,56 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Supabase search_recipes_by_text error: {str(e)}")
             raise e
+
+    async def search_catalog_recipes(
+        self,
+        *,
+        chef_id: str,
+        query_text: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        difficulty: Optional[int] = None,
+        max_total_time: Optional[int] = None,
+        is_featured: Optional[bool] = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """Query discovery rows in the database, never by downloading a catalog.
+
+        The ordering includes the primary key as a tie breaker so consecutive
+        offset pages cannot duplicate rows when timestamps match.
+        """
+        try:
+            client = self.get_client(use_service_key=True)
+            request = (
+                client.table('recipes')
+                .select('*, recipe_ingredients(*), recipe_nutrition(*)', count='exact')
+                .eq('chef_id', chef_id)
+                .eq('is_public', True)
+            )
+            if query_text:
+                escaped = query_text.replace('%', r'\%').replace(',', ' ')
+                request = request.or_(
+                    f'title.ilike.%{escaped}%,description.ilike.%{escaped}%,tags.cs.{{{escaped}}}'
+                )
+            if tags:
+                request = request.contains('tags', tags)
+            if difficulty is not None:
+                request = request.eq('difficulty_level', difficulty)
+            if max_total_time is not None:
+                request = request.lte('total_time_minutes', max_total_time)
+            if is_featured is not None:
+                request = request.eq('is_featured', is_featured)
+
+            result = (
+                request.order('created_at', desc=True)
+                .order('id')
+                .range(offset, offset + limit)
+                .execute()
+            )
+            return result
+        except Exception as e:
+            logger.error(f'Supabase search_catalog_recipes error: {str(e)}')
+            raise
     
     async def get_chef_config(self, chef_id: str) -> Dict[str, Any]:
         """Get chef configuration"""

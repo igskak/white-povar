@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/router/route_models.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
 import 'package:frontend/features/search/presentation/pages/search_page.dart';
@@ -39,6 +40,7 @@ void main() {
             builder: (_, state) => ProviderScope(
               overrides: [
                 recipeRepositoryProvider.overrideWithValue(_SearchRepository()),
+                authProvider.overrideWith((ref) => AuthNotifier.testing()),
               ],
               child: SearchPage(
                 initialRoute: SearchRouteLocation.fromUri(state.uri),
@@ -105,7 +107,10 @@ Widget _testApp({
   SearchRouteLocation? initialRoute,
 }) =>
     ProviderScope(
-      overrides: [recipeRepositoryProvider.overrideWithValue(repository)],
+      overrides: [
+        recipeRepositoryProvider.overrideWithValue(repository),
+        authProvider.overrideWith((ref) => AuthNotifier.testing()),
+      ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),
         home: SearchPage(initialRoute: initialRoute),

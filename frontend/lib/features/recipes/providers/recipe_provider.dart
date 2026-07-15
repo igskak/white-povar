@@ -70,36 +70,13 @@ class RecipeListNotifier extends StateNotifier<AsyncValue<List<Recipe>>> {
 
     state = const AsyncValue.loading();
     try {
-      List<Recipe> recipes;
-
-      if (_currentFilter.isFeatured == true) {
-        recipes = await _recipeService.getFeaturedRecipes();
-      } else {
-        recipes = await _recipeService.getRecipes();
-      }
-
-      // Apply client-side filtering
-      if (!_currentFilter.isEmpty) {
-        recipes = recipes.where((recipe) {
-          if (_currentFilter.cuisine != null &&
-              recipe.cuisine != _currentFilter.cuisine) {
-            return false;
-          }
-          if (_currentFilter.category != null &&
-              recipe.category != _currentFilter.category) {
-            return false;
-          }
-          if (_currentFilter.difficulty != null &&
-              recipe.difficulty != _currentFilter.difficulty) {
-            return false;
-          }
-          if (_currentFilter.maxTime != null &&
-              recipe.totalTimeMinutes > _currentFilter.maxTime!) {
-            return false;
-          }
-          return true;
-        }).toList();
-      }
+      final recipes = await _recipeService.getRecipes(
+        cuisine: _currentFilter.cuisine,
+        category: _currentFilter.category,
+        difficulty: _currentFilter.difficulty,
+        maxTime: _currentFilter.maxTime,
+        isFeatured: _currentFilter.isFeatured,
+      );
 
       state = AsyncValue.data(recipes);
     } catch (error, stackTrace) {
@@ -178,8 +155,8 @@ class FavoriteNotifier extends StateNotifier<Set<String>> {
       ..remove(recipeId)
       ..addAll(shouldSave ? [recipeId] : []);
 
-    final previous = (_writes[recipeId] ?? Future<void>.value())
-        .catchError((_) {});
+    final previous =
+        (_writes[recipeId] ?? Future<void>.value()).catchError((_) {});
     final write = previous.then((_) async {
       try {
         final confirmed =

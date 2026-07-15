@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 import base64
 
@@ -34,6 +34,16 @@ class TextSearchResponse(BaseModel):
     recipes: List[Recipe]
     total_count: int
     query: str
+    limit: int = 20
+    offset: int = 0
+    next_offset: Optional[int] = None
+    has_more: bool = False
+
+
+class CatalogSearchResponse(TextSearchResponse):
+    """Tenant-scoped discovery response with stable offset pagination."""
+
+    facets: Dict[str, List[str]] = Field(default_factory=dict)
 
 class IngredientMatch(BaseModel):
     ingredient: str

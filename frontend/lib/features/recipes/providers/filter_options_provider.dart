@@ -27,37 +27,18 @@ final filterOptionsProvider = FutureProvider<FilterOptions>((ref) async {
   try {
     final recipeService = ref.watch(recipeServiceProvider);
 
-    // Get all recipes to extract available options
-    final recipes = await recipeService.getRecipes();
-
-    // Extract unique cuisines
-    final cuisines = recipes
-        .map((recipe) => recipe.cuisine)
-        .where((cuisine) => cuisine.isNotEmpty && cuisine != 'Unknown')
-        .toSet()
-        .toList()
-      ..sort();
-
-    // Extract unique categories
-    final categories = recipes
-        .map((recipe) => recipe.category)
-        .where((category) => category.isNotEmpty && category != 'Unknown')
-        .toSet()
-        .toList()
-      ..sort();
-
-    // Extract unique difficulties
-    final difficulties = recipes
-        .map((recipe) => recipe.difficulty)
-        .where((difficulty) => difficulty > 0)
-        .toSet()
-        .toList()
-      ..sort();
+    final data = await recipeService.getSearchFilterOptions();
+    final difficultyRange =
+        (data['difficulty_range'] as Map<String, dynamic>?) ?? const {};
+    final minDifficulty = difficultyRange['min'] as int? ?? 1;
+    final maxDifficulty = difficultyRange['max'] as int? ?? 5;
 
     return FilterOptions(
-      cuisines: cuisines,
-      categories: categories,
-      difficulties: difficulties,
+      cuisines: List<String>.from(data['cuisines'] as List? ?? const []),
+      categories: List<String>.from(data['categories'] as List? ?? const []),
+      difficulties: [
+        for (var value = minDifficulty; value <= maxDifficulty; value++) value,
+      ],
     );
   } catch (e) {
     // Return default options if API fails

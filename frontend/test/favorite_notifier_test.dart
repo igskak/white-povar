@@ -67,7 +67,18 @@ class _FavoriteService implements RecipeService {
   @override
   Future<Recipe> getRecipe(String id) => throw UnimplementedError();
   @override
-  Future<List<Recipe>> getRecipes() async => [];
+  Future<List<Recipe>> getRecipes({
+    String? cuisine,
+    String? category,
+    int? difficulty,
+    int? maxTime,
+    bool? isFeatured,
+    int limit = 20,
+    int offset = 0,
+  }) async =>
+      [];
+  @override
+  Future<Map<String, dynamic>> getSearchFilterOptions() async => const {};
   @override
   Future<List<Recipe>> searchRecipes(String query,
           {CancelToken? cancelToken}) async =>
