@@ -111,7 +111,7 @@ class ProfilePage extends ConsumerWidget {
                     subtitle:
                         const Text('Поточний рівень і доступні можливості'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.go('/subscription'),
+                    onTap: () => context.go('/offers/subscription'),
                   ),
                   const Divider(height: 1),
                   ListTile(
@@ -133,7 +133,7 @@ class ProfilePage extends ConsumerWidget {
                   'Відкрийте розділ підписки, щоб перевірити статус premium.',
                 ),
                 trailing: TextButton(
-                  onPressed: () => context.go('/subscription'),
+                  onPressed: () => context.go('/offers/subscription'),
                   child: const Text('Відкрити'),
                 ),
               ),

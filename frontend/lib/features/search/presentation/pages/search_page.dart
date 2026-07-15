@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../app/router/route_models.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.initialRoute});
+
+  final SearchRouteLocation? initialRoute;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -31,6 +34,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final initialValue = widget.initialRoute?.query ?? widget.initialRoute?.tag;
+    if (initialValue == null) return;
+
+    _searchController.text = initialValue;
+    _quickFilter = widget.initialRoute?.tag;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _performSearch(initialValue);
+    });
   }
 
   void _performSearch(String query) {

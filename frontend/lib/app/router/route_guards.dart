@@ -1,25 +1,37 @@
 import '../../features/auth/models/auth_state.dart';
+import 'route_models.dart';
 
 class RouteGuards {
-  static const String _loginPath = '/login';
-  static const String _authCallbackPath = '/auth/callback';
-  static const String _homePath = '/home';
+  static const _loginPath = '/login';
+  static const _authCallbackPath = '/auth/callback';
+  static const _homePath = '/home';
 
   static String? authRedirect({
     required AppAuthState authState,
-    required String location,
+    required Uri uri,
   }) {
+    final path = uri.path;
     final isAuthRoute =
-        location == _loginPath || location.startsWith(_authCallbackPath);
+        path == _loginPath || path.startsWith(_authCallbackPath);
 
-    if (authState.isLoading) {
-      return null;
-    }
+    if (authState.isLoading) return null;
 
     if (authState.isAuthenticated && isAuthRoute) {
-      return _homePath;
+      return OfferRouteLocation.safeReturnPath(
+              uri.queryParameters['returnTo']) ??
+          _homePath;
+    }
+
+    if (!authState.isAuthenticated && _requiresAuthentication(path)) {
+      return Uri(
+        path: _loginPath,
+        queryParameters: {'returnTo': uri.toString()},
+      ).toString();
     }
 
     return null;
   }
+
+  static bool _requiresAuthentication(String path) =>
+      path == '/settings' || path.startsWith('/offers/');
 }
