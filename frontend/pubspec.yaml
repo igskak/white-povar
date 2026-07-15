@@ -85,6 +85,7 @@ dependencies:
   url_launcher: ^6.2.2
   chewie: ^1.10.0
   wakelock_plus: ^1.2.8
+  in_app_purchase: ^3.2.3
 
 dev_dependencies:
   flutter_test:

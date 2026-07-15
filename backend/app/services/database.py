@@ -153,6 +153,23 @@ class SupabaseService:
         )
         return result.data or []
 
+    async def get_active_store_products(self, chef_id: str, store: str) -> List[Dict[str, Any]]:
+        """Return only identifiers needed by the native store SDK, scoped to a tenant."""
+        result = (
+            self.get_client(use_service_key=True).table('store_product_mappings')
+            .select('store_product_id, product:products(product_key,kind)')
+            .eq('chef_id', chef_id).eq('provider', 'revenuecat').eq('store', store)
+            .eq('status', 'active').execute()
+        )
+        return result.data or []
+
+    async def process_revenuecat_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+        """Use the migration-owned transactional RPC for idempotent webhook processing."""
+        result = self.get_client(use_service_key=True).rpc(
+            'process_revenuecat_event', {'event_payload': event}
+        ).execute()
+        return (result.data or [{}])[0]
+
     async def get_preference_profile(self, user_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
         result = await self.execute_query(
             'user_preference_profiles', 'select',

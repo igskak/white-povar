@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
 
+    # RevenueCat is the managed mobile-billing provider selected for COM-02.
+    # This value is server-only; it must never be supplied as a dart-define.
+    revenuecat_webhook_authorization: Optional[str] = None
+
     # Firebase (deprecated - now using Supabase Auth)
     # Kept for backward compatibility, but no longer required
     firebase_project_id: Optional[str] = None
