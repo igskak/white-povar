@@ -75,6 +75,29 @@ class RecipeGenerationService {
       yield const RecipeGenerationFailure('AI-генерація зараз недоступна.');
     }
   }
+
+  Future<String> saveDraft(GeneratedRecipe recipe) async {
+    final response = await _apiClient.dio.post<Map<String, dynamic>>(
+      '/api/v1/ai/drafts',
+      data: {
+        ...recipe.toJson(),
+        'allergen_warning':
+            'Перевірте склад усіх продуктів і замінників щодо власних алергенів.',
+      },
+    );
+    final id = response.data?['id']?.toString();
+    if (id == null || id.isEmpty) throw StateError('AI draft was not saved');
+    return id;
+  }
+
+  Future<void> deleteDraft(String draftId) =>
+      _apiClient.dio.delete<void>('/api/v1/ai/drafts/$draftId');
+
+  Future<void> sendDraftFeedback(String draftId, {required bool helpful}) =>
+      _apiClient.dio.post<void>('/api/v1/ai/drafts/$draftId/feedback', data: {
+        'rating': helpful ? 5 : 1,
+        'safety_issue': !helpful,
+      });
 }
 
 final recipeGenerationServiceProvider = Provider<RecipeGenerationService>(

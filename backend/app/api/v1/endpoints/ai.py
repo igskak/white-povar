@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.responses import StreamingResponse
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -6,11 +6,15 @@ from app.services.ai_service import ai_service
 from app.core.premium_access import require_ai_access
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext, require_tenant_context
-from app.schemas.ai_generation import RecipeGenerationRequest
+from app.schemas.ai_generation import (
+    DraftFeedbackInput, GeneratedRecipeDraft, GeneratedRecipeDraftInput,
+    RecipeGenerationRequest,
+)
 from app.services.recipe_generation_service import (
     GenerationRejected,
     recipe_generation_service,
 )
+from app.services.database import supabase_service
 import asyncio
 import json
 import logging
@@ -18,6 +22,80 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _draft_from_row(row: dict) -> GeneratedRecipeDraft:
+    """Keep ownership columns server-only and force the immutable AI label."""
+    recipe = dict(row['recipe'])
+    recipe['source'] = 'ai_generated'
+    recipe['attribution'] = 'Створено AI, не опублікований рецепт автора'
+    return GeneratedRecipeDraft(
+        **recipe, id=str(row['id']), allergen_warning=row['allergen_warning'],
+        created_at=row.get('created_at'), updated_at=row.get('updated_at'),
+    )
+
+
+@router.get('/drafts', response_model=list[GeneratedRecipeDraft])
+async def list_recipe_drafts(
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    rows = await supabase_service.get_generated_recipe_drafts(current_user.id, tenant.chef_id)
+    return [_draft_from_row(row) for row in rows]
+
+
+@router.post('/drafts', response_model=GeneratedRecipeDraft, status_code=status.HTTP_201_CREATED)
+async def save_recipe_draft(
+    draft: GeneratedRecipeDraftInput,
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    recipe = draft.model_dump(exclude={'allergen_warning'}, mode='json')
+    recipe['source'] = 'ai_generated'
+    recipe['attribution'] = 'Створено AI, не опублікований рецепт автора'
+    row = await supabase_service.create_generated_recipe_draft(
+        current_user.id, tenant.chef_id, recipe, draft.allergen_warning,
+    )
+    return _draft_from_row(row)
+
+
+@router.put('/drafts/{draft_id}', response_model=GeneratedRecipeDraft)
+async def edit_recipe_draft(
+    draft_id: str, draft: GeneratedRecipeDraftInput,
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    recipe = draft.model_dump(exclude={'allergen_warning'}, mode='json')
+    recipe['source'] = 'ai_generated'
+    recipe['attribution'] = 'Створено AI, не опублікований рецепт автора'
+    row = await supabase_service.update_generated_recipe_draft(
+        draft_id, current_user.id, tenant.chef_id, recipe, draft.allergen_warning,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail='AI draft not found')
+    return _draft_from_row(row)
+
+
+@router.delete('/drafts/{draft_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_recipe_draft(
+    draft_id: str,
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    await supabase_service.delete_generated_recipe_draft(draft_id, current_user.id, tenant.chef_id)
+
+
+@router.post('/drafts/{draft_id}/feedback', status_code=status.HTTP_204_NO_CONTENT)
+async def add_draft_feedback(
+    draft_id: str, feedback: DraftFeedbackInput,
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    stored = await supabase_service.add_generated_recipe_draft_feedback(
+        draft_id, current_user.id, tenant.chef_id, feedback.model_dump(),
+    )
+    if stored is None:
+        raise HTTPException(status_code=404, detail='AI draft not found')
 
 
 @router.post('/recipe-generation/stream')

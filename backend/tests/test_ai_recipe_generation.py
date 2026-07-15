@@ -1,5 +1,7 @@
 import asyncio
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -7,7 +9,8 @@ from pydantic import ValidationError
 
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext
-from app.schemas.ai_generation import RecipeGenerationRequest
+from app.api.v1.endpoints.ai import _draft_from_row, edit_recipe_draft
+from app.schemas.ai_generation import GeneratedRecipeDraftInput, RecipeGenerationRequest
 from app.services.recipe_generation_service import RecipeGenerationService
 
 
@@ -90,3 +93,46 @@ def test_generation_uses_only_tenant_metadata_and_returns_ai_label(monkeypatch):
 
 async def _status(_message):
     return None
+
+
+def _draft_input():
+    return GeneratedRecipeDraftInput(
+        title='Овочева вечеря', description='Тепла проста страва.', servings=2,
+        total_time_minutes=30, ingredients=[{'name': 'томати', 'amount': '400 г'}],
+        steps=['Прогрійте томати.'], safety_note='Перевірте склад продуктів.',
+        allergen_warning='Перевірте склад продуктів щодо алергенів.',
+    )
+
+
+def test_private_draft_row_keeps_immutable_ai_label():
+    row = {
+        'id': str(uuid4()), 'recipe': {**_draft_input().model_dump(exclude={'allergen_warning'}),
+                                        'source': 'someone_else', 'attribution': 'wrong'},
+        'allergen_warning': 'Перевірте склад продуктів щодо алергенів.',
+    }
+    draft = _draft_from_row(row)
+    assert draft.source == 'ai_generated'
+    assert draft.attribution == 'Створено AI, не опублікований рецепт автора'
+
+
+def test_draft_edit_is_scoped_to_owner_and_tenant(monkeypatch):
+    user = User(id=str(uuid4()), email='test@example.com')
+    tenant = TenantContext(chef_id=str(uuid4()), slug='ohorodnik-oleksandr')
+    captured = {}
+
+    async def fake_update(*args):
+        captured['args'] = args
+        return None
+
+    from app.api.v1.endpoints.ai import supabase_service
+    monkeypatch.setattr(supabase_service, 'update_generated_recipe_draft', fake_update)
+    with pytest.raises(Exception, match='AI draft not found'):
+        asyncio.run(edit_recipe_draft(str(uuid4()), _draft_input(), user, tenant))
+    assert captured['args'][1:3] == (user.id, tenant.chef_id)
+
+
+def test_ai_draft_evaluation_set_covers_safety_and_allergen_gate():
+    dataset = json.loads((Path(__file__).parent / 'fixtures' / 'ai_recipe_draft_evaluation.json').read_text())
+    assert {'valid_ai_label', 'visible_allergen_warning', 'reject_before_model'} <= {
+        row['expected'] for row in dataset
+    }

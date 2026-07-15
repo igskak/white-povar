@@ -190,6 +190,42 @@ class SupabaseService:
             filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
         )
 
+    async def get_generated_recipe_drafts(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('generated_recipe_drafts').select('*')
+                  .eq('user_id', user_id).eq('chef_id', chef_id)
+                  .order('updated_at', desc=True).execute())
+        return result.data or []
+
+    async def create_generated_recipe_draft(self, user_id: str, chef_id: str, recipe: Dict[str, Any], allergen_warning: str) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).table('generated_recipe_drafts').insert({
+            'user_id': user_id, 'chef_id': chef_id, 'recipe': recipe,
+            'allergen_warning': allergen_warning,
+        }).execute()
+        return result.data[0]
+
+    async def update_generated_recipe_draft(self, draft_id: str, user_id: str, chef_id: str, recipe: Dict[str, Any], allergen_warning: str) -> Optional[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('generated_recipe_drafts').update({
+            'recipe': recipe, 'allergen_warning': allergen_warning, 'updated_at': 'now()',
+        }).eq('id', draft_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
+        return (result.data or [None])[0]
+
+    async def delete_generated_recipe_draft(self, draft_id: str, user_id: str, chef_id: str):
+        """Hard-delete the draft and its cascading feedback; no recoverable user content remains."""
+        return await self.execute_query('generated_recipe_drafts', 'delete', filters={
+            'id': draft_id, 'user_id': user_id, 'chef_id': chef_id,
+        }, use_service_key=True)
+
+    async def add_generated_recipe_draft_feedback(self, draft_id: str, user_id: str, chef_id: str, feedback: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        draft = (self.get_client(use_service_key=True).table('generated_recipe_drafts').select('id')
+                 .eq('id', draft_id).eq('user_id', user_id).eq('chef_id', chef_id).limit(1).execute())
+        if not draft.data:
+            return None
+        result = self.get_client(use_service_key=True).table('generated_recipe_draft_feedback').insert({
+            'draft_id': draft_id, 'rating': feedback['rating'],
+            'safety_issue': feedback['safety_issue'], 'comment': feedback.get('comment'),
+        }).execute()
+        return result.data[0]
+
     async def get_pantry_items(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
         client = self.get_client(use_service_key=True)
         result = (client.table('pantry_items').select('*').eq('user_id', user_id)

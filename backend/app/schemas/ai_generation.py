@@ -1,4 +1,5 @@
 """Contracts for the opt-in, non-persistent AI recipe flow."""
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -33,3 +34,21 @@ class GeneratedRecipe(BaseModel):
     attribution: Literal['Створено AI, не опублікований рецепт автора'] = (
         'Створено AI, не опублікований рецепт автора'
     )
+
+
+class GeneratedRecipeDraftInput(GeneratedRecipe):
+    """Editable private copy of an AI preview; publication is never an option."""
+
+    allergen_warning: str = Field(..., min_length=1, max_length=280)
+
+
+class GeneratedRecipeDraft(GeneratedRecipeDraftInput):
+    id: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class DraftFeedbackInput(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    safety_issue: bool = False
+    comment: str | None = Field(None, max_length=500)

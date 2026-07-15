@@ -36,6 +36,20 @@ class GeneratedRecipe {
         attribution: json['attribution']?.toString() ??
             'Створено AI, не опублікований рецепт автора',
       );
+
+  Map<String, dynamic> toJson() => {
+        'source': 'ai_generated',
+        'title': title,
+        'description': description,
+        'servings': servings,
+        'total_time_minutes': totalTimeMinutes,
+        'ingredients': ingredients
+            .map((item) => {'name': item.name, 'amount': item.amount})
+            .toList(),
+        'steps': steps,
+        'safety_note': safetyNote,
+        'attribution': attribution,
+      };
 }
 
 class GeneratedIngredient {

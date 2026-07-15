@@ -331,6 +331,9 @@ class _AiRecipeGenerationDialogState extends State<_AiRecipeGenerationDialog> {
   String _status = 'Готуємо AI-генерацію…';
   String? _error;
   GeneratedRecipe? _recipe;
+  String? _draftId;
+  String? _draftMessage;
+  bool _savingDraft = false;
   StreamSubscription<RecipeGenerationEvent>? _subscription;
 
   @override
@@ -355,6 +358,62 @@ class _AiRecipeGenerationDialogState extends State<_AiRecipeGenerationDialog> {
   void dispose() {
     _subscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _saveDraft() async {
+    final recipe = _recipe;
+    if (recipe == null) return;
+    setState(() => _savingDraft = true);
+    try {
+      final draftId = await widget.service.saveDraft(recipe);
+      if (mounted) {
+        setState(() {
+          _draftId = draftId;
+          _draftMessage = 'Чернетку збережено приватно для вас.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _draftMessage = 'Не вдалося зберегти чернетку.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _savingDraft = false);
+      }
+    }
+  }
+
+  Future<void> _deleteDraft() async {
+    final draftId = _draftId;
+    if (draftId == null) return;
+    try {
+      await widget.service.deleteDraft(draftId);
+      if (mounted) {
+        setState(() {
+          _draftId = null;
+          _draftMessage = 'Чернетку видалено назавжди.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _draftMessage = 'Не вдалося видалити чернетку.');
+      }
+    }
+  }
+
+  Future<void> _sendFeedback(bool helpful) async {
+    final draftId = _draftId;
+    if (draftId == null) return;
+    try {
+      await widget.service.sendDraftFeedback(draftId, helpful: helpful);
+      if (mounted) {
+        setState(() => _draftMessage = 'Дякуємо за відгук.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _draftMessage = 'Не вдалося надіслати відгук.');
+      }
+    }
   }
 
   @override
@@ -398,11 +457,39 @@ class _AiRecipeGenerationDialogState extends State<_AiRecipeGenerationDialog> {
                           const SizedBox(height: AppSpacing.sm),
                           Text(_recipe!.safetyNote,
                               style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: AppSpacing.sm),
+                          const Text(
+                              'Перевірте склад усіх продуктів і замінників щодо власних алергенів.'),
+                          if (_draftMessage != null) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(_draftMessage!),
+                          ],
                         ],
                       ),
                     ),
         ),
         actions: [
+          if (_recipe != null && _draftId == null)
+            FilledButton(
+              onPressed: _savingDraft ? null : _saveDraft,
+              child: Text(_savingDraft ? 'Зберігаємо…' : 'Зберегти чернетку'),
+            ),
+          if (_draftId != null) ...[
+            IconButton(
+              tooltip: 'Корисна чернетка',
+              onPressed: () => _sendFeedback(true),
+              icon: const Icon(Icons.thumb_up_outlined),
+            ),
+            IconButton(
+              tooltip: 'Проблема з чернеткою',
+              onPressed: () => _sendFeedback(false),
+              icon: const Icon(Icons.thumb_down_outlined),
+            ),
+            TextButton(
+              onPressed: _deleteDraft,
+              child: const Text('Видалити чернетку'),
+            ),
+          ],
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
