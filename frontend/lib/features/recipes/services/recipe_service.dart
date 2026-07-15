@@ -168,6 +168,20 @@ class RecipeService {
           (data['confirmation_required'] as List<dynamic>? ?? [])
               .map((value) => value.toString())
               .toList(),
+      recommendations: (data['recommendations'] as List<dynamic>? ?? [])
+          .map((json) => json as Map<String, dynamic>)
+          .map((json) => VoiceRecommendation(
+                recipe: Recipe.fromJson(json['recipe'] as Map<String, dynamic>),
+                matchType: json['match_type']?.toString() ?? 'partial',
+                whyItFits: (json['why_it_fits'] as List<dynamic>? ?? [])
+                    .map((value) => value.toString())
+                    .toList(),
+                missingIngredients:
+                    (json['missing_ingredients'] as List<dynamic>? ?? [])
+                        .map((value) => value.toString())
+                        .toList(),
+              ))
+          .toList(),
     );
   }
 

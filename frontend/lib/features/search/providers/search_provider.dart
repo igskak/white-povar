@@ -14,6 +14,8 @@ class SimpleSearchState {
   final String? error;
   final String query;
   final List<String> confirmationRequired;
+  final List<VoiceRecommendation> recommendations;
+  final bool isVoiceIntentSearch;
 
   const SimpleSearchState({
     this.results = const [],
@@ -21,6 +23,8 @@ class SimpleSearchState {
     this.error,
     this.query = '',
     this.confirmationRequired = const [],
+    this.recommendations = const [],
+    this.isVoiceIntentSearch = false,
   });
 
   SimpleSearchState copyWith({
@@ -29,6 +33,8 @@ class SimpleSearchState {
     String? error,
     String? query,
     List<String>? confirmationRequired,
+    List<VoiceRecommendation>? recommendations,
+    bool? isVoiceIntentSearch,
   }) {
     return SimpleSearchState(
       results: results ?? this.results,
@@ -36,6 +42,8 @@ class SimpleSearchState {
       error: error,
       query: query ?? this.query,
       confirmationRequired: confirmationRequired ?? this.confirmationRequired,
+      recommendations: recommendations ?? this.recommendations,
+      isVoiceIntentSearch: isVoiceIntentSearch ?? this.isVoiceIntentSearch,
     );
   }
 }
@@ -115,7 +123,9 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
         state = SimpleSearchState(
             results: result.recipes,
             query: transcript,
-            confirmationRequired: result.confirmationRequired);
+            confirmationRequired: result.confirmationRequired,
+            recommendations: result.recommendations,
+            isVoiceIntentSearch: true);
       }
     } on RecipeRepositoryException catch (e) {
       if (identical(_cancelToken, cancelToken)) {

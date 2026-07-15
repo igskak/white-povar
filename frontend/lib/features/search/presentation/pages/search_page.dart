@@ -7,6 +7,7 @@ import '../../../../app/router/route_models.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../recipes/models/recipe.dart';
+import '../../../recipes/repositories/recipe_repository.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../providers/search_provider.dart';
 import '../../../voice/providers/voice_input_provider.dart';
@@ -267,6 +268,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         suggestions: _suggestions,
         onClear: _clearSearch,
         onSelected: _applySuggestion,
+        showAiGeneration: searchState.isVoiceIntentSearch,
+        onAiGeneration: _showAiGenerationConsent,
       );
     }
 
@@ -275,6 +278,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       selectedRecipeId: _selectedRecipeId,
       onSelected: (recipe) => setState(() => _selectedRecipeId = recipe.id),
       confirmationRequired: searchState.confirmationRequired,
+      recommendations: searchState.recommendations,
+    );
+  }
+
+  Future<void> _showAiGenerationConsent() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Створити AI-рецепт?'),
+        content: const Text(
+            'AI-генерація ще не увімкнена. У наступному кроці вона завжди вимагатиме окремої згоди й створюватиме приватну чернетку, а не рецепт Олександра.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Зрозуміло'))
+        ],
+      ),
     );
   }
 }
@@ -499,10 +519,14 @@ class _NoResults extends StatelessWidget {
   const _NoResults(
       {required this.suggestions,
       required this.onClear,
-      required this.onSelected});
+      required this.onSelected,
+      required this.showAiGeneration,
+      required this.onAiGeneration});
   final List<String> suggestions;
   final VoidCallback onClear;
   final ValueChanged<String> onSelected;
+  final bool showAiGeneration;
+  final VoidCallback onAiGeneration;
   @override
   Widget build(BuildContext context) => Center(
       child: SingleChildScrollView(
@@ -521,6 +545,15 @@ class _NoResults extends StatelessWidget {
                     ?.copyWith(color: AppColorsV2.textSecondary)),
             const SizedBox(height: AppSpacing.md),
             AppButton(label: 'Скинути пошук', onPressed: onClear),
+            if (showAiGeneration) ...[
+              const SizedBox(height: AppSpacing.xs),
+              AppButton(
+                label: 'Створити AI-рецепт',
+                icon: Icons.auto_awesome_outlined,
+                variant: AppButtonVariant.secondary,
+                onPressed: onAiGeneration,
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             Wrap(
                 alignment: WrapAlignment.center,
@@ -539,16 +572,21 @@ class _SearchResults extends StatelessWidget {
     required this.selectedRecipeId,
     required this.onSelected,
     this.confirmationRequired = const [],
+    this.recommendations = const [],
   });
 
   final List<Recipe> recipes;
   final String? selectedRecipeId;
   final ValueChanged<Recipe> onSelected;
   final List<String> confirmationRequired;
+  final List<VoiceRecommendation> recommendations;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
+          final recommendationById = {
+            for (final item in recommendations) item.recipe.id: item,
+          };
           if (constraints.maxWidth >= 1024) {
             final selected = recipes
                     .where((recipe) => recipe.id == selectedRecipeId)
@@ -562,6 +600,7 @@ class _SearchResults extends StatelessWidget {
                     recipes: recipes,
                     selectedRecipeId: selected.id,
                     onSelected: onSelected,
+                    recommendations: recommendationById,
                   ),
                 ),
                 const VerticalDivider(width: 1),
@@ -590,24 +629,58 @@ class _SearchResults extends StatelessWidget {
             itemCount: recipes.length,
             itemBuilder: (context, index) {
               final recipe = recipes[index];
-              return RecipeCard(
-                recipe: recipe,
-                onTap: () => context.push('/recipes/${recipe.id}'),
-              );
+              final recommendation = recommendationById[recipe.id];
+              return Stack(children: [
+                RecipeCard(
+                    recipe: recipe,
+                    onTap: () => context.push('/recipes/${recipe.id}')),
+                if (recommendation != null)
+                  Positioned(
+                    top: AppSpacing.xs,
+                    right: AppSpacing.xs,
+                    child: Tooltip(
+                      message: _recommendationDetails(recommendation),
+                      child: Semantics(
+                        label: _recommendationDetails(recommendation),
+                        child: Material(
+                          color: Theme.of(context).colorScheme.surface,
+                          shape: const StadiumBorder(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs, vertical: 3),
+                            child: Text('Чому підходить',
+                                style: Theme.of(context).textTheme.labelSmall),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ]);
             },
           );
         },
       );
 }
 
+String _recommendationDetails(VoiceRecommendation recommendation) {
+  final parts = [...recommendation.whyItFits];
+  if (recommendation.missingIngredients.isNotEmpty) {
+    parts.add(
+        'Потрібно докупити: ${recommendation.missingIngredients.join(', ')}');
+  }
+  return parts.isEmpty ? 'Частковий збіг запиту' : parts.join('. ');
+}
+
 class _RecipeList extends StatelessWidget {
   const _RecipeList(
       {required this.recipes,
       required this.selectedRecipeId,
-      required this.onSelected});
+      required this.onSelected,
+      required this.recommendations});
   final List<Recipe> recipes;
   final String selectedRecipeId;
   final ValueChanged<Recipe> onSelected;
+  final Map<String, VoiceRecommendation> recommendations;
   @override
   Widget build(BuildContext context) => ListView.separated(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -615,6 +688,7 @@ class _RecipeList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
       itemBuilder: (context, index) {
         final recipe = recipes[index];
+        final recommendation = recommendations[recipe.id];
         return ListTile(
             selected: recipe.id == selectedRecipeId,
             shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
@@ -623,8 +697,12 @@ class _RecipeList extends StatelessWidget {
                 : const Icon(Icons.restaurant_menu_outlined),
             title: Text(recipe.title,
                 maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text('${recipe.totalTimeMinutes} хв · ${recipe.cuisine}',
-                maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text(
+                recommendation == null
+                    ? '${recipe.totalTimeMinutes} хв · ${recipe.cuisine}'
+                    : _recommendationDetails(recommendation),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
             onTap: () => onSelected(recipe));
       });
 }

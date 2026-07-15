@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from app.schemas.search import (CatalogSearchResponse, PhotoSearchRequest,
                                 PhotoSearchResponse, TextSearchRequest,
                                 TextSearchResponse, VoiceIntentRequest,
-                                VoiceIntentRetrievalResponse)
+                                VoiceIntentRetrievalResponse, VoiceRecommendation)
 from app.schemas.recipe import Recipe
 from app.services.database import supabase_service
 from app.services.openai_service import openai_service
@@ -51,8 +51,8 @@ def _row_matches_voice_intent(row: Dict[str, Any], intent) -> bool:
     def includes(value: str) -> bool:
         return value.lower() in metadata
 
-    if intent.available_ingredients and not all(includes(item) for item in intent.available_ingredients):
-        return False
+    # Available ingredients are deliberately not a hard filter.  VOICE-03
+    # ranks exact matches above partial matches and explains what is missing.
     if intent.excluded_ingredients and any(includes(item) for item in intent.excluded_ingredients):
         return False
     for field in ('occasion', 'dish_type', 'protein'):
@@ -66,6 +66,43 @@ def _row_matches_voice_intent(row: Dict[str, Any], intent) -> bool:
     if intent.servings and row.get('servings') and int(row['servings']) != intent.servings:
         return False
     return True
+
+
+def _rank_voice_row(row: Dict[str, Any], intent) -> tuple[int, str, List[str], List[str]]:
+    """Rank an already tenant/access-filtered row without exposing private data."""
+    ingredients = [str(item.get('display_name') or item.get('name') or '').lower()
+                   for item in row.get('recipe_ingredients', [])]
+    metadata = ' '.join([str(row.get('title') or ''), str(row.get('description') or ''),
+                         *[str(tag) for tag in row.get('tags', [])], *ingredients]).lower()
+
+    def includes(value: str) -> bool:
+        return value.lower() in metadata
+
+    matched = [item for item in intent.available_ingredients if includes(item)]
+    missing_requested = [item for item in intent.available_ingredients if not includes(item)]
+    exact = bool(intent.available_ingredients) and not missing_requested
+    score = 100 if exact else len(matched) * 20
+    why = []
+    if matched:
+        why.append('є ' + ', '.join(matched[:2]))
+    for field, label in (('occasion', 'підходить для'), ('dish_type', 'це'),
+                         ('protein', 'містить')):
+        value = getattr(intent, field)
+        if value and includes(value):
+            score += 10
+            why.append(f'{label} {value}')
+    if intent.max_total_time and int(row.get('prep_time_minutes') or 0) + int(row.get('cook_time_minutes') or 0) <= intent.max_total_time:
+        score += 10
+        why.append(f'до {intent.max_total_time} хв')
+    if intent.lightness and includes('легк' if intent.lightness == 'light' else 'ситн'):
+        score += 5
+        why.append('легкий варіант' if intent.lightness == 'light' else 'ситна страва')
+    # Missing ingredients are useful only when the user supplied what is on hand.
+    missing = []
+    if intent.available_ingredients:
+        missing = [item for item in ingredients if not any(available in item or item in available
+                   for available in intent.available_ingredients)][:3]
+    return score, 'exact' if exact else 'partial', why[:4], missing
 
 # Helper functions for data mapping
 async def _get_category_name_from_id(category_id: str) -> str:
@@ -512,16 +549,32 @@ async def retrieve_for_voice_intent(
         rows = [row for row in result.data or []
                 if not _row_contains_any(row, exclusions)
                 and _row_matches_voice_intent(row, intent)]
-        recipes = []
+        ranked = []
         for row in rows:
             access = await resolve_recipe_access(row, tenant, current_user)
             if access.exists_in_tenant:
-                recipes.append(_recipe_from_row(row) if access.can_read_body else _premium_teaser(row))
+                recipe = _recipe_from_row(row) if access.can_read_body else _premium_teaser(row)
+                score, match_type, why_it_fits, missing_ingredients = _rank_voice_row(row, intent)
+                ranked.append((score, VoiceRecommendation(
+                    recipe=recipe, match_type=match_type, why_it_fits=why_it_fits,
+                    missing_ingredients=missing_ingredients,
+                )))
+        ranked.sort(key=lambda item: (-item[0], str(item[1].recipe.id)))
+        recommendations = [item[1] for item in ranked]
+        # This deliberately excludes transcript, ingredient names, account data,
+        # and recipe identifiers. OBS-01 can route the aggregate event to a
+        # consent-aware analytics sink without changing the recommendation contract.
+        logger.info('voice_recommendation tenant=%s result_bucket=%s exact=%d partial=%d confirmation=%s',
+                    tenant.slug, 'none' if not recommendations else 'some',
+                    sum(item.match_type == 'exact' for item in recommendations),
+                    sum(item.match_type == 'partial' for item in recommendations),
+                    bool(confirmation_required))
         return VoiceIntentRetrievalResponse(
             intent=intent,
             confirmation_required=confirmation_required,
-            recipes=recipes,
-            total_count=len(recipes),
+            recipes=[item.recipe for item in recommendations],
+            total_count=len(recommendations),
+            recommendations=recommendations,
         )
     except HTTPException:
         raise

@@ -72,6 +72,16 @@ class VoiceIntentRetrievalResponse(BaseModel):
     confirmation_required: List[str] = Field(default_factory=list)
     recipes: List[Recipe]
     total_count: int
+    recommendations: List['VoiceRecommendation'] = Field(default_factory=list)
+
+
+class VoiceRecommendation(BaseModel):
+    """A safe, presentation-ready explanation of a catalog recommendation."""
+
+    recipe: Recipe
+    match_type: str = Field(..., pattern='^(exact|partial)$')
+    why_it_fits: List[str] = Field(default_factory=list, max_items=4)
+    missing_ingredients: List[str] = Field(default_factory=list, max_items=3)
 
 class IngredientMatch(BaseModel):
     ingredient: str

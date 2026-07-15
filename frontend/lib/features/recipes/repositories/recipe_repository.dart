@@ -5,10 +5,26 @@ class VoiceIntentSearchResult {
   const VoiceIntentSearchResult({
     required this.recipes,
     required this.confirmationRequired,
+    this.recommendations = const [],
   });
 
   final List<Recipe> recipes;
   final List<String> confirmationRequired;
+  final List<VoiceRecommendation> recommendations;
+}
+
+class VoiceRecommendation {
+  const VoiceRecommendation({
+    required this.recipe,
+    required this.matchType,
+    required this.whyItFits,
+    required this.missingIngredients,
+  });
+
+  final Recipe recipe;
+  final String matchType;
+  final List<String> whyItFits;
+  final List<String> missingIngredients;
 }
 
 /// Abstract repository interface for recipe operations

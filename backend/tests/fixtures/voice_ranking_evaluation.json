@@ -1,0 +1,20 @@
+[
+  {
+    "source": "White Povar brief / pilot voice example",
+    "transcript": "Легку вечерю з томатами для сім’ї без горіхів до 30 хв",
+    "expected_top_match": "exact",
+    "expected_no_match": false
+  },
+  {
+    "source": "White Povar brief / pilot voice example",
+    "transcript": "Хочу десерт з рисом до 15 хв",
+    "expected_top_match": "partial",
+    "expected_no_match": false
+  },
+  {
+    "source": "White Povar brief / pilot voice example",
+    "transcript": "Покажи страву з лососем без молока",
+    "expected_top_match": null,
+    "expected_no_match": true
+  }
+]
