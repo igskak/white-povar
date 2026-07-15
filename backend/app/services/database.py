@@ -125,6 +125,25 @@ class SupabaseService:
         )
         return (result.data or [None])[0]
 
+    async def get_published_collections(self, chef_id: str, limit: int, offset: int):
+        """Return only consumer-visible collection metadata in a stable order."""
+        return (
+            self.get_client(use_service_key=True).table('collections')
+            .select('*, collection_items(count)', count='exact')
+            .eq('chef_id', chef_id).eq('status', 'published')
+            .order('published_at', desc=True).order('id')
+            .range(offset, offset + limit - 1).execute()
+        )
+
+    async def get_published_collection_by_id(self, collection_id: str, chef_id: str):
+        """Load one published collection with its reusable recipe-backed items."""
+        return (
+            self.get_client(use_service_key=True).table('collections')
+            .select('*, collection_items(id,position,is_preview,content:recipes(*,recipe_ingredients(*),recipe_nutrition(*)))')
+            .eq('id', collection_id).eq('chef_id', chef_id).eq('status', 'published')
+            .limit(1).execute()
+        )
+
     async def get_preference_profile(self, user_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
         result = await self.execute_query(
             'user_preference_profiles', 'select',
