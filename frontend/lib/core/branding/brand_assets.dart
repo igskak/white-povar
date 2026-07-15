@@ -73,6 +73,7 @@ class BrandHero extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: photo.url,
       fit: fit,
+      alignment: Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
       placeholder: (_, __) => fallback,
       errorWidget: (_, __, ___) => fallback,
     );

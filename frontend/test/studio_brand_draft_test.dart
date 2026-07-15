@@ -24,7 +24,13 @@ void main() {
             'courseName': 'Майстерня Олександра',
           },
           'courseTag': 'maisternia-oleksandra',
-          'heroPhotos': [],
+          'heroPhotos': [
+            {
+              'url': 'https://assets.example/hero.webp',
+              'roles': ['login'],
+              'focal': {'x': .25, 'y': .75},
+            },
+          ],
           'logo': null,
           'derived': {
             'accentPressed': '#4B5E70',
@@ -40,5 +46,7 @@ void main() {
     expect(draft.config.toJson()['tenantSlug'], 'ohorodnik-oleksandr');
     expect(draft.config.toJson()['brand']['voice']['loginTitle'],
         'Готуйте з Олександром');
+    expect(draft.config.brand.heroPhotos.single.focalX, .25);
+    expect(draft.config.brand.heroPhotos.single.focalY, .75);
   });
 }

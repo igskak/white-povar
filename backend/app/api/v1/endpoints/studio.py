@@ -1,13 +1,27 @@
-"""Internal-only Creator Studio drafts."""
+"""Internal-only Creator Studio drafts and tenant-bound image assets."""
+
+from io import BytesIO
+from pathlib import Path
+from uuid import uuid4
+from datetime import datetime, timezone
+
+from PIL import Image, UnidentifiedImageError
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.v1.endpoints.auth import User, verify_firebase_token
 from app.core.tenant import TenantContext, require_tenant_context
-from app.schemas.studio import StudioBrandDraft, StudioBrandDraftUpdate, StudioSession
+from app.schemas.studio import (
+    StudioAsset, StudioAssetFinalize, StudioAssetUploadRequest,
+    StudioAssetUploadTicket, StudioBrandDraft, StudioBrandDraftUpdate,
+    StudioSession,
+)
 from app.services.database import supabase_service
 
 router = APIRouter()
+_ASSET_BUCKET = 'studio-brand-assets'
+_MAX_DIMENSION = 6000
+_MIN_DIMENSION = 320
 
 
 async def require_studio_member(
@@ -45,6 +59,12 @@ async def update_brand_draft(
     current_user, tenant, _ = membership
     if payload.config.tenant_slug != tenant.slug:
         raise HTTPException(status_code=422, detail='Draft tenantSlug must match the resolved tenant')
+    ready_urls = {asset.get('url') for asset in await supabase_service.list_studio_assets(tenant.chef_id)}
+    config_urls = _brand_asset_urls(payload.config.model_dump(by_alias=True))
+    # PENDING is retained for bootstrap candidates, but every remote asset in a
+    # Studio draft must be a ready record owned by the resolved tenant.
+    if not config_urls.issubset(ready_urls):
+        raise HTTPException(status_code=422, detail='Brand assets must be validated assets from this tenant')
     saved = await supabase_service.save_studio_brand_draft(
         chef_id=tenant.chef_id, user_id=current_user.id,
         config=payload.config.model_dump(by_alias=True), expected_version=payload.expected_version,
@@ -52,3 +72,90 @@ async def update_brand_draft(
     if saved is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='This draft changed in another session. Reload before saving.')
     return StudioBrandDraft(config=saved['config'], version=saved['version'], updatedAt=saved.get('updated_at'))
+
+
+@router.get('/assets', response_model=list[StudioAsset])
+async def list_assets(membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    _, tenant, _ = membership
+    return [_asset_response(asset) for asset in await supabase_service.list_studio_assets(tenant.chef_id)]
+
+
+@router.post('/assets/upload-ticket', response_model=StudioAssetUploadTicket)
+async def create_asset_upload_ticket(
+    payload: StudioAssetUploadRequest,
+    membership: tuple[User, TenantContext, str] = Depends(require_studio_member),
+):
+    current_user, tenant, _ = membership
+    extension = Path(payload.filename).suffix.lower()
+    expected = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp'}
+    if expected.get(extension) != payload.content_type:
+        raise HTTPException(status_code=422, detail='Filename extension must match image content type')
+    asset_id = str(uuid4())
+    source_path = f'staging/{tenant.slug}/{asset_id}/source{extension}'
+    await supabase_service.create_studio_asset(asset_id=asset_id, chef_id=tenant.chef_id, user_id=current_user.id, object_path=source_path, content_type=payload.content_type, size_bytes=payload.size_bytes)
+    try:
+        signed = supabase_service.get_client(use_service_key=True).storage.from_(_ASSET_BUCKET).create_signed_upload_url(source_path)
+    except Exception:
+        await supabase_service.reject_studio_asset(asset_id, tenant.chef_id, 'Could not create signed upload URL')
+        raise HTTPException(status_code=503, detail='Asset storage is unavailable')
+    return StudioAssetUploadTicket(assetId=asset_id, uploadUrl=signed['signed_url'], objectPath=source_path, expiresInSeconds=120)
+
+
+@router.post('/assets/{asset_id}/finalize', response_model=StudioAsset)
+async def finalize_asset_upload(
+    asset_id: str, payload: StudioAssetFinalize,
+    membership: tuple[User, TenantContext, str] = Depends(require_studio_member),
+):
+    _, tenant, _ = membership
+    asset = await supabase_service.get_studio_asset(asset_id, tenant.chef_id)
+    if asset is None or asset.get('state') != 'uploading':
+        raise HTTPException(status_code=404, detail='Pending asset was not found')
+    bucket = supabase_service.get_client(use_service_key=True).storage.from_(_ASSET_BUCKET)
+    try:
+        raw = bucket.download(asset['source_path'])
+        image = Image.open(BytesIO(raw))
+        image.verify()
+        image = Image.open(BytesIO(raw))
+        width, height = image.size
+        if not (_MIN_DIMENSION <= width <= _MAX_DIMENSION and _MIN_DIMENSION <= height <= _MAX_DIMENSION):
+            raise ValueError(f'Image must be between {_MIN_DIMENSION} and {_MAX_DIMENSION}px on each side')
+        if image.format not in {'JPEG', 'PNG', 'WEBP'}:
+            raise ValueError('Unsupported image format')
+        image.thumbnail((2560, 2560), Image.Resampling.LANCZOS)
+        output = BytesIO()
+        image.convert('RGB').save(output, format='WEBP', quality=86, method=6)
+        final_path = f'brands/{tenant.slug}/{asset_id}.webp'
+        bucket.upload(final_path, output.getvalue(), {'content-type': 'image/webp', 'cache-control': '31536000', 'upsert': 'false'})
+        public_url = bucket.get_public_url(final_path)
+        ready = await supabase_service.finalize_studio_asset(asset_id, tenant.chef_id, {
+            'object_path': final_path, 'content_type': 'image/webp', 'size_bytes': output.tell(),
+            'width': image.width, 'height': image.height, 'alt_text': payload.alt_text.strip(),
+            'state': 'ready', 'finalized_at': datetime.now(timezone.utc).isoformat(), 'url': public_url,
+        })
+        bucket.remove([asset['source_path']])
+        if ready is None:
+            bucket.remove([final_path])
+            raise HTTPException(status_code=409, detail='Asset upload changed; retry')
+        return _asset_response(ready)
+    except HTTPException:
+        raise
+    except (UnidentifiedImageError, ValueError, Image.DecompressionBombError) as error:
+        await supabase_service.reject_studio_asset(asset_id, tenant.chef_id, str(error))
+        try:
+            bucket.remove([asset['source_path']])
+        except Exception:
+            pass
+        raise HTTPException(status_code=422, detail=f'Asset rejected: {error}')
+    except Exception:
+        raise HTTPException(status_code=503, detail='Asset validation is temporarily unavailable')
+
+
+def _brand_asset_urls(config: dict) -> set[str]:
+    brand = config['brand']
+    urls = {value for value in (brand.get('avatar'), brand.get('logo')) if isinstance(value, str) and value.startswith(('http://', 'https://'))}
+    urls.update(photo['url'] for photo in brand.get('heroPhotos', []) if isinstance(photo.get('url'), str) and photo['url'].startswith(('http://', 'https://')))
+    return urls
+
+
+def _asset_response(asset: dict) -> StudioAsset:
+    return StudioAsset(id=str(asset['id']), url=asset.get('url'), altText=asset.get('alt_text') or '', width=asset.get('width'), height=asset.get('height'), state=asset['state'])

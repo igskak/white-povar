@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_client.dart';
@@ -35,6 +36,9 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   late final TextEditingController _tag = TextEditingController();
   String _font = 'serif';
   int _preview = 0;
+  bool _uploadingAsset = false;
+  String? _avatarUrl;
+  List<BrandHeroPhoto> _photos = [];
 
   @override
   void initState() {
@@ -72,6 +76,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     _course.text = brand.voice.courseName ?? '';
     _tag.text = brand.courseTag ?? '';
     _font = brand.font;
+    _avatarUrl = brand.avatar;
+    _photos = List.of(brand.heroPhotos);
     _dirty = false;
     if (mounted) setState(() => _loading = false);
   }
@@ -87,6 +93,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       ..['creatorName'] = _creator.text
       ..['accent'] = _accent.text
       ..['font'] = _font;
+    brand['avatar'] = _avatarUrl;
+    brand['heroPhotos'] = _photos.map((photo) => photo.toJson()).toList();
     voice
       ..['greeting'] = _greeting.text
       ..['loginTitle'] = _login.text
@@ -129,6 +137,37 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   }
 
   void _changed() => setState(() => _dirty = true);
+
+  Future<void> _uploadAsset({required bool avatar}) async {
+    final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+        withData: true);
+    if (picked == null || picked.files.isEmpty) return;
+    setState(() => _uploadingAsset = true);
+    try {
+      final asset = await ref.read(studioBrandDraftServiceProvider).upload(
+          picked.files.single,
+          altText: 'Фото бренду ${_name.text.trim()}');
+      if (!mounted) return;
+      setState(() {
+        if (avatar) {
+          _avatarUrl = asset.url;
+        } else {
+          _photos = [
+            ..._photos,
+            BrandHeroPhoto(url: asset.url, roles: const {'home'})
+          ];
+        }
+        _dirty = true;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _uploadingAsset = false);
+    }
+  }
+
   @override
   void dispose() {
     for (final c in [
@@ -240,9 +279,25 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           _field(_course, 'Назва колекції · optional', 36),
           _field(_tag, 'Course tag · optional')
         ]),
-        _section('4 · Фото бренду', const [
-          Text(
-              'Фото, ролі, focal point і crop будуть додані в STUDIO-02. Поки в прев’ю чесно використовується поточне фото або gradient fallback.')
+        _section('4 · Фото бренду', [
+          const Text(
+              'JPG, PNG або WebP до 12 MB. Сервер перевіряє, стискає і прив’язує файл до цього tenant.'),
+          Wrap(spacing: 8, children: [
+            OutlinedButton.icon(
+                onPressed:
+                    _uploadingAsset ? null : () => _uploadAsset(avatar: true),
+                icon: const Icon(Icons.account_circle_outlined),
+                label: const Text('Завантажити avatar')),
+            OutlinedButton.icon(
+                onPressed:
+                    _uploadingAsset ? null : () => _uploadAsset(avatar: false),
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(_uploadingAsset ? 'Обробка…' : 'Додати hero')),
+          ]),
+          ..._photos
+              .asMap()
+              .entries
+              .map((entry) => _photoEditor(entry.key, entry.value)),
         ]),
         if (_error != null)
           Padding(
@@ -272,6 +327,63 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
               ? null
               : (value) =>
                   (value ?? '').length > max ? 'Максимум $max символів' : null);
+
+  Widget _photoEditor(int index, BrandHeroPhoto photo) => Card(
+      margin: const EdgeInsets.only(top: 8),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: Image.network(photo.url,
+                fit: BoxFit.cover,
+                alignment:
+                    Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1))),
+        Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(children: [
+              Wrap(
+                  spacing: 6,
+                  children: ['home', 'login', 'paywall', 'collection']
+                      .map((role) => FilterChip(
+                          label: Text(role),
+                          selected: photo.roles.contains(role),
+                          onSelected: (selected) => setState(() {
+                                final roles = Set<String>.from(photo.roles);
+                                selected ? roles.add(role) : roles.remove(role);
+                                if (roles.isNotEmpty) {
+                                  _photos[index] = BrandHeroPhoto(
+                                      url: photo.url,
+                                      roles: roles,
+                                      focalX: photo.focalX,
+                                      focalY: photo.focalY);
+                                }
+                                _dirty = true;
+                              })))
+                      .toList()),
+              Row(children: [
+                const Text('Фокус'),
+                Expanded(
+                    child: Slider(
+                        value: photo.focalX,
+                        onChanged: (value) => setState(() {
+                              _photos[index] = BrandHeroPhoto(
+                                  url: photo.url,
+                                  roles: photo.roles,
+                                  focalX: value,
+                                  focalY: photo.focalY);
+                              _dirty = true;
+                            }))),
+                IconButton(
+                    tooltip: 'Видалити з чернетки',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => setState(() {
+                          _photos.removeAt(index);
+                          _dirty = true;
+                        }))
+              ]),
+            ])),
+      ]));
 
   Widget _previews(BrandConfig config) => Theme(
       data: AppThemeV2.light(config),

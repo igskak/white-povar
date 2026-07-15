@@ -116,24 +116,41 @@ class BrandDetails {
 }
 
 class BrandHeroPhoto {
-  const BrandHeroPhoto({required this.url, required this.roles});
+  const BrandHeroPhoto(
+      {required this.url,
+      required this.roles,
+      this.focalX = .5,
+      this.focalY = .4});
 
   final String url;
   final Set<String> roles;
+  final double focalX;
+  final double focalY;
 
   bool hasRole(String role) => roles.contains(role);
 
-  Map<String, dynamic> toJson() => {'url': url, 'roles': roles.toList()};
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        'roles': roles.toList(),
+        'focal': {'x': focalX, 'y': focalY}
+      };
 
   factory BrandHeroPhoto.fromJson(Map<String, dynamic> json) {
     final roles = json['roles'];
     if (roles is! List || roles.any((role) => role is! String)) {
       throw const FormatException('Invalid BrandConfig hero photo roles.');
     }
+    final focal = json['focal'];
+    final x = focal is Map ? focal['x'] : .5;
+    final y = focal is Map ? focal['y'] : .4;
+    if (x is! num || y is! num || x < 0 || x > 1 || y < 0 || y > 1) {
+      throw const FormatException('Invalid BrandConfig focal point.');
+    }
     return BrandHeroPhoto(
-      url: _requiredString(json, 'url'),
-      roles: roles.cast<String>().toSet(),
-    );
+        url: _requiredString(json, 'url'),
+        roles: roles.cast<String>().toSet(),
+        focalX: x.toDouble(),
+        focalY: y.toDouble());
   }
 }
 

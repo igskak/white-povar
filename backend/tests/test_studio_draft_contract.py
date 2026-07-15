@@ -47,7 +47,10 @@ def test_draft_seed_and_conflict_are_explicit(monkeypatch):
 
     async def conflict(**_):
         return None
+    async def no_assets(*_):
+        return []
     monkeypatch.setattr(supabase_service, 'save_studio_brand_draft', conflict)
+    monkeypatch.setattr(supabase_service, 'list_studio_assets', no_assets)
     with pytest.raises(HTTPException) as error:
         asyncio.run(update_brand_draft(StudioBrandDraftUpdate(config=_config(), expectedVersion=3), membership))
     assert error.value.status_code == 409

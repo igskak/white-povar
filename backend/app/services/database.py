@@ -501,6 +501,24 @@ class SupabaseService:
         rows = result.data or []
         return rows[0] if rows else None
 
+    async def create_studio_asset(self, *, asset_id: str, chef_id: str, user_id: str, object_path: str, content_type: str, size_bytes: int) -> None:
+        self.get_client(use_service_key=True).table('studio_assets').insert({'id': asset_id, 'chef_id': chef_id, 'created_by': user_id, 'source_path': object_path, 'content_type': content_type, 'size_bytes': size_bytes, 'state': 'uploading'}).execute()
+
+    async def get_studio_asset(self, asset_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).table('studio_assets').select('*').eq('id', asset_id).eq('chef_id', chef_id).limit(1).execute()
+        return (result.data or [None])[0]
+
+    async def list_studio_assets(self, chef_id: str) -> list[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).table('studio_assets').select('*').eq('chef_id', chef_id).eq('state', 'ready').order('created_at', desc=True).execute()
+        return result.data or []
+
+    async def finalize_studio_asset(self, asset_id: str, chef_id: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).table('studio_assets').update(values).eq('id', asset_id).eq('chef_id', chef_id).eq('state', 'uploading').execute()
+        return (result.data or [None])[0]
+
+    async def reject_studio_asset(self, asset_id: str, chef_id: str, reason: str) -> None:
+        self.get_client(use_service_key=True).table('studio_assets').update({'state': 'rejected', 'rejection_reason': reason}).eq('id', asset_id).eq('chef_id', chef_id).execute()
+
     # Video-related methods
     async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new recipe video record"""
