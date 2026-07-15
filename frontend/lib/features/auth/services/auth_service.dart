@@ -79,7 +79,7 @@ class AuthService {
     }
   }
 
-  Future<void> signInWithGoogle() async {
+  Future<bool> signInWithGoogle() async {
     try {
       final didOpen = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
@@ -87,17 +87,15 @@ class AuthService {
             ? AppConfig.webAuthCallbackUrl
             : 'io.supabase.cookingapp://login-callback',
       );
-      if (!didOpen) {
-        throw Exception('Google sign in was not opened');
-      }
+      return didOpen;
     } catch (e) {
       throw Exception('Google sign in failed: $e');
     }
   }
 
-  Future<void> signInWithApple() async {
+  Future<bool> signInWithApple() async {
     if (kIsWeb) {
-      throw Exception('Apple sign in is not available on web');
+      return false;
     }
 
     try {
@@ -105,9 +103,7 @@ class AuthService {
         OAuthProvider.apple,
         redirectTo: 'io.supabase.cookingapp://login-callback',
       );
-      if (!didOpen) {
-        throw Exception('Apple sign in was not opened');
-      }
+      return didOpen;
     } catch (e) {
       throw Exception('Apple sign in failed: $e');
     }
@@ -129,8 +125,9 @@ class AuthService {
         email,
         redirectTo: kIsWeb ? AppConfig.webAuthCallbackUrl : null,
       );
-    } catch (e) {
-      throw Exception('Password reset failed: $e');
+    } catch (_) {
+      // The UI always confirms this request to avoid account enumeration.
+      // Transport observability remains available in Supabase/backend logs.
     }
   }
 

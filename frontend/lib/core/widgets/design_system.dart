@@ -42,7 +42,9 @@ class AppButton extends StatelessWidget {
                 children: [
                   Icon(icon, size: 20),
                   const SizedBox(width: AppSpacing.xs),
-                  Text(label),
+                  Flexible(
+                    child: Text(label, overflow: TextOverflow.ellipsis),
+                  ),
                 ],
               );
     final enabled = isLoading ? null : onPressed;
