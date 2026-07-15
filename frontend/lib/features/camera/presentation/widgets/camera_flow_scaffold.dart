@@ -30,26 +30,46 @@ class CameraFlowScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColorsV2.ink,
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: AppColorsV2.ink,
-        foregroundColor: AppColorsV2.onInk,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _CameraStepHeader(
-              labels: _labels,
-              currentStep: step.index + 1,
-            ),
-            Expanded(child: child),
-          ],
+    final base = Theme.of(context);
+    final brand = base.extension<BrandThemeExtension>();
+    final darkScheme = base.colorScheme.copyWith(
+      brightness: Brightness.dark,
+      primary: brand?.accentOnDark ?? base.colorScheme.primary,
+      surface: const Color(0xFF221D16),
+      onSurface: AppColorsV2.onInk,
+    );
+
+    return Theme(
+      data: base.copyWith(
+        brightness: Brightness.dark,
+        colorScheme: darkScheme,
+        scaffoldBackgroundColor: AppColorsV2.ink,
+        textTheme: base.textTheme.apply(
+          bodyColor: AppColorsV2.onInk,
+          displayColor: AppColorsV2.onInk,
         ),
       ),
-      floatingActionButton: floatingActionButton,
-      bottomNavigationBar: bottomNavigationBar,
+      child: Scaffold(
+        backgroundColor: AppColorsV2.ink,
+        appBar: AppBar(
+          title: Text(title),
+          backgroundColor: AppColorsV2.ink,
+          foregroundColor: AppColorsV2.onInk,
+        ),
+        floatingActionButton: floatingActionButton,
+        bottomNavigationBar: bottomNavigationBar,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _CameraStepHeader(
+                labels: _labels,
+                currentStep: step.index + 1,
+              ),
+              Expanded(child: child),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

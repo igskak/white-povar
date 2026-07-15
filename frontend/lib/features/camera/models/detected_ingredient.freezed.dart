@@ -667,6 +667,8 @@ mixin _$CameraState {
   bool get isInitialized => throw _privateConstructorUsedError;
   bool get isLoading => throw _privateConstructorUsedError;
   bool get hasPermission => throw _privateConstructorUsedError;
+  CameraPermissionState get permissionState =>
+      throw _privateConstructorUsedError;
   String? get error => throw _privateConstructorUsedError;
   String? get capturedImagePath => throw _privateConstructorUsedError;
 
@@ -687,6 +689,7 @@ abstract class $CameraStateCopyWith<$Res> {
       {bool isInitialized,
       bool isLoading,
       bool hasPermission,
+      CameraPermissionState permissionState,
       String? error,
       String? capturedImagePath});
 }
@@ -709,6 +712,7 @@ class _$CameraStateCopyWithImpl<$Res, $Val extends CameraState>
     Object? isInitialized = null,
     Object? isLoading = null,
     Object? hasPermission = null,
+    Object? permissionState = null,
     Object? error = freezed,
     Object? capturedImagePath = freezed,
   }) {
@@ -725,6 +729,10 @@ class _$CameraStateCopyWithImpl<$Res, $Val extends CameraState>
           ? _value.hasPermission
           : hasPermission // ignore: cast_nullable_to_non_nullable
               as bool,
+      permissionState: null == permissionState
+          ? _value.permissionState
+          : permissionState // ignore: cast_nullable_to_non_nullable
+              as CameraPermissionState,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -749,6 +757,7 @@ abstract class _$$CameraStateImplCopyWith<$Res>
       {bool isInitialized,
       bool isLoading,
       bool hasPermission,
+      CameraPermissionState permissionState,
       String? error,
       String? capturedImagePath});
 }
@@ -769,6 +778,7 @@ class __$$CameraStateImplCopyWithImpl<$Res>
     Object? isInitialized = null,
     Object? isLoading = null,
     Object? hasPermission = null,
+    Object? permissionState = null,
     Object? error = freezed,
     Object? capturedImagePath = freezed,
   }) {
@@ -785,6 +795,10 @@ class __$$CameraStateImplCopyWithImpl<$Res>
           ? _value.hasPermission
           : hasPermission // ignore: cast_nullable_to_non_nullable
               as bool,
+      permissionState: null == permissionState
+          ? _value.permissionState
+          : permissionState // ignore: cast_nullable_to_non_nullable
+              as CameraPermissionState,
       error: freezed == error
           ? _value.error
           : error // ignore: cast_nullable_to_non_nullable
@@ -804,6 +818,7 @@ class _$CameraStateImpl implements _CameraState {
       {this.isInitialized = false,
       this.isLoading = false,
       this.hasPermission = false,
+      this.permissionState = CameraPermissionState.denied,
       this.error,
       this.capturedImagePath});
 
@@ -817,13 +832,16 @@ class _$CameraStateImpl implements _CameraState {
   @JsonKey()
   final bool hasPermission;
   @override
+  @JsonKey()
+  final CameraPermissionState permissionState;
+  @override
   final String? error;
   @override
   final String? capturedImagePath;
 
   @override
   String toString() {
-    return 'CameraState(isInitialized: $isInitialized, isLoading: $isLoading, hasPermission: $hasPermission, error: $error, capturedImagePath: $capturedImagePath)';
+    return 'CameraState(isInitialized: $isInitialized, isLoading: $isLoading, hasPermission: $hasPermission, permissionState: $permissionState, error: $error, capturedImagePath: $capturedImagePath)';
   }
 
   @override
@@ -837,6 +855,8 @@ class _$CameraStateImpl implements _CameraState {
                 other.isLoading == isLoading) &&
             (identical(other.hasPermission, hasPermission) ||
                 other.hasPermission == hasPermission) &&
+            (identical(other.permissionState, permissionState) ||
+                other.permissionState == permissionState) &&
             (identical(other.error, error) || other.error == error) &&
             (identical(other.capturedImagePath, capturedImagePath) ||
                 other.capturedImagePath == capturedImagePath));
@@ -844,7 +864,7 @@ class _$CameraStateImpl implements _CameraState {
 
   @override
   int get hashCode => Object.hash(runtimeType, isInitialized, isLoading,
-      hasPermission, error, capturedImagePath);
+      hasPermission, permissionState, error, capturedImagePath);
 
   /// Create a copy of CameraState
   /// with the given fields replaced by the non-null parameter values.
@@ -860,6 +880,7 @@ abstract class _CameraState implements CameraState {
       {final bool isInitialized,
       final bool isLoading,
       final bool hasPermission,
+      final CameraPermissionState permissionState,
       final String? error,
       final String? capturedImagePath}) = _$CameraStateImpl;
 
@@ -869,6 +890,8 @@ abstract class _CameraState implements CameraState {
   bool get isLoading;
   @override
   bool get hasPermission;
+  @override
+  CameraPermissionState get permissionState;
   @override
   String? get error;
   @override

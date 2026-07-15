@@ -3,18 +3,32 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+enum CameraPermissionState { granted, denied, permanentlyDenied }
+
 class CameraService {
   final ImagePicker _picker = ImagePicker();
 
   /// Check if camera permission is granted
   Future<bool> checkCameraPermission() async {
+    return (await cameraPermissionState()) == CameraPermissionState.granted;
+  }
+
+  /// Keeps the UI recovery path explicit: a one-time denial can be requested
+  /// again, whereas a permanently denied permission must be changed in system
+  /// settings.
+  Future<CameraPermissionState> cameraPermissionState() async {
     if (kIsWeb) {
-      // Web doesn't need explicit permission check
-      return true;
+      // Browsers ask when ImagePicker opens; upload remains the fallback.
+      return CameraPermissionState.granted;
     }
 
     final status = await Permission.camera.status;
-    return status.isGranted;
+    if (status.isGranted) {
+      return CameraPermissionState.granted;
+    }
+    return status.isPermanentlyDenied
+        ? CameraPermissionState.permanentlyDenied
+        : CameraPermissionState.denied;
   }
 
   /// Request camera permission
@@ -115,9 +129,8 @@ class CameraService {
         return true;
       }
 
-      // For mobile platforms, we can check if camera permission can be requested
-      final status = await Permission.camera.status;
-      return !status.isPermanentlyDenied;
+      // A permanently denied permission is still a recoverable UI state.
+      return true;
     } catch (e) {
       return false;
     }

@@ -71,7 +71,9 @@ class PhotoSearchService {
         id: 'detected_$index',
         name: name,
         confidence: confidence,
-        isConfirmed: true,
+        // Weak recognition must be an explicit user decision before it affects
+        // recipe matches. Manual ingredients stay confirmed in the editor.
+        isConfirmed: confidence >= 0.7,
       );
     }).toList();
   }

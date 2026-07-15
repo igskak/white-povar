@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/camera_provider.dart';
 import '../../providers/photo_search_provider.dart';
+import '../../services/camera_service.dart';
 import '../widgets/camera_flow_scaffold.dart';
 
 class CameraCapturePage extends ConsumerStatefulWidget {
@@ -75,7 +78,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
 
     if (!cameraState.hasPermission) {
       return _PermissionView(
+        permanentlyDenied: cameraState.permissionState ==
+            CameraPermissionState.permanentlyDenied,
         onGrant: _requestPermission,
+        onOpenSettings: _openSettings,
         onGallery: _pickFromGallery,
       );
     }
@@ -97,6 +103,13 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
   Future<void> _requestPermission() async {
     ref.read(photoSearchProvider.notifier).clearError();
     await ref.read(cameraProvider.notifier).requestPermission();
+  }
+
+  Future<void> _openSettings() async {
+    await openAppSettings();
+    if (mounted) {
+      await ref.read(cameraProvider.notifier).initialize();
+    }
   }
 
   Future<void> _capturePhoto() async {
@@ -145,11 +158,15 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
 
 class _PermissionView extends StatelessWidget {
   const _PermissionView({
+    required this.permanentlyDenied,
     required this.onGrant,
+    required this.onOpenSettings,
     required this.onGallery,
   });
 
+  final bool permanentlyDenied;
   final VoidCallback onGrant;
+  final VoidCallback onOpenSettings;
   final VoidCallback onGallery;
 
   @override
@@ -167,19 +184,33 @@ class _PermissionView extends StatelessWidget {
             icon: Icons.photo_camera_outlined,
           ),
           const SizedBox(height: 12),
-          Semantics(
-            label: 'Дати доступ до камери',
-            button: true,
-            child: ElevatedButton(
-              onPressed: onGrant,
-              child: const Text('Дати доступ'),
+          if (permanentlyDenied) ...[
+            Text(
+              'Доступ заблоковано в налаштуваннях пристрою. Увімкніть його там, щоб робити фото в застосунку.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ),
+            const SizedBox(height: 12),
+            AppButton(
+              label: 'Відкрити налаштування',
+              icon: Icons.settings_outlined,
+              onPressed: onOpenSettings,
+              expand: true,
+            ),
+          ] else
+            AppButton(
+              label: 'Дати доступ',
+              icon: Icons.photo_camera_outlined,
+              onPressed: onGrant,
+              expand: true,
+            ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
+          AppButton(
+            label: 'Обрати з галереї',
+            icon: Icons.photo_library_outlined,
             onPressed: onGallery,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Обрати з галереї'),
+            variant: AppButtonVariant.secondary,
+            expand: true,
           ),
         ],
       ),
@@ -225,20 +256,19 @@ class _CameraActionView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Semantics(
-            label: 'Зробити фото продуктів',
-            button: true,
-            child: ElevatedButton.icon(
-              onPressed: onCapture,
-              icon: const Icon(Icons.camera_alt),
-              label: const Text('Зробити фото'),
-            ),
+          AppButton(
+            label: kIsWeb ? 'Зробити фото в браузері' : 'Зробити фото',
+            icon: Icons.camera_alt,
+            onPressed: onCapture,
+            expand: true,
           ),
           const SizedBox(height: 10),
-          OutlinedButton.icon(
+          AppButton(
+            label: kIsWeb ? 'Завантажити фото' : 'Обрати з галереї',
+            icon: Icons.photo_library_outlined,
             onPressed: onGallery,
-            icon: const Icon(Icons.photo_library_outlined),
-            label: const Text('Обрати з галереї'),
+            variant: AppButtonVariant.secondary,
+            expand: true,
           ),
         ],
       ),
@@ -284,13 +314,10 @@ class _CapturedPreview extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 flex: 2,
-                child: Semantics(
-                  label: 'Розпізнати продукти на фото',
-                  button: true,
-                  child: ElevatedButton(
-                    onPressed: onAnalyze,
-                    child: const Text('Розпізнати'),
-                  ),
+                child: AppButton(
+                  label: 'Розпізнати',
+                  onPressed: onAnalyze,
+                  expand: true,
                 ),
               ),
             ],

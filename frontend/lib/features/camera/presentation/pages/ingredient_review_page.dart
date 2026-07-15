@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/widgets/state_views.dart';
+import '../../../../core/widgets/design_system.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/photo_search_provider.dart';
 import '../widgets/camera_flow_scaffold.dart';
@@ -45,6 +46,9 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
     final photoSearchState = ref.watch(photoSearchProvider);
     final ingredients = ref.watch(ingredientEditProvider);
     final confirmedCount = ingredients.where((item) => item.isConfirmed).length;
+    final needsConfirmation = ingredients.any(
+      (item) => item.confidence < 0.7 && !item.isConfirmed,
+    );
 
     return CameraFlowScaffold(
       title: 'Перевірка продуктів',
@@ -57,7 +61,9 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: ElevatedButton.icon(
-          onPressed: confirmedCount == 0 || photoSearchState.isLoading
+          onPressed: confirmedCount == 0 ||
+                  needsConfirmation ||
+                  photoSearchState.isLoading
               ? null
               : _searchRecipes,
           icon: const Icon(Icons.search),
@@ -68,6 +74,7 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
         photoSearchState: photoSearchState,
         ingredients: ingredients,
         confirmedCount: confirmedCount,
+        needsConfirmation: needsConfirmation,
       ),
     );
   }
@@ -76,6 +83,7 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
     required PhotoSearchState photoSearchState,
     required List<DetectedIngredient> ingredients,
     required int confirmedCount,
+    required bool needsConfirmation,
   }) {
     if (photoSearchState.isLoading) {
       return const CameraFlowStatusView.loading(
@@ -108,6 +116,26 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
             ),
           ),
         ),
+        if (needsConfirmation)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: ContentCard(
+              semanticLabel:
+                  'Потрібне підтвердження слабко розпізнаних продуктів',
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Підтвердьте або видаліть продукти з низькою точністю, щоб знайти рецепти.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(

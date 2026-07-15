@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../services/camera_service.dart';
+
 part 'detected_ingredient.freezed.dart';
 part 'detected_ingredient.g.dart';
 
@@ -47,6 +49,8 @@ class CameraState with _$CameraState {
     @Default(false) bool isInitialized,
     @Default(false) bool isLoading,
     @Default(false) bool hasPermission,
+    @Default(CameraPermissionState.denied)
+    CameraPermissionState permissionState,
     String? error,
     String? capturedImagePath,
   }) = _CameraState;

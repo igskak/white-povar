@@ -44,12 +44,13 @@ class CameraNotifier extends StateNotifier<CameraState> {
       }
 
       // Check permissions
-      final hasPermission = await _cameraService.checkCameraPermission();
+      final permissionState = await _cameraService.cameraPermissionState();
 
       state = state.copyWith(
         isInitialized: true,
         isLoading: false,
-        hasPermission: hasPermission,
+        hasPermission: permissionState == CameraPermissionState.granted,
+        permissionState: permissionState,
       );
     } catch (e) {
       state = state.copyWith(
@@ -65,11 +66,13 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
     try {
       final granted = await _cameraService.requestCameraPermission();
+      final permissionState = await _cameraService.cameraPermissionState();
 
       state = state.copyWith(
         isLoading: false,
         hasPermission: granted,
-        error: granted ? null : 'Доступ до камери не надано',
+        permissionState: permissionState,
+        error: null,
       );
 
       return granted;
