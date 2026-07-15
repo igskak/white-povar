@@ -519,6 +519,39 @@ class SupabaseService:
     async def reject_studio_asset(self, asset_id: str, chef_id: str, reason: str) -> None:
         self.get_client(use_service_key=True).table('studio_assets').update({'state': 'rejected', 'rejection_reason': reason}).eq('id', asset_id).eq('chef_id', chef_id).execute()
 
+    async def publish_studio_brand_draft(self, *, chef_id: str, user_id: str, expected_version: int) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).rpc('publish_studio_brand_draft', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_expected_version': expected_version,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def rollback_studio_brand_config(self, *, chef_id: str, user_id: str, source_version: int) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).rpc('rollback_studio_brand_config', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_source_version': source_version,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def get_studio_release_status(self, chef_id: str) -> Dict[str, Any]:
+        client = self.get_client(use_service_key=True)
+        config = client.table('brand_configs').select('version,published_at').eq('chef_id', chef_id).eq('status', 'published').limit(1).execute().data or []
+        jobs = client.table('studio_release_jobs').select('*').eq('chef_id', chef_id).order('requested_at', desc=True).limit(50).execute().data or []
+        return {'config': config[0] if config else None, 'jobs': jobs}
+
+    async def create_studio_release(self, *, chef_id: str, user_id: str, kind: str, platform: Optional[str], config_version: int) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).rpc('create_studio_release_job', {
+            'p_chef_id': chef_id, 'p_user_id': user_id, 'p_kind': kind,
+            'p_platform': platform, 'p_config_version': config_version,
+        }).execute()
+        return (result.data or [None])[0]
+
+    async def update_studio_release(self, *, release_id: str, chef_id: str, user_id: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        result = self.get_client(use_service_key=True).rpc('update_studio_release_job', {
+            'p_release_id': release_id, 'p_chef_id': chef_id, 'p_user_id': user_id,
+            'p_status': values['status'], 'p_store_release_status': values.get('store_release_status'),
+            'p_failure_reason': values.get('failure_reason'),
+        }).execute()
+        return (result.data or [None])[0]
+
     # Video-related methods
     async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new recipe video record"""

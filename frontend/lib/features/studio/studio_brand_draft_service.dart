@@ -66,6 +66,73 @@ class StudioBrandDraftService {
         data: {'altText': altText});
     return StudioAsset.fromJson(finalized.data!);
   }
+
+  Future<StudioReleaseStatus> releaseStatus() async {
+    final response = await _client
+        .get<Map<String, dynamic>>('/api/v1/studio/release-status');
+    return StudioReleaseStatus.fromJson(response.data!);
+  }
+
+  Future<StudioPublishResult> publish() async {
+    final response = await _client
+        .post<Map<String, dynamic>>('/api/v1/studio/brand-draft/publish');
+    return StudioPublishResult.fromJson(response.data!);
+  }
+
+  Future<StudioPublishResult> rollback(int sourceVersion) async {
+    final response = await _client.post<Map<String, dynamic>>(
+        '/api/v1/studio/brand-config/rollback',
+        data: {'sourceVersion': sourceVersion});
+    return StudioPublishResult.fromJson(response.data!);
+  }
+
+  Future<StudioRelease> requestRelease(
+      {required String kind, String? platform}) async {
+    final response = await _client.post<Map<String, dynamic>>(
+        '/api/v1/studio/releases',
+        data: {'kind': kind, if (platform != null) 'platform': platform});
+    return StudioRelease.fromJson(response.data!);
+  }
+}
+
+class StudioPublishResult {
+  const StudioPublishResult({required this.version});
+  final int version;
+  factory StudioPublishResult.fromJson(Map<String, dynamic> json) =>
+      StudioPublishResult(version: json['version'] as int);
+}
+
+class StudioRelease {
+  const StudioRelease({required this.id, required this.kind, required this.status, required this.storeStatus, required this.configVersion});
+  final String id, kind, status, storeStatus;
+  final int configVersion;
+  factory StudioRelease.fromJson(Map<String, dynamic> json) => StudioRelease(
+      id: json['id'] as String,
+      kind: json['kind'] as String,
+      status: json['status'] as String,
+      storeStatus: json['storeReleaseStatus'] as String,
+      configVersion: json['configVersion'] as int);
+}
+
+class StudioReleaseStatus {
+  const StudioReleaseStatus({this.configVersion, this.web, this.mobile, this.store, this.history = const []});
+  final int? configVersion;
+  final StudioRelease? web, mobile, store;
+  final List<StudioRelease> history;
+  factory StudioReleaseStatus.fromJson(Map<String, dynamic> json) {
+    StudioRelease? item(String key) => json[key] == null
+        ? null
+        : StudioRelease.fromJson(Map<String, dynamic>.from(json[key] as Map));
+    final config = json['configPublished'];
+    return StudioReleaseStatus(
+        configVersion: config is Map ? config['version'] as int? : null,
+        web: item('webDeployed'),
+        mobile: item('mobileBuild'),
+        store: item('storeRelease'),
+        history: (json['history'] as List<dynamic>? ?? const [])
+            .map((value) => StudioRelease.fromJson(Map<String, dynamic>.from(value as Map)))
+            .toList());
+  }
 }
 
 class StudioAsset {

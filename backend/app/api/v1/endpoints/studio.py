@@ -14,6 +14,8 @@ from app.core.tenant import TenantContext, require_tenant_context
 from app.schemas.studio import (
     StudioAsset, StudioAssetFinalize, StudioAssetUploadRequest,
     StudioAssetUploadTicket, StudioBrandDraft, StudioBrandDraftUpdate,
+    StudioPublishResult, StudioRelease, StudioReleaseRequest,
+    StudioReleaseStatusView, StudioReleaseUpdate, StudioRollbackRequest,
     StudioSession,
 )
 from app.services.database import supabase_service
@@ -32,6 +34,12 @@ async def require_studio_member(
     if role not in {'editor', 'admin'}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Internal Studio access is required')
     return current_user, tenant, role
+
+
+def _require_admin(membership: tuple[User, TenantContext, str]) -> tuple[User, TenantContext, str]:
+    if membership[2] != 'admin':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Studio admin access is required for releases')
+    return membership
 
 
 @router.get('/session', response_model=StudioSession)
@@ -72,6 +80,69 @@ async def update_brand_draft(
     if saved is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='This draft changed in another session. Reload before saving.')
     return StudioBrandDraft(config=saved['config'], version=saved['version'], updatedAt=saved.get('updated_at'))
+
+
+@router.post('/brand-draft/publish', response_model=StudioPublishResult)
+async def publish_brand_draft(membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    current_user, tenant, _ = _require_admin(membership)
+    draft = await supabase_service.get_studio_brand_draft(tenant.chef_id)
+    if draft is None:
+        raise HTTPException(status_code=409, detail='Save a draft before publishing')
+    # Re-validate at the publish boundary; Pydantic also recalculates derived tokens.
+    try:
+        validated = StudioBrandDraftUpdate(config=draft['config'], expectedVersion=draft['version']).config
+    except Exception as error:
+        raise HTTPException(status_code=422, detail=f'Publish validation failed: {error}') from error
+    ready_urls = {asset.get('url') for asset in await supabase_service.list_studio_assets(tenant.chef_id)}
+    if not _brand_asset_urls(validated.model_dump(by_alias=True)).issubset(ready_urls):
+        raise HTTPException(status_code=422, detail='Published config references an unverified asset')
+    published = await supabase_service.publish_studio_brand_draft(chef_id=tenant.chef_id, user_id=current_user.id, expected_version=draft['version'])
+    if published is None:
+        raise HTTPException(status_code=409, detail='Draft changed before publishing. Reload and try again.')
+    return StudioPublishResult(version=published['version'], publishedAt=published['published_at'])
+
+
+@router.post('/brand-config/rollback', response_model=StudioPublishResult)
+async def rollback_brand_config(payload: StudioRollbackRequest, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    current_user, tenant, _ = _require_admin(membership)
+    published = await supabase_service.rollback_studio_brand_config(chef_id=tenant.chef_id, user_id=current_user.id, source_version=payload.source_version)
+    if published is None:
+        raise HTTPException(status_code=404, detail='Requested config version was not found for this tenant')
+    return StudioPublishResult(version=published['version'], publishedAt=published['published_at'])
+
+
+@router.get('/release-status', response_model=StudioReleaseStatusView)
+async def get_release_status(membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    _, tenant, _ = membership
+    snapshot = await supabase_service.get_studio_release_status(tenant.chef_id)
+    jobs = [_release_response(job) for job in snapshot['jobs']]
+    latest_web = next((job for job in jobs if job.kind == 'web_deploy'), None)
+    latest_mobile = next((job for job in jobs if job.kind == 'mobile_build'), None)
+    latest_store = next((job for job in jobs if job.kind == 'mobile_build' and job.store_release_status != 'not_submitted'), None)
+    config = snapshot['config']
+    return StudioReleaseStatusView(
+        configPublished=None if config is None else StudioPublishResult(version=config['version'], publishedAt=config['published_at']),
+        webDeployed=latest_web, mobileBuild=latest_mobile, storeRelease=latest_store, history=jobs,
+    )
+
+
+@router.post('/releases', response_model=StudioRelease)
+async def request_release(payload: StudioReleaseRequest, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    current_user, tenant, _ = _require_admin(membership)
+    snapshot = await supabase_service.get_studio_release_status(tenant.chef_id)
+    if snapshot['config'] is None:
+        raise HTTPException(status_code=409, detail='Publish a runtime config before requesting a release')
+    job = await supabase_service.create_studio_release(chef_id=tenant.chef_id, user_id=current_user.id, kind=payload.kind, platform=payload.platform, config_version=snapshot['config']['version'])
+    return _release_response(job)
+
+
+@router.patch('/releases/{release_id}', response_model=StudioRelease)
+async def update_release(release_id: str, payload: StudioReleaseUpdate, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
+    current_user, tenant, _ = _require_admin(membership)
+    job = await supabase_service.update_studio_release(release_id=release_id, chef_id=tenant.chef_id, user_id=current_user.id, values=payload.model_dump(by_alias=False))
+    if job is None:
+        raise HTTPException(status_code=404, detail='Release job was not found for this tenant')
+    return _release_response(job)
 
 
 @router.get('/assets', response_model=list[StudioAsset])
@@ -159,3 +230,7 @@ def _brand_asset_urls(config: dict) -> set[str]:
 
 def _asset_response(asset: dict) -> StudioAsset:
     return StudioAsset(id=str(asset['id']), url=asset.get('url'), altText=asset.get('alt_text') or '', width=asset.get('width'), height=asset.get('height'), state=asset['state'])
+
+
+def _release_response(job: dict) -> StudioRelease:
+    return StudioRelease(id=str(job['id']), kind=job['kind'], status=job['status'], platform=job.get('platform'), configVersion=job['config_version'], storeReleaseStatus=job['store_release_status'], failureReason=job.get('failure_reason'), requestedAt=job['requested_at'], updatedAt=job['updated_at'])

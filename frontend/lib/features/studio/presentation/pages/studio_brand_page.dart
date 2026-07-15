@@ -34,9 +34,12 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   late final TextEditingController _paywall = TextEditingController();
   late final TextEditingController _course = TextEditingController();
   late final TextEditingController _tag = TextEditingController();
+  late final TextEditingController _rollbackVersion = TextEditingController();
   String _font = 'serif';
   int _preview = 0;
   bool _uploadingAsset = false;
+  bool _releasing = false;
+  StudioReleaseStatus? _releaseStatus;
   String? _avatarUrl;
   List<BrandHeroPhoto> _photos = [];
 
@@ -54,6 +57,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     try {
       final draft = await ref.read(studioBrandDraftServiceProvider).load();
       _setDraft(draft);
+      _releaseStatus =
+          await ref.read(studioBrandDraftServiceProvider).releaseStatus();
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -138,6 +143,23 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
 
   void _changed() => setState(() => _dirty = true);
 
+  Future<void> _release(
+      Future<void> Function(StudioBrandDraftService service) action) async {
+    setState(() => _releasing = true);
+    try {
+      final service = ref.read(studioBrandDraftServiceProvider);
+      await action(service);
+      if (mounted) {
+        final status = await service.releaseStatus();
+        if (mounted) setState(() => _releaseStatus = status);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _releasing = false);
+    }
+  }
+
   Future<void> _uploadAsset({required bool avatar}) async {
     final picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -178,7 +200,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       _login,
       _paywall,
       _course,
-      _tag
+      _tag,
+      _rollbackVersion
     ]) {
       c.dispose();
     }
@@ -249,7 +272,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 4),
         const Text(
-            'Зміни зберігаються як чернетка. Публікація доступна в наступному етапі.'),
+            'Зміни зберігаються як чернетка; публікація та реліз доступні лише Studio admin.'),
         const SizedBox(height: 16),
         _section('1 · Ідентичність',
             [_field(_name, 'Назва бренду'), _field(_creator, 'Ім’я автора')]),
@@ -299,6 +322,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
               .entries
               .map((entry) => _photoEditor(entry.key, entry.value)),
         ]),
+        _releasePanel(),
         if (_error != null)
           Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -306,6 +330,72 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                   style:
                       TextStyle(color: Theme.of(context).colorScheme.error))),
       ]);
+
+  Widget _releasePanel() {
+    final status = _releaseStatus;
+    String label(StudioRelease? release, String fallback) =>
+        release == null ? fallback : release.status;
+    return _section('Публікація та реліз', [
+      Text(
+          'Runtime config: ${status?.configVersion == null ? 'не опубліковано' : 'опубліковано v${status!.configVersion}'}'),
+      Text('Web assets: ${label(status?.web, 'не запитано')}'),
+      Text('Mobile build: ${label(status?.mobile, 'не запитано')}'),
+      Text('Store release: ${status?.store?.storeStatus ?? 'не подано'}'),
+      const Text(
+          'Запит на реліз не означає завершений deploy або публікацію в store.'),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        OutlinedButton(
+            onPressed: _releasing
+                ? null
+                : () => _release((s) async {
+                      await s.publish();
+                    }),
+            child: const Text('Опублікувати config')),
+        OutlinedButton(
+            onPressed: _releasing
+                ? null
+                : () => _release((s) async {
+                      await s.requestRelease(kind: 'web_deploy');
+                    }),
+            child: const Text('Запросити web deploy')),
+        OutlinedButton(
+            onPressed: _releasing
+                ? null
+                : () => _release((s) async {
+                      await s.requestRelease(
+                          kind: 'mobile_build', platform: 'android');
+                    }),
+            child: const Text('Запросити Android build')),
+        OutlinedButton(
+            onPressed: _releasing
+                ? null
+                : () => _release((s) async {
+                      await s.requestRelease(
+                          kind: 'mobile_build', platform: 'ios');
+                    }),
+            child: const Text('Запросити iOS build')),
+      ]),
+      Row(children: [
+        SizedBox(width: 140, child: AppTextField(controller: _rollbackVersion, label: 'Версія rollback')),
+        const SizedBox(width: 8),
+        OutlinedButton(
+            onPressed: _releasing
+                ? null
+                : () {
+                    final version = int.tryParse(_rollbackVersion.text);
+                    if (version != null) {
+                      _release((s) async {
+                        await s.rollback(version);
+                      });
+                    }
+                  },
+            child: const Text('Відкотити config')),
+      ]),
+      if (status != null && status.history.isNotEmpty)
+        ...status.history.take(5).map((job) => Text(
+            '${job.kind} · v${job.configVersion} · ${job.status}${job.storeStatus == 'not_submitted' ? '' : ' · store ${job.storeStatus}'}')),
+    ]);
+  }
 
   Widget _section(String title, List<Widget> children) => Card(
       child: Padding(
