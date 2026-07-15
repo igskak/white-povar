@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/widgets/design_system.dart';
 import '../../models/recipe.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 
@@ -26,108 +27,107 @@ class RecipeCard extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       label: 'Відкрити рецепт ${recipe.title}',
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: recipe.images.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: recipe.images.first,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                const _ImageFallback(isLoading: true),
-                            errorWidget: (context, url, error) =>
-                                const _ImageFallback(),
-                          )
-                        : const _ImageFallback(),
+      child: ContentCard(
+        onTap: onTap,
+        semanticLabel: 'Відкрити рецепт ${recipe.title}',
+        padding: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: recipe.images.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: recipe.images.first,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              const _ImageFallback(isLoading: true),
+                          errorWidget: (context, url, error) =>
+                              const _ImageFallback(),
+                        )
+                      : const _ImageFallback(),
+                ),
+                if (recipe.isPremium)
+                  const Positioned(
+                    top: AppSpacing.sm,
+                    left: AppSpacing.sm,
+                    child: PremiumBadge(size: 24),
                   ),
-                  if (recipe.isPremium)
-                    const Positioned(
-                      top: AppSpacing.sm,
-                      left: AppSpacing.sm,
-                      child: PremiumBadge(size: 24),
+                if (recipe.isFeatured)
+                  const Positioned(
+                    left: AppSpacing.sm,
+                    bottom: AppSpacing.sm,
+                    child: _Badge(
+                      icon: Icons.local_fire_department_outlined,
+                      label: 'Вибір шефа',
                     ),
-                  if (recipe.isFeatured)
-                    const Positioned(
-                      left: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
-                      child: _Badge(
-                        icon: Icons.local_fire_department_outlined,
-                        label: 'Вибір шефа',
+                  ),
+                if (recipe.videoUrl != null || recipe.videoFilePath != null)
+                  const Positioned(
+                    top: AppSpacing.sm,
+                    right: AppSpacing.sm,
+                    child: _CircleBadge(icon: Icons.play_arrow_rounded),
+                  ),
+                if (showMatchIndicator && matchedIngredients > 0)
+                  Positioned(
+                    right: AppSpacing.sm,
+                    bottom: AppSpacing.sm,
+                    child: _Badge(
+                      icon: Icons.check_circle_outline,
+                      label: '$matchedIngredients збіг',
+                    ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    recipe.title,
+                    style: theme.textTheme.titleLarge,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    recipe.description,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColorsV2.textSecondary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      _InfoChip(
+                        icon: Icons.schedule_rounded,
+                        label: '${recipe.totalTimeMinutes} хв',
                       ),
-                    ),
-                  if (recipe.videoUrl != null || recipe.videoFilePath != null)
-                    const Positioned(
-                      top: AppSpacing.sm,
-                      right: AppSpacing.sm,
-                      child: _CircleBadge(icon: Icons.play_arrow_rounded),
-                    ),
-                  if (showMatchIndicator && matchedIngredients > 0)
-                    Positioned(
-                      right: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
-                      child: _Badge(
-                        icon: Icons.check_circle_outline,
-                        label: '$matchedIngredients збіг',
+                      _InfoChip(
+                        icon: Icons.people_outline_rounded,
+                        label: '${recipe.servings} порц.',
                       ),
-                    ),
+                      _InfoChip(
+                        icon: Icons.restaurant_menu_rounded,
+                        label: recipe.cuisine,
+                      ),
+                      _InfoChip(
+                        icon: Icons.speed_rounded,
+                        label: 'Рівень ${recipe.difficulty}',
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipe.title,
-                      style: theme.textTheme.titleLarge,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      recipe.description,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColorsV2.textSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.xs,
-                      children: [
-                        _InfoChip(
-                          icon: Icons.schedule_rounded,
-                          label: '${recipe.totalTimeMinutes} хв',
-                        ),
-                        _InfoChip(
-                          icon: Icons.people_outline_rounded,
-                          label: '${recipe.servings} порц.',
-                        ),
-                        _InfoChip(
-                          icon: Icons.restaurant_menu_rounded,
-                          label: recipe.cuisine,
-                        ),
-                        _InfoChip(
-                          icon: Icons.speed_rounded,
-                          label: 'Рівень ${recipe.difficulty}',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

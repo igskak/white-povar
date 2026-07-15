@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/tokens/app_tokens.dart';
+import 'design_system.dart';
 
 class StateView extends StatelessWidget {
   const StateView.loading({
@@ -75,9 +76,9 @@ class StateView extends StatelessWidget {
               ],
               if (onRetry != null && actionLabel != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                ElevatedButton(
+                AppButton(
+                  label: actionLabel!,
                   onPressed: onRetry,
-                  child: Text(actionLabel!),
                 ),
               ],
             ],

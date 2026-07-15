@@ -1,8 +1,8 @@
 # White Povar — детальный план имплементации
 
 Дата: 15 июля 2026  
-Статус: SEC-01 выполнена; tenant isolation и premium teaser contract готовы.
-Следующая задача: `DS-01`
+Статус: DS-01 выполнена; shared design-system primitives готовы.
+Следующая задача: `UI-01`
 Канонический consumer-клиент: `frontend/`  
 Backend: `backend/`  
 Design source of truth: `White povar redesign brief document/Handoff Spec.dc.html` и `Stage 1 - Foundations.dc.html`, версия 1.2
@@ -161,7 +161,7 @@ Design source of truth: `White povar redesign brief document/Handoff Spec.dc.htm
 | 5 | FND-04 | Dynamic themes, fonts и brand assets | FND-03 | DONE |
 | 6 | FND-05 | Единый API client и tenant context | FND-03 | DONE |
 | 7 | SEC-01 | Tenant isolation и premium teaser contract | FND-05 | DONE |
-| 8 | DS-01 | Shared design-system primitives | FND-04 | TODO |
+| 8 | DS-01 | Shared design-system primitives | FND-04 | DONE |
 | 9 | DS-02 | Routing и adaptive shell | DS-01 | DONE |
 | 10 | UI-01 | Home + brand header + collection promo | DS-02, SEC-01 | TODO |
 | 11 | UI-02 | Login/signup/forgot-password states | DS-01, FND-03 | TODO |
@@ -698,6 +698,7 @@ python3 -c "from app.main import app; print(app.title)"
 
 | Дата | ID | Результат | Проверки | Примечания |
 |---|---|---|---|---|
+| 2026-07-15 | DS-01 | Добавлены общие `AppButton`, `AppIconButton`, `AppTextField`, `AppChip`, `AppBadge`, `ContentCard`, `BrandHeader`, `UserAvatar`, `AppSkeleton`, `ResponsiveContainer` и helpers Sheet/Dialog. `StateView` переведён на shared button, а карточка рецепта — на общий card primitive; новые controls используют Material focus/keyboard states, semantics и минимальный tap target 44px. Добавлены light/dark pilot widget tests и golden для набора primitives. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (30); targeted golden — PASS; `scripts/build-web.sh` с build-only production dart-defines и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Экранные частные реализации и их product-specific composition намеренно не удалялись: их перевод относится к DS-02 и UI-01…UI-07. Не добавлялись новые product flows или routing. |
 | 2026-07-15 | DS-02 | Tab navigation переведена на `StatefulShellRoute.indexedStack`: Home, Search, Saved и Profile сохраняют свой state/scroll; settings, offer/paywall, recipe/content detail, cooking и camera вынесены в самостоятельные route branches без tab navigation. Добавлены typed search/tag, content, collection и offer return-path links, безопасный guest → login → origin redirect и адаптивный shell (bottom <600, rail ≥600, desktop composition ≥1024). | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (30); targeted adaptive route tests на 390/768/1280 — PASS; CI-like `scripts/build-web.sh` с `TENANT_SLUG` — PASS. | Коллекция пока имеет только нейтральную route-ветку: полноценный collection screen остаётся в COL-03. Доступ к premium content по-прежнему подтверждает серверный entitlement contract SEC-01; routing не доверяет client `isPremium`. Незакоммиченные файлы DS-01 не изменялись и не входят в DS-02 commit. |
 | 2026-07-15 | SEC-01 | Добавлены обязательный resolved `X-Tenant-Slug` context, tenant-scoped запросы recipes/featured/favorites/search/suggestions/filters/photo и AI context. Исключены caller-supplied chef filters; detail и list используют единый access service. Premium rows остаются discoverable как `is_locked` teaser без ingredients, instructions, nutrition и video URLs. Добавлены tenant-scoped entitlements, RLS hardening и двух-tenant contract tests с одинаковым title. | `python3 -m compileall -q app` — PASS; targeted `pytest` (recipe, tenant isolation, bootstrap) — PASS (17); FastAPI import — PASS; полный `pytest tests/ -q`: 118 passed, 4 failed, 3 errors. | Полный suite сохраняет известный внешний blocker локального Python 3.13: несовместимые Starlette `TestClient`/httpx (`Client.__init__(app=...)`) ломают прежние localization/video-тесты. `flake8` не установлен локально; CI запускает lint на Python 3.11. Миграция не применялась: локальной изолированной БД нет; production/staging не затрагивались. |
 | 2026-07-15 | FND-05 | Recipe, search, photo-search и subscription сервисы переведены на единый `ApiClient`; transport добавляет tenant slug, locale, request ID и bearer token только при наличии сессии. Typed `ApiError` различает 401/403/404/409 и network errors; text search получил debounce и отмену предыдущего запроса. Удалены production debug controls, выдававшие premium. | `dart format --output=none --set-exit-if-changed lib test` — PASS; `flutter test` — PASS (21); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | `HttpBrandBootstrapRemoteLoader` остаётся явным startup migration adapter: он загружает bootstrap до создания Riverpod/`ApiClient`; после bootstrap config-запросы используют общий transport. Tenant header передаёт context и не служит авторизацией; её проверка остаётся server-side scope SEC-01. |
