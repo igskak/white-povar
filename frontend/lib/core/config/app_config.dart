@@ -22,6 +22,14 @@ class AppConfig {
     defaultValue: 'production',
   );
 
+  /// Identifies the public catalog and runtime configuration for this build.
+  /// Production-like builds must pass this explicitly; only development may use
+  /// the pilot tenant while local bootstrap tooling is being completed.
+  static const String tenantSlug = String.fromEnvironment(
+    'TENANT_SLUG',
+    defaultValue: environment == 'development' ? 'ohorodnik-oleksandr' : '',
+  );
+
   // App Configuration
   static const String appName = 'White Povar';
   static const String appVersion = '1.0.0';
@@ -48,6 +56,7 @@ class AppConfig {
     if (apiBaseUrl.isEmpty) missing.add('API_BASE_URL');
     if (supabaseUrl.isEmpty) missing.add('SUPABASE_URL');
     if (supabaseAnonKey.isEmpty) missing.add('SUPABASE_ANON_KEY');
+    if (tenantSlug.isEmpty) missing.add('TENANT_SLUG');
 
     if (missing.isNotEmpty) {
       throw StateError(

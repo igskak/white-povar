@@ -107,13 +107,17 @@ Note: the canonical Flutter app lives in `frontend/`. The root `lib/main.dart` i
 3. Run the app (pass runtime config with dart-define):
    ```bash
    # For web
-   flutter run -d chrome --web-port 3000 \
+    flutter run -d chrome --web-port 3000 \
+     --dart-define=ENVIRONMENT=development \
+     --dart-define=TENANT_SLUG=ohorodnik-oleksandr \
      --dart-define=API_BASE_URL=http://localhost:8000 \
      --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
      --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
 
    # For mobile (with device/emulator connected)
    flutter run \
+     --dart-define=ENVIRONMENT=development \
+     --dart-define=TENANT_SLUG=ohorodnik-oleksandr \
      --dart-define=API_BASE_URL=http://10.0.2.2:8000 \
      --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
      --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
@@ -292,6 +296,8 @@ Note: the canonical Flutter app lives in `frontend/`. The root `lib/main.dart` i
 2. **Build and Deploy** (provide runtime config):
    ```bash
    flutter build web --release \
+     --dart-define=TENANT_SLUG=ohorodnik-oleksandr \
+     --dart-define=ENVIRONMENT=production \
      --dart-define=API_BASE_URL=https://your-backend.example.com \
      --dart-define=SUPABASE_URL=https://<your-project>.supabase.co \
      --dart-define=SUPABASE_ANON_KEY=<your-anon-key>
@@ -323,7 +329,9 @@ Note: the canonical Flutter app lives in `frontend/`. The root `lib/main.dart` i
 1. **Android (Google Play Store)**:
    ```bash
    # Build release
-   flutter build appbundle --release
+   flutter build appbundle --release \
+     --dart-define=TENANT_SLUG=ohorodnik-oleksandr \
+     --dart-define=ENVIRONMENT=production
 
    # Upload to Google Play Console
    ```
@@ -331,7 +339,9 @@ Note: the canonical Flutter app lives in `frontend/`. The root `lib/main.dart` i
 2. **iOS (Apple App Store)**:
    ```bash
    # Build for iOS
-   flutter build ios --release
+   flutter build ios --release \
+     --dart-define=TENANT_SLUG=ohorodnik-oleksandr \
+     --dart-define=ENVIRONMENT=production
 
    # Archive and upload via Xcode
    ```

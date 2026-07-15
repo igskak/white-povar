@@ -5,6 +5,8 @@ from functools import wraps
 import logging
 
 from app.core.settings import settings
+from app.schemas.brand_config import validate_brand_config
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +192,69 @@ class SupabaseService:
     async def get_chef_config(self, chef_id: str) -> Dict[str, Any]:
         """Get chef configuration"""
         return await self.execute_query('chefs', 'select', filters={'id': chef_id})
+
+    async def get_tenant_bootstrap(self, tenant_slug: str) -> Dict[str, Any]:
+        """Return published runtime configuration without exposing other tenants."""
+        try:
+            client = self.get_client(use_service_key=True)
+            chef_result = (
+                client.table('chefs')
+                .select('id,slug,is_active')
+                .eq('slug', tenant_slug)
+                .eq('is_active', True)
+                .limit(1)
+                .execute()
+            )
+            chefs = chef_result.data or []
+            if not chefs:
+                return {'state': 'tenant_not_found'}
+
+            chef = chefs[0]
+            brand_result = (
+                client.table('brand_configs')
+                .select('version,config')
+                .eq('chef_id', chef['id'])
+                .eq('status', 'published')
+                .order('version', desc=True)
+                .limit(1)
+                .execute()
+            )
+            product_result = (
+                client.table('product_configs')
+                .select('version,config')
+                .eq('chef_id', chef['id'])
+                .eq('status', 'published')
+                .order('version', desc=True)
+                .limit(1)
+                .execute()
+            )
+            brands = brand_result.data or []
+            products = product_result.data or []
+            if not brands or not products:
+                return {'state': 'config_not_published'}
+
+            brand, product = brands[0], products[0]
+            if not isinstance(brand.get('config'), dict) or not isinstance(product.get('config'), dict):
+                return {'state': 'config_malformed'}
+
+            try:
+                # This is also the publish safety net for legacy/direct database
+                # writes: invalid drafts cannot become runtime configuration.
+                brand_config = validate_brand_config(brand['config'])
+            except ValidationError:
+                logger.warning('Published BrandConfig failed validation for tenant %s', tenant_slug)
+                return {'state': 'config_malformed'}
+
+            return {
+                'state': 'ok',
+                'tenant': {'id': chef['id'], 'slug': chef['slug']},
+                'brand_config': brand_config,
+                'product_config': product['config'],
+                'config_version': f"brand-{brand['version']}-product-{product['version']}",
+            }
+        except Exception:
+            logger.exception('Unable to load bootstrap for tenant slug %s', tenant_slug)
+            raise
 
     # Video-related methods
     async def create_recipe_video(self, video_data: Dict[str, Any]) -> Dict[str, Any]:

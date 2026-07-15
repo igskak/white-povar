@@ -32,8 +32,8 @@ services:
     envVars:
       - key: SKIP_INSTALL_DEPS
         value: "true"
-      - key: FLUTTER_VERSION
-        value: 3.24.5
+      - key: TENANT_SLUG
+        value: ohorodnik-oleksandr
       - key: API_BASE_URL
         value: https://white-povar-api-p79r.onrender.com
       - key: WEB_APP_URL
@@ -70,7 +70,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: ALLOWED_ORIGINS
-        value: https://white-povar-p79r.onrender.com
+        value: https://white-povar.web.app,https://white-povar.firebaseapp.com
       - key: DEFAULT_LOCALE
         value: uk
       - key: SUPPORTED_LOCALES

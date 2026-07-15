@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    doc-page:not(:defined) { visibility: hidden; }
+    body { margin: 0; background: #E9E2D6; font-family: 'Figtree', sans-serif; color: #242019; }
+    a { color: #A94428; }
+    a:hover { color: #923B22; }
+    h1, h2, h3 { font-family: 'Source Serif 4', serif; }
+    code, .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</helmet>
+
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.7in" hint-size="816px,1056px">
+
+  <div slot="header" style="display: flex; align-items: center; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9A9084; padding-bottom: 6px; border-bottom: 1px solid #E4DBCC;">
+    <span style="letter-spacing: 2px; text-transform: uppercase; color: #B08A2E; font-weight: 600;">White Povar</span>
+    <span>Developer Handoff · Chef's Table</span>
+  </div>
+  <div slot="footer" style="display: flex; align-items: center; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9A9084; padding-top: 6px; border-top: 1px solid #E4DBCC;">
+    <span>v1.2 · липень 2026</span>
+    <span>Mobile 390 · Flutter</span>
+  </div>
+
+  <!-- ═══════ TITLE ═══════ -->
+  <div style="display: flex; flex-direction: column; gap: 6px; margin: 28px 0 8px;">
+    <h1 style="font-size: 38px; font-weight: 700; letter-spacing: -1px; line-height: 1.05; margin: 0;">Design → Flutter Handoff</h1>
+    <div style="font-size: 15px; color: #6F675C; line-height: 1.5;">Chef's Table (dark + light) + шар персони блогера <span class="mono" style="font-size: 13px;">BrandConfig</span> (Етапи 12–13). Специфікація ґрунтується на існуючому коді: <span class="mono" style="font-size: 13px;">app_router.dart</span>, <span class="mono" style="font-size: 13px;">app_tokens.dart</span>, <span class="mono" style="font-size: 13px;">recipe.dart</span>. Нових routes чи полів моделі не додано.</div>
+  </div>
+
+  <div style="break-inside: avoid; background: #FBF6EC; border: 1px solid #E9D9B4; border-radius: 12px; padding: 14px 16px; margin-top: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;">
+      <div style="font-weight: 700; font-size: 14px;">Що змінилося у v1.1</div>
+      <div class="mono" style="font-size: 11px; color: #9A9084;">Етап 12 · персона блогера</div>
+    </div>
+    <div style="font-size: 12.5px; color: #3C362D; line-height: 1.65;">
+      <div><b>Додано</b> шар <span class="mono" style="font-size: 11.5px;">BrandConfig</span> (розділ 5): токени <span class="mono" style="font-size: 11.5px;">accent</span>/<span class="mono" style="font-size: 11.5px;">onAccent</span> тепер брендовані; золото — дефолт демо-бренду Chef's Table.</div>
+      <div><b>Додано</b> нові значення: <span class="mono" style="font-size: 11.5px;">brand.accentOnDark</span> (авто-освітлення до AA на темних сценах) і авто-гейт контрасту для CTA у світлій темі.</div>
+      <div><b>Змінено</b> Home header (12a): аватар + <span class="mono" style="font-size: 11.5px;">brand.name</span> + привітання <span class="mono" style="font-size: 11.5px;">brand.voice.greeting</span>; додано картку курсу.</div>
+      <div><b>Змінено</b> Paywall (12b): портрет + підпис блогера, заголовок із <span class="mono" style="font-size: 11.5px;">brand.voice.paywallTitle</span>; тарифи й структура без змін.</div>
+      <div><b>Змінено</b> Login 8e → 12e: аватар 72, <span class="mono" style="font-size: 11.5px;">brand.voice.loginTitle</span>, фон із <span class="mono" style="font-size: 11.5px;">brand.heroPhotos</span>; поля, Google/Apple, guest-вхід — без змін.</div>
+      <div><b>Без змін:</b> routes, моделі, стани, spacing/radius/motion, premium-золото як системний токен, camera flow.</div>
+    </div>
+  </div>
+
+  <div style="break-inside: avoid; background: #FBF6EC; border: 1px solid #E9D9B4; border-radius: 12px; padding: 14px 16px; margin-top: 12px;">
+    <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px;">
+      <div style="font-weight: 700; font-size: 14px;">Що змінилося у v1.2</div>
+      <div class="mono" style="font-size: 11px; color: #9A9084;">Етап 13 · закриття гепів</div>
+    </div>
+    <div style="font-size: 12.5px; color: #3C362D; line-height: 1.65;">
+      <div><b>Зафіксовано</b> схему BrandConfig (13a): 7 обов'язкових полів (name, creatorName, avatar, accent, voice.greeting, voice.loginTitle, voice.paywallTitle) + optional (voice.courseName, courseTag, font, heroPhotos, logo). <b>brand.voice — рівно 4 рядки</b>; згадка про 3 у v1.1 — помилка.</div>
+      <div><b>Специфіковано</b> похідні кольори (13b): accentPressed = −12% lightness OKLCH; onAccent = ink якщо ≥ 4.5:1, інакше white; accentOnDark = освітлення до ≥ 4.5:1 на ink; гейт заливки CTA у світлій темі — 3.0:1 (WCAG 1.4.11). Усе рахується при публікації, runtime отримує готові токени.</div>
+      <div><b>Замінено</b> grotesque-пресет: Archivo → <b>Golos Text</b> (повна кирилиця). Фінальні пресети (13c): Source Serif 4 · Golos Text · Lora, fallback-стеки і ваги зафіксовано.</div>
+      <div><b>Додано</b> спеку heroPhotos (13d): майстер-кадр ≥ 1600×1200, focal point {x,y}, overlay ink 5→90%, safe area, таблиця кропів, градієнтний fallback.</div>
+      <div><b>Додано</b> контракт курс-картки (13g): рецепти за courseTag, стани locked/active/hidden, CTA → /subscription або /search?tag=…; повні стани paywall (13h) і login (13i); фолбеки конфігу (13j); правило «аватар блогера ≠ профіль користувача» (13k); шаблони app icon/splash/favicon (13l); flow бренду в Creator Studio (13m).</div>
+      <div><b>Додано</b> tablet/desktop-варіанти Home, Login, Paywall (13f): NavigationRail ≥ 600, split-login, paywall-діалог 560.</div>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #E4DBCC; margin: 22px 0;">
+
+  <!-- ═══════ 1 · TOKENS ═══════ -->
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 4px;">1 · Design tokens (AppColorsV2)</h2>
+  <p style="font-size: 13.5px; line-height: 1.55; color: #3C362D; margin: 0 0 12px;">Два набори значень тих самих semantic-токенів → <code style="font-size: 12.5px;">ThemeData.dark()</code> / <code style="font-size: 12.5px;">ThemeData.light()</code>. Перемикач у Settings керує <code style="font-size: 12.5px;">ThemeMode</code>. Camera flow завжди рендериться в темних значеннях незалежно від теми. <b>v1.1:</b> <code style="font-size: 12.5px;">accent</code>/<code style="font-size: 12.5px;">onAccent</code> приходять із <code style="font-size: 12.5px;">BrandConfig</code> (розділ 5); значення нижче — дефолт Chef's Table.</p>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px;">
+    <thead>
+      <tr style="background: #F2ECE1;">
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Token</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;" class="mono">dark</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;" class="mono">light</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Використання</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">background</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#16130F;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#16130F</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#F5EEE1;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#F5EEE1</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Scaffold</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">surface</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#221D16;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#221D16</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#FDF8EE;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#FDF8EE</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Cards, nav, поля</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">surfaceStrong</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#2E2820;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#2E2820</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#EBE0CC;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#EBE0CC</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Межі, дільники, chip</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">textPrimary</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#F3E9DA;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#F3E9DA</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#1C1710;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#1C1710</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Заголовки, основний</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">textSecondary</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#B9AC98;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#B9AC98</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#7C7159;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#7C7159</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Метадані, підписи</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">accent</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#D9A441;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#D9A441</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#A87B24;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#A87B24</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Золото: акцент, бейджі</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">onAccent</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#16130F;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#16130F</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#F3E9DA;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#F3E9DA*</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Текст на CTA</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">success</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#7A9E7E;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#7A9E7E</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#3E6B4A;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#3E6B4A</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Підтверджено, збіг</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">warning</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#C9A24B;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#C9A24B</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#B0832E;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#B0832E</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">Низька впевненість</td></tr>
+      <tr><td style="padding: 7px 10px;" class="mono">error</td><td style="padding: 7px 10px;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#D67A6B;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#D67A6B</td><td style="padding: 7px 10px;"><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#A8362A;border:1px solid #ccc;vertical-align:middle;margin-right:6px;"></span>#A8362A</td><td style="padding: 7px 10px; color:#6F675C;">Помилки, destructive</td></tr>
+    </tbody>
+  </table>
+
+  <div style="display: flex; gap: 24px; margin-bottom: 20px;">
+    <div style="flex: 1;">
+      <h3 style="font-size: 15px; font-weight: 700; margin: 0 0 6px;">Типографіка</h3>
+      <div style="font-size: 12.5px; line-height: 1.7; color: #3C362D;">
+        <div>Display / заголовки — <b>Source Serif 4</b> 700</div>
+        <div>UI / body — <b>Figtree</b> 400–700</div>
+        <div>Дані / коди — <b>JetBrains Mono</b></div>
+        <div style="color:#6F675C; margin-top:4px;">headline 40/30 · title 22 · body 16/14 · label 11</div>
+      </div>
+    </div>
+    <div style="flex: 1;">
+      <h3 style="font-size: 15px; font-weight: 700; margin: 0 0 6px;">Spacing · Radius · Motion</h3>
+      <div style="font-size: 12.5px; line-height: 1.7; color: #3C362D;">
+        <div>Spacing 8-pt: 4 · 8 · 12 · 16 · 24 · 32 · 40 · 56</div>
+        <div>Radius: chip 8 · button 12–14 · card 16–18 · sheet 24–28</div>
+        <div>Motion: 150 press · 250 transition · 400 hero</div>
+      </div>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #E4DBCC; margin: 22px 0;">
+
+  <!-- ═══════ 2 · ROUTES ═══════ -->
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 4px;">2 · Навігація (app_router.dart)</h2>
+  <p style="font-size: 13.5px; line-height: 1.55; color: #3C362D; margin: 0 0 12px;">ShellRoute з <code style="font-size:12.5px;">NavigationBar</code> (4 вкладки). Camera flow і recipe/* — поза shell (нижня навігація прихована).</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 20px;">
+    <thead>
+      <tr style="background: #F2ECE1;">
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Route</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Екран</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Shell / nav</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Guard</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/login</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Вхід (8e)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">public</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/home</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Home 4b (5a/5b стани)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">tab 1</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">public</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/search</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Discover 4c (5c/5d)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">tab 2</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">public</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/saved</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Збережене</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">tab 3</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">guest → 8b</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/profile</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Профіль (8a/8b)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">tab 4</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">guest → 8b</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/recipes/:id</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Деталі (6a/6b)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">isPremium gate</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/recipes/:id/cook</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Cooking (6c/6d)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">exit confirm</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/camera</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Зйомка (7a/7b)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell · dark</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">CTA з Home</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/camera/review</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Перевірка (7c)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">—</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/camera/results</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Результати (7d)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">—</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">/subscription</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Paywall (8c)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">—</td></tr>
+      <tr><td style="padding: 7px 10px;" class="mono">/settings</td><td style="padding: 7px 10px;">Налаштування (8d)</td><td style="padding: 7px 10px; color:#6F675C;">поза shell</td><td style="padding: 7px 10px; color:#6F675C;">—</td></tr>
+    </tbody>
+  </table>
+
+  <hr style="border: none; border-top: 1px solid #E4DBCC; margin: 22px 0;">
+
+  <!-- ═══════ 3 · COMPONENTS ═══════ -->
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 4px;">3 · Компоненти — паддінги та розміри</h2>
+  <p style="font-size: 13.5px; line-height: 1.55; color: #3C362D; margin: 0 0 12px;">Reusable-віджети. Значення — logical px під mobile 390. Горизонтальний padding екранів — 20.</p>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">PrimaryButton</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">height 48–52 · radius 12–14 · padding H 24 · label Figtree 16/700 · fill accent, text onAccent · press → 250 darken · loading = spinner + label · disabled opacity 0.38.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">SecondaryButton / Outline</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">height 48 · radius 12–14 · border 1.5 surfaceStrong або accent · text textPrimary/accent · transparent fill.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">AppTextField</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">height 48–52 · radius 12–14 · padding H 16 · border 1 → 1.5 accent focus · error border error + helper 12 · optional leading/trailing icon 20.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">RecipeCard (list / grid / featured)</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">radius 16–18 · image 150–190 h (list) / 106 (grid) · title Serif 17–19 · meta row textSecondary 12–13 (schedule + cuisine). Featured = золотий бейдж. Premium = золотий workspace_premium бейдж/іконка. Fallback: surfaceStrong + restaurant icon. Skeleton = shimmer 1.4s.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">FilterChip · MetaChip · Stepper</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">Chip height 34–36 · radius 8–18 · active fill accent/onAccent, idle surface+border. Stepper: 26–28 кружки, done = success+check, active = accent+№, pending = surfaceStrong.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">IngredientRow (DetectedIngredient)</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">height 56 · radius 12 · checkbox 22 · name 15/600 + confidence 12. confidence &lt; 60% → пунктирна warning-рамка + «підтвердіть». trailing edit + delete, hit-area 44.</div>
+    </div>
+    <div style="break-inside: avoid; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">StateView · NavigationBar · Snackbar/Dialog</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">StateView: icon 34–36 + title 18/700 + text + optional CTA, центровано. NavigationBar height 68–72, active tab accent icon+label. Snackbar 48 dark surface. Dialog radius 22–24, destructive action error.</div>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #E4DBCC; margin: 22px 0;">
+
+  <!-- ═══════ 4 · STATE MAP ═══════ -->
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 4px;">4 · Мапа станів</h2>
+  <p style="font-size: 13.5px; line-height: 1.55; color: #3C362D; margin: 0 0 12px;">Кожен data-екран проходить AsyncValue: loading / data / error. Happy-path показано; guest/premium — окремі гілки guard.</p>
+  <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 18px;">
+    <thead>
+      <tr style="background: #F2ECE1;">
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Екран</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">loading</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">empty / no-data</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">error</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Home</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">skeleton (5a)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">—</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">StateView.error + retry (5b)</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Discover</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">grid skeleton (5d)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">no results + reset (5c)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">StateView.error у сітці</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Saved</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">skeleton list</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">empty + «знайти рецепт» / guest → 8b</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">StateView.error</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Recipe detail</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">header + body skeleton</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">premium/guest gate (6b)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">StateView.error</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;">Camera</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">аналіз (7b)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">нічого не знайшли → ручне введення</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">retry + manual</td></tr>
+      <tr><td style="padding: 7px 10px;">Auth</td><td style="padding: 7px 10px; color:#6F675C;">CTA spinner</td><td style="padding: 7px 10px; color:#6F675C;">—</td><td style="padding: 7px 10px; color:#6F675C;">field errors + snackbar</td></tr>
+    </tbody>
+  </table>
+
+  <hr style="border: none; border-top: 1px solid #E4DBCC; margin: 22px 0;">
+
+  <!-- ═══════ 5 · BRANDCONFIG ═══════ -->
+  <h2 style="font-size: 22px; font-weight: 700; margin: 0 0 4px;">5 · BrandConfig — шар персони блогера <span class="mono" style="font-size: 13px; color: #B08A2E; font-weight: 500;">нове у v1.1</span></h2>
+  <p style="font-size: 13.5px; line-height: 1.55; color: #3C362D; margin: 0 0 12px;">White-label: один Flutter-код, конфіг на блогера (remote config / build flavor) → <code style="font-size: 12.5px;">ThemeData</code> + рядки копірайту. Жодних нових полів у <code style="font-size: 12.5px;">recipe.dart</code> чи routes. Референси: <b>12a</b> три бренди · <b>12b</b> paywall · <b>12e</b> login · <b>12c</b> шкала присутності.</p>
+
+  <table style="width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px;">
+    <thead>
+      <tr style="background: #F2ECE1;">
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Ключ</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Тип / обмеження</th>
+        <th style="text-align: left; padding: 8px 10px; border-bottom: 2px solid #E4DBCC; font-weight: 700;">Куди мапиться</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.name · brand.creatorName</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">string ≤ 20 · ≤ 16 · обидва обов'язкові</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">кікер «Бренд · Ім'я» (12a), підпис пейвола, сторінки сторів</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.avatar · brand.logo</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">URL квадрат ≥ 512 (обов'язк.) · URL знак (opt → монограма)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">header 44 / login 72 / splash 96 (13k) · app icon, favicon (13l)</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.accent + accentPressed</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">1 колір; pressed рахується автоматично</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">токени accent/onAccent: CTA, активна вкладка, chips, links</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.accentOnDark</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">авто: освітлення до AA на ink</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">темні сцени: paywall, login, camera, dark theme</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.font</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">1 із 3 курованих пар (serif / grotesque / humanist)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">display-роль (заголовки); UI-шрифт Figtree спільний</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.heroPhotos</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">список URL, фірмові зйомки</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">login-фон (12e), onboarding (пізніше), fallback hero</td></tr>
+      <tr><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC;" class="mono">brand.voice</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">рівно 4 рядки: greeting ≤ 24, loginTitle ≤ 28, paywallTitle ≤ 28 (обов'язк.) · courseName ≤ 36 (opt)</td><td style="padding: 7px 10px; border-bottom: 1px solid #EFE8DC; color:#6F675C;">привітання Home, заголовки login/paywall, картка курсу (порожньо → картки немає)</td></tr>
+      <tr><td style="padding: 7px 10px;" class="mono">brand.courseTag</td><td style="padding: 7px 10px; color:#6F675C;">slug, разом із courseName</td><td style="padding: 7px 10px; color:#6F675C;">CTA картки: premium → /search?tag=…, інакше → /subscription (13g)</td></tr>
+    </tbody>
+  </table>
+
+  <div style="display: flex; gap: 12px; margin-bottom: 18px;">
+    <div style="break-inside: avoid; flex: 1; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">Авто-гейт контрасту</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">Світла тема: якщо <span class="mono" style="font-size: 11.5px;">brand.accent</span> як заливка не тримає AA — CTA рендериться ink (#1C1710) з акцентною іконкою (кейс золота). Темні сцени: акцент освітлюється до <span class="mono" style="font-size: 11.5px;">accentOnDark</span> (зелень #3F7D52 → #7FB98D). Перевірка — на етапі валідації конфігу, не в runtime. Формули: 13b.</div>
+    </div>
+    <div style="break-inside: avoid; flex: 1; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">Фолбеки конфігу (13j)</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">Optional-поля → тихі дефолти (serif, градієнт, монограма, без курс-картки). Битий avatar → монограма на accent. Немає конфігу на першому старті → нейтральна тема White Povar; на повторному → останній валідний кеш. Невалідний конфіг блокується у Creator Studio (13m) — runtime довіряє конфігу.</div>
+    </div>
+    <div style="break-inside: avoid; flex: 1; background: #FBF7EF; border: 1px solid #EFE8DC; border-radius: 10px; padding: 12px 14px;">
+      <div style="font-weight: 700; font-size: 14px;">Межі персони (рівень 2, 12c)</div>
+      <div style="font-size: 12.5px; color: #6F675C; line-height: 1.5;">Персона живе у 5 точках: header, привітання, акцент, фірмове фото, курс/paywall/login. Нейтральні назавжди: навігація і routes, camera flow, стани loading/empty/error, spacing/radius, premium-золото (системний токен), success/warning/error.</div>
+    </div>
+  </div>
+
+  <div style="break-inside: avoid; background: #FBF6EC; border: 1px solid #E9D9B4; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px;">
+    <div style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">Правила брейкпойнтів</div>
+    <div style="font-size: 12.5px; color: #3C362D; line-height: 1.6;">Дизайн специфіковано під <b>390 (mobile)</b>. ≥ 600 (tablet): контент max-width 480, центровано; Discover-сітка 3 колонки; Home hero max-height 360. ≥ 1024 (desktop/web): двоколонковий master–detail (список ліворуч 420, деталі праворуч). NavigationBar → NavigationRail ≥ 600 (аватар блогера — верх рейки). Login ≥ 1024 — split: heroPhoto ліворуч, форма max 440. Paywall ≥ 600 — центрований діалог 560, scrim 45%, route той самий. Макети: 13f.</div>
+  </div>
+
+</x-import>
+</x-dc>
+</body>
+</html>

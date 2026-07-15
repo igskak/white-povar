@@ -68,6 +68,9 @@ The API will be available at:
 
 ## API Endpoints
 
+### Runtime bootstrap
+- `GET /api/v1/bootstrap/{tenant_slug}` - Active tenant BrandConfig and product config; supports `If-None-Match` / `304`
+
 ### Authentication
 - `POST /auth/login` - Login with email/password
 - `POST /auth/register` - Register new user

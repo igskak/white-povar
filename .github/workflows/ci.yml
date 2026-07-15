@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.24.1'
   PYTHON_VERSION: '3.11'
   CI_SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo0MTAyNDQ0ODAwfQ.test-signature'
   CI_SUPABASE_SERVICE_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlc3QiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjQxMDI0NDQ4MDB9.test-signature'
@@ -28,7 +27,7 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: ${{ env.FLUTTER_VERSION }}
+        flutter-version-file: frontend/.flutter-version
         cache: true
         
     - name: Get dependencies
@@ -44,15 +43,14 @@ jobs:
       run: flutter test
 
     - name: Build Flutter web
-      run: |
-        flutter build web \
-          --release \
-          --base-href=/ \
-          --dart-define=API_BASE_URL=https://white-povar-api-p79r.onrender.com \
-          --dart-define=WEB_APP_URL=https://white-povar-p79r.onrender.com \
-          --dart-define=SUPABASE_URL=https://example.supabase.co \
-          --dart-define=SUPABASE_ANON_KEY=test-anon-key \
-          --dart-define=ENVIRONMENT=ci
+      env:
+        API_BASE_URL: https://white-povar-api-p79r.onrender.com
+        WEB_APP_URL: https://white-povar-p79r.onrender.com
+        SUPABASE_URL: https://example.supabase.co
+        SUPABASE_ANON_KEY: test-anon-key
+        ENVIRONMENT: ci
+        TENANT_SLUG: ohorodnik-oleksandr
+      run: ./scripts/build-web.sh
 
   backend-ci:
     runs-on: ubuntu-latest

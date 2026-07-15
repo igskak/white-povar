@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "tenantSlug": "ohorodnik-oleksandr",
+  "locale": "uk",
+  "brand": {
+    "name": "Огороднік Олександр",
+    "creatorName": "Олександр",
+    "avatar": "PENDING:/brands/ohorodnik-oleksandr/avatar-512.png",
+    "accent": "#5D7183",
+    "font": "grotesque",
+    "voice": {
+      "greeting": "Ой, друзі, ну це щось...",
+      "loginTitle": "Готуйте з Олександром",
+      "paywallTitle": "Колекції Олександра",
+      "courseName": "Майстерня Олександра"
+    },
+    "courseTag": "maisternia-oleksandra",
+    "heroPhotos": [],
+    "logo": null
+  }
+}

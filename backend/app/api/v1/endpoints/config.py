@@ -4,14 +4,41 @@ Configuration API endpoints
 Provides system configuration and localization settings
 """
 
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, HTTPException, Request, Query, Response
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
 
 from app.core.settings import settings
 from app.middleware.localization import get_localization_context, ResponseLocalizer
+from app.schemas.bootstrap import TenantBootstrap
+from app.services.database import supabase_service
 
 router = APIRouter()
+bootstrap_router = APIRouter()
+
+
+@bootstrap_router.get('/bootstrap/{tenant_slug}', response_model=TenantBootstrap)
+async def get_tenant_bootstrap(
+    tenant_slug: str,
+    request: Request,
+    response: Response,
+):
+    """Serve the active brand and product configuration for one public tenant."""
+    bootstrap = await supabase_service.get_tenant_bootstrap(tenant_slug)
+    state = bootstrap['state']
+    if state == 'tenant_not_found':
+        # Inactive tenants deliberately have the same public response as unknown ones.
+        raise HTTPException(status_code=404, detail='Tenant not found')
+    if state in {'config_not_published', 'config_malformed'}:
+        raise HTTPException(status_code=409, detail='Tenant configuration is unavailable')
+
+    etag = f'"{bootstrap["config_version"]}"'
+    if request.headers.get('if-none-match') == etag:
+        return Response(status_code=304, headers={'ETag': etag})
+
+    response.headers['ETag'] = etag
+    response.headers['Cache-Control'] = 'private, must-revalidate'
+    return bootstrap
 
 
 class SystemConfig(BaseModel):

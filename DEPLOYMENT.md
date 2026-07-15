@@ -191,13 +191,13 @@ firebase init hosting
 ### Android (Google Play Store)
 ```bash
 cd frontend
-flutter build appbundle --release --dart-define=API_BASE_URL=https://your-app.onrender.com --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-key
+flutter build appbundle --release --dart-define=TENANT_SLUG=ohorodnik-oleksandr --dart-define=ENVIRONMENT=production --dart-define=API_BASE_URL=https://your-app.onrender.com --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ### iOS (Apple App Store)
 ```bash
 cd frontend
-flutter build ios --release --dart-define=API_BASE_URL=https://your-app.onrender.com --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-key
+flutter build ios --release --dart-define=TENANT_SLUG=ohorodnik-oleksandr --dart-define=ENVIRONMENT=production --dart-define=API_BASE_URL=https://your-app.onrender.com --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-key
 ```
 
 ## 5. Domain Setup (Optional)
