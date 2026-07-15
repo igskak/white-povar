@@ -171,6 +171,27 @@ async def get_current_user(current_user: User = Depends(verify_firebase_token)):
     """Get current user information"""
     return current_user
 
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(current_user: User = Depends(verify_firebase_token)):
+    """Permanently erase the authenticated user's application and auth record.
+
+    All private application tables reference ``users`` with ``ON DELETE
+    CASCADE``. Deleting the public record first therefore removes favorites,
+    history and entitlements before the Supabase Admin API revokes the identity.
+    """
+    try:
+        await supabase_service.execute_query(
+            'users', 'delete', filters={'id': current_user.id}, use_service_key=True
+        )
+        supabase_service.service_client.auth.admin.delete_user(current_user.id)
+    except Exception as e:
+        logger.error("User deletion failed for %s: %s", current_user.id, e)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not delete account",
+        )
+
 @router.post("/refresh")
 async def refresh_token():
     """Deprecated: use Supabase session refresh in the client SDK."""

@@ -4,6 +4,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/recipe.dart';
 import '../services/recipe_service.dart';
 import '../services/cooking_progress_store.dart';
+import '../services/guest_favorite_store.dart';
 
 // Recipe filter state
 class RecipeFilter {
@@ -127,13 +128,15 @@ class FavoriteNotifier extends StateNotifier<Set<String>> {
 
   final RecipeService _recipeService;
   final Ref _ref;
+  final GuestFavoriteStore _guestFavorites = GuestFavoriteStore();
   final Map<String, Future<void>> _writes = {};
   String? _guestIntentRecipeId;
 
   bool isFavorite(String recipeId) => state.contains(recipeId);
 
-  void queueGuestIntent(String recipeId) {
+  Future<void> queueGuestIntent(String recipeId) async {
     _guestIntentRecipeId = recipeId;
+    await _guestFavorites.add(recipeId);
   }
 
   Future<void> onAuthenticated() async {
@@ -141,9 +144,18 @@ class FavoriteNotifier extends StateNotifier<Set<String>> {
       final recipes = await _recipeService.getFavoriteRecipes();
       state = recipes.map((recipe) => recipe.id).toSet();
       _ref.invalidate(favoriteRecipesProvider);
+      final intents = await _guestFavorites.read();
       final intent = _guestIntentRecipeId;
       _guestIntentRecipeId = null;
-      if (intent != null) await setFavorite(intent, true);
+      if (intent != null) intents.add(intent);
+      for (final recipeId in intents) {
+        if (state.contains(recipeId)) {
+          await _guestFavorites.remove(recipeId);
+          continue;
+        }
+        await setFavorite(recipeId, true);
+        await _guestFavorites.remove(recipeId);
+      }
     } catch (_) {
       // Cards remain usable; a mutation will expose its own recoverable error.
     }

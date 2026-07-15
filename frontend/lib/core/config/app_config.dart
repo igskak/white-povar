@@ -39,6 +39,8 @@ class AppConfig {
   );
   static const String authCallbackPath = '/auth/callback';
   static const String webAuthCallbackUrl = '$webAppUrl$authCallbackPath';
+  static const String mobileAuthCallbackUrl =
+      'io.supabase.cookingapp://login-callback';
 
   // Feature Flags
   static const bool enableAnalytics = bool.fromEnvironment(

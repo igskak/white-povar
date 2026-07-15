@@ -45,7 +45,8 @@ class FavoriteButton extends ConsumerWidget {
   ) async {
     final favorites = ref.read(favoriteIdsProvider.notifier);
     if (!signedIn) {
-      favorites.queueGuestIntent(recipeId);
+      await favorites.queueGuestIntent(recipeId);
+      if (!context.mounted) return;
       final returnTo = GoRouterState.of(context).uri.toString();
       context.go('/login?returnTo=${Uri.encodeComponent(returnTo)}');
       return;

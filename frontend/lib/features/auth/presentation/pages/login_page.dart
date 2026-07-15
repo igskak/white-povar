@@ -106,6 +106,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       passwordFocus: _passwordFocus,
       obscurePassword: _obscurePassword,
       resetSent: _resetSent,
+      verificationPending: authState.needsEmailVerification,
       isLoading: authState.isLoading,
       error: _visibleError(authState.error),
       onSubmit: _submit,
@@ -223,6 +224,7 @@ class _LoginForm extends StatelessWidget {
     required this.passwordFocus,
     required this.obscurePassword,
     required this.resetSent,
+    required this.verificationPending,
     required this.isLoading,
     required this.error,
     required this.onSubmit,
@@ -243,6 +245,7 @@ class _LoginForm extends StatelessWidget {
   final FocusNode passwordFocus;
   final bool obscurePassword;
   final bool resetSent;
+  final bool verificationPending;
   final bool isLoading;
   final String? error;
   final VoidCallback onSubmit;
@@ -268,6 +271,14 @@ class _LoginForm extends StatelessWidget {
           children: [
             if (error != null) _AuthBanner(message: error!, error: true),
             if (error != null) const SizedBox(height: 12),
+            if (verificationPending) ...[
+              const _AuthBanner(
+                message:
+                    'Перевірте пошту й підтвердьте email, щоб завершити створення акаунта.',
+                error: false,
+              ),
+              const SizedBox(height: 12),
+            ],
             if (isReset) ...[
               Row(
                 children: [

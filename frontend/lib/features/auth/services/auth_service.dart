@@ -37,6 +37,9 @@ class AuthService {
     _authStateSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       _currentUser = data.session?.user;
       _authStateController.add(_currentUser);
+      if (_currentUser != null) {
+        unawaited(_syncUserWithBackend(_currentUser!));
+      }
     });
   }
 
@@ -64,7 +67,7 @@ class AuthService {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo: kIsWeb ? AppConfig.webAuthCallbackUrl : null,
+        emailRedirectTo: _redirectUrl,
       );
 
       if (response.user != null) {
@@ -83,9 +86,7 @@ class AuthService {
     try {
       final didOpen = await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb
-            ? AppConfig.webAuthCallbackUrl
-            : 'io.supabase.cookingapp://login-callback',
+        redirectTo: _redirectUrl,
       );
       return didOpen;
     } catch (e) {
@@ -101,7 +102,7 @@ class AuthService {
     try {
       final didOpen = await _supabase.auth.signInWithOAuth(
         OAuthProvider.apple,
-        redirectTo: 'io.supabase.cookingapp://login-callback',
+        redirectTo: _redirectUrl,
       );
       return didOpen;
     } catch (e) {
@@ -119,11 +120,33 @@ class AuthService {
     }
   }
 
+  /// Starts a Supabase PKCE identity-linking flow for the signed-in account.
+  Future<bool> linkIdentity(OAuthProvider provider) {
+    return _supabase.auth.linkIdentity(provider, redirectTo: _redirectUrl);
+  }
+
+  /// Privacy policy: delete the app profile and all dependent private data,
+  /// then revoke the Supabase identity through the trusted backend.
+  Future<void> deleteAccount() async {
+    final token = await getIdToken();
+    if (token == null) throw Exception('No active session');
+    final response = await http.delete(
+      Uri.parse('${AppConfig.authEndpoint}/me'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) {
+      throw Exception('Account deletion failed: ${response.statusCode}');
+    }
+    await _supabase.auth.signOut();
+    _currentUser = null;
+    _authStateController.add(null);
+  }
+
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _supabase.auth.resetPasswordForEmail(
         email,
-        redirectTo: kIsWeb ? AppConfig.webAuthCallbackUrl : null,
+        redirectTo: _redirectUrl,
       );
     } catch (_) {
       // The UI always confirms this request to avoid account enumeration.
@@ -169,6 +192,9 @@ class AuthService {
       debugPrint('AuthService sync warning: $e');
     }
   }
+
+  String get _redirectUrl =>
+      kIsWeb ? AppConfig.webAuthCallbackUrl : AppConfig.mobileAuthCallbackUrl;
 
   void dispose() {
     _authStateSubscription?.cancel();

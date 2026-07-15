@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
@@ -8,6 +9,12 @@ import 'package:frontend/features/recipes/providers/recipe_provider.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('rapid save then unsave serializes desired server states', () async {
     final service = _FavoriteService();
     final container = ProviderContainer(
@@ -36,8 +43,8 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
-    final favorites = container.read(favoriteIdsProvider.notifier)
-      ..queueGuestIntent('recipe-1');
+    final favorites = container.read(favoriteIdsProvider.notifier);
+    await favorites.queueGuestIntent('recipe-1');
 
     await favorites.onAuthenticated();
 

@@ -51,7 +51,11 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
   Future<void> signUpWithEmail(String email, String password) async {
     state = const AppAuthState.loading();
     try {
-      await _authService!.signUpWithEmail(email, password);
+      final response = await _authService!.signUpWithEmail(email, password);
+      if (response.session == null && response.user != null) {
+        state = const AppAuthState.verificationPending();
+        return;
+      }
       if (_authService.currentUser == null) {
         state = const AppAuthState.unauthenticated();
       }
@@ -106,6 +110,31 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
     try {
       await _authService!.signOut();
       await CookingProgressStore().clearPrivateData();
+    } catch (e) {
+      state = AppAuthState.error(e.toString());
+    }
+  }
+
+  Future<void> linkIdentity(OAuthProvider provider) async {
+    state = const AppAuthState.loading();
+    try {
+      if (!await _authService!.linkIdentity(provider)) {
+        final user = _authService.currentUser;
+        state = user == null
+            ? const AppAuthState.unauthenticated()
+            : AppAuthState.authenticated(user);
+      }
+    } catch (e) {
+      state = AppAuthState.error(e.toString());
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    state = const AppAuthState.loading();
+    try {
+      await _authService!.deleteAccount();
+      await CookingProgressStore().clearPrivateData();
+      state = const AppAuthState.unauthenticated();
     } catch (e) {
       state = AppAuthState.error(e.toString());
     }

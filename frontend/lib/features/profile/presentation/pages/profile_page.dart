@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
@@ -140,6 +141,26 @@ class _SignedInProfile extends ConsumerWidget {
                   onTap: () => context.push('/settings')),
             ])),
             const SizedBox(height: AppSpacing.lg),
+            Card(
+              child: Column(children: [
+                _ProfileRow(
+                  icon: Icons.link,
+                  title: 'Спосіб входу',
+                  subtitle: 'Підключити Google до цього акаунта',
+                  onTap: () => ref
+                      .read(authProvider.notifier)
+                      .linkIdentity(OAuthProvider.google),
+                ),
+                const Divider(height: 1),
+                _ProfileRow(
+                  icon: Icons.delete_outline,
+                  title: 'Видалити акаунт',
+                  subtitle: 'Назавжди видалити профіль і приватні дані',
+                  onTap: () => _confirmDeletion(context, ref),
+                ),
+              ]),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             AppButton(
                 label: 'Вийти з акаунта',
                 icon: Icons.logout,
@@ -150,6 +171,31 @@ class _SignedInProfile extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeletion(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Видалити акаунт?'),
+        content: const Text(
+          'Збережені рецепти, історія та інші приватні дані буде видалено назавжди.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Скасувати'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Видалити'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(authProvider.notifier).deleteAccount();
+    }
   }
 }
 

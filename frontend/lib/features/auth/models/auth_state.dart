@@ -6,12 +6,14 @@ class AppAuthState extends Equatable {
   final bool isAuthenticated;
   final User? user;
   final String? error;
+  final bool needsEmailVerification;
 
   const AppAuthState._({
     required this.isLoading,
     required this.isAuthenticated,
     this.user,
     this.error,
+    this.needsEmailVerification = false,
   });
 
   const AppAuthState.initial()
@@ -39,6 +41,13 @@ class AppAuthState extends Equatable {
           isAuthenticated: false,
         );
 
+  const AppAuthState.verificationPending()
+      : this._(
+          isLoading: false,
+          isAuthenticated: false,
+          needsEmailVerification: true,
+        );
+
   const AppAuthState.error(String error)
       : this._(
           isLoading: false,
@@ -49,5 +58,6 @@ class AppAuthState extends Equatable {
   bool get hasError => error != null;
 
   @override
-  List<Object?> get props => [isLoading, isAuthenticated, user, error];
+  List<Object?> get props =>
+      [isLoading, isAuthenticated, user, error, needsEmailVerification];
 }
