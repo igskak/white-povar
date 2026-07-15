@@ -124,6 +124,26 @@ class SupabaseService:
             .eq('is_active', True).limit(1).execute()
         )
         return (result.data or [None])[0]
+
+    async def get_preference_profile(self, user_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
+        result = await self.execute_query(
+            'user_preference_profiles', 'select',
+            filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
+        )
+        return (result.data or [None])[0]
+
+    async def upsert_preference_profile(self, user_id: str, chef_id: str, data: Dict[str, Any]):
+        payload = {'user_id': user_id, 'chef_id': chef_id, **data}
+        client = self.get_client(use_service_key=True)
+        return client.table('user_preference_profiles').upsert(
+            payload, on_conflict='user_id,chef_id'
+        ).execute()
+
+    async def delete_preference_profile(self, user_id: str, chef_id: str):
+        return await self.execute_query(
+            'user_preference_profiles', 'delete',
+            filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
+        )
     
     async def get_recipe_by_id(self, recipe_id: str, chef_id: str) -> Dict[str, Any]:
         """Get one recipe only inside an already resolved tenant."""

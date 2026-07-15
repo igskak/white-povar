@@ -33,5 +33,7 @@ class RouteGuards {
   }
 
   static bool _requiresAuthentication(String path) =>
-      path == '/settings' || path.startsWith('/offers/');
+      path == '/settings' ||
+      path == '/preferences' ||
+      path.startsWith('/offers/');
 }

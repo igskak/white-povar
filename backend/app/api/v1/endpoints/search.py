@@ -20,6 +20,20 @@ from app.api.v1.endpoints.recipes import _premium_teaser, _recipe_from_row
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
+def _row_contains_any(row: Dict[str, Any], terms: List[str]) -> bool:
+    """Safety filter for declared allergens/dislikes.
+
+    Recipe tags and ingredient names are both checked.  This is intentionally
+    an exclusion, never a ranking hint: a match cannot reach the client.
+    """
+    haystack = [str(tag).lower() for tag in row.get('tags', [])]
+    haystack.extend(
+        str(ingredient.get('display_name') or ingredient.get('name') or '').lower()
+        for ingredient in row.get('recipe_ingredients', [])
+    )
+    return any(term in value for term in terms for value in haystack)
+
 # Helper functions for data mapping
 async def _get_category_name_from_id(category_id: str) -> str:
     """Get category name from category_id"""
@@ -369,17 +383,30 @@ async def search_catalog(
     premium metadata so discovery can render a locked teaser.
     """
     try:
+        profile = None
+        if current_user:
+            profile = await supabase_service.get_preference_profile(
+                current_user.id, tenant.chef_id,
+            )
+        consented = bool(profile and profile.get('personalization_consent'))
+        profile_diets = profile.get('diets', []) if consented else []
+        profile_allergens = profile.get('allergens', []) if consented else []
+        profile_dislikes = profile.get('dislikes', []) if consented else []
+        profile_time = profile.get('preferred_max_total_time') if consented else None
         result = await supabase_service.search_catalog_recipes(
             chef_id=tenant.chef_id,
             query_text=q.strip() if q else None,
-            tags=[tag.strip().lower() for tag in tags or [] if tag.strip()] or None,
+            tags=([tag.strip().lower() for tag in tags or [] if tag.strip()] + profile_diets) or None,
             difficulty=difficulty,
-            max_total_time=max_total_time,
+            max_total_time=min(value for value in [max_total_time, profile_time] if value is not None)
+            if max_total_time is not None or profile_time is not None else None,
             is_featured=is_featured,
             limit=limit,
             offset=offset,
         )
-        rows = result.data or []
+        rows = [row for row in result.data or []
+                if not _row_contains_any(row, profile_allergens)
+                and not _row_contains_any(row, profile_dislikes)]
         recipes = []
         for row in rows[:limit]:
             access = await resolve_recipe_access(row, tenant, current_user)

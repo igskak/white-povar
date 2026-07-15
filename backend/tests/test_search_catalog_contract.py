@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from app.api.v1.endpoints import search
 from app.core.tenant import TenantContext
+from app.api.v1.endpoints.auth import User
 
 
 def _row(recipe_id, chef_id, *, premium=False, tags=None):
@@ -87,3 +88,37 @@ def test_catalog_search_uses_offset_metadata_without_client_full_list(monkeypatc
 
     assert result.has_more is True
     assert result.next_offset == 2
+
+
+def test_catalog_search_excludes_declared_allergens_instead_of_ranking_them(monkeypatch):
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    unsafe = _row(str(uuid4()), tenant.chef_id, tags=['горіхи'])
+    safe = _row(str(uuid4()), tenant.chef_id, tags=['швидко'])
+
+    class Result:
+        data = [unsafe, safe]
+        count = 2
+
+    async def fake_search(**_):
+        return Result()
+
+    async def fake_profile(user_id, chef_id):
+        assert user_id == 'user-a'
+        assert chef_id == tenant.chef_id
+        return {
+            'personalization_consent': True,
+            'allergens': ['горіхи'],
+            'dislikes': [],
+            'diets': [],
+            'preferred_max_total_time': None,
+        }
+
+    monkeypatch.setattr(search.supabase_service, 'search_catalog_recipes', fake_search)
+    monkeypatch.setattr(search.supabase_service, 'get_preference_profile', fake_profile)
+    result = asyncio.run(search.search_catalog(
+        q=None, tags=None, difficulty=None, max_total_time=None,
+        is_featured=None, limit=20, offset=0,
+        current_user=User(id='user-a', email='a@example.com'), tenant=tenant,
+    ))
+
+    assert [str(recipe.id) for recipe in result.recipes] == [safe['id']]

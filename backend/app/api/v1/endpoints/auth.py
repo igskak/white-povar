@@ -7,6 +7,8 @@ import logging
 from app.core.settings import settings
 from app.core.security import get_auth_service, jwt_auth
 from app.services.database import supabase_service
+from app.core.tenant import TenantContext, require_tenant_context
+from app.schemas.preferences import PreferenceProfile, StoredPreferenceProfile
 
 router = APIRouter()
 security = HTTPBearer()
@@ -170,6 +172,42 @@ async def register(request: RegisterRequest):
 async def get_current_user(current_user: User = Depends(verify_firebase_token)):
     """Get current user information"""
     return current_user
+
+
+@router.get('/me/preferences', response_model=StoredPreferenceProfile)
+async def get_preferences(
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    profile = await supabase_service.get_preference_profile(current_user.id, tenant.chef_id)
+    if not profile:
+        return StoredPreferenceProfile(personalization_consent=False)
+    return StoredPreferenceProfile(**profile)
+
+
+@router.put('/me/preferences', response_model=StoredPreferenceProfile)
+async def save_preferences(
+    preferences: PreferenceProfile,
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    if not preferences.personalization_consent:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail='Explicit personalization consent is required; use DELETE to reset preferences.',
+        )
+    payload = preferences.model_dump()
+    await supabase_service.upsert_preference_profile(current_user.id, tenant.chef_id, payload)
+    stored = await supabase_service.get_preference_profile(current_user.id, tenant.chef_id)
+    return StoredPreferenceProfile(**(stored or payload))
+
+
+@router.delete('/me/preferences', status_code=status.HTTP_204_NO_CONTENT)
+async def reset_preferences(
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    await supabase_service.delete_preference_profile(current_user.id, tenant.chef_id)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

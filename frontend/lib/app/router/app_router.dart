@@ -11,6 +11,7 @@ import '../../features/camera/presentation/pages/ingredient_review_page.dart';
 import '../../features/camera/presentation/pages/photo_search_results_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/profile/presentation/pages/preferences_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/recipes/presentation/pages/cooking_mode_page.dart';
 import '../../features/recipes/presentation/pages/recipe_detail_page.dart';
@@ -29,6 +30,7 @@ class AppRoutePaths {
   static const saved = '/saved';
   static const profile = '/profile';
   static const settings = '/settings';
+  static const preferences = '/preferences';
   static const camera = '/camera';
   static const cameraReview = '/camera/review';
   static const cameraResults = '/camera/results';
@@ -71,6 +73,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutePaths.settings,
         builder: (_, __) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.preferences,
+        builder: (_, __) => const PreferencesPage(),
       ),
       GoRoute(
         path: AppRoutePaths.offer,

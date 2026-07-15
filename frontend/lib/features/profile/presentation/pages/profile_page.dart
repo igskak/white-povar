@@ -135,6 +135,12 @@ class _SignedInProfile extends ConsumerWidget {
                   onTap: () => context.go('/offers/subscription')),
               const Divider(height: 1),
               _ProfileRow(
+                  icon: Icons.tune_outlined,
+                  title: 'Харчові налаштування',
+                  subtitle: 'Раціон, алергени та вподобання',
+                  onTap: () => context.push('/preferences')),
+              const Divider(height: 1),
+              _ProfileRow(
                   icon: Icons.settings_outlined,
                   title: 'Налаштування',
                   subtitle: 'Тема, підтримка і правові документи',
