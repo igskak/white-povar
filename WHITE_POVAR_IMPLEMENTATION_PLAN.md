@@ -1,8 +1,8 @@
 # White Povar — детальный план имплементации
 
 Дата: 15 июля 2026  
-Статус: UI-05 выполнена; Recipe detail и cooking design parity закрывают защищённый premium teaser поверх существующего SEC-01 contract.
-Следующая задача: `UI-06`
+Статус: QA-DS выполнена; design-system gate покрывает pilot и три reference brands, темы, breakpoints и accessibility-настройки UI-01…UI-07.
+Следующая задача: `CORE-01`
 Канонический consumer-клиент: `frontend/`  
 Backend: `backend/`  
 Design source of truth: `White povar redesign brief document/Handoff Spec.dc.html` и `Stage 1 - Foundations.dc.html`, версия 1.2
@@ -170,7 +170,7 @@ Design source of truth: `White povar redesign brief document/Handoff Spec.dc.htm
 | 14 | UI-05 | Recipe detail и cooking design parity | DS-01, SEC-01 | DONE |
 | 15 | UI-06 | Saved, Profile и Settings design parity | DS-02 | DONE |
 | 16 | UI-07 | Camera flow design parity | DS-01 | DONE |
-| 17 | QA-DS | Design matrix, goldens и accessibility | UI-01…UI-07 | TODO |
+| 17 | QA-DS | Design matrix, goldens и accessibility | UI-01…UI-07 | DONE |
 | 18 | CORE-01 | Рабочие favorites/save state | QA-DS | TODO |
 | 19 | CORE-02 | Server-side search, filters, tags, pagination | SEC-01 | TODO |
 | 20 | CORE-03 | История, cooking progress и offline minimum | CORE-01 | TODO |
@@ -698,6 +698,7 @@ python3 -c "from app.main import app; print(app.title)"
 
 | Дата | ID | Результат | Проверки | Примечания |
 |---|---|---|---|---|
+| 2026-07-15 | QA-DS | Добавлены единая QA design matrix и `qa_design_matrix_test.dart`: pilot + три reference BrandConfig рендерятся в light/dark на 390/768/1280; проверены 200% scale, reduced motion, accessible navigation, semantics, keyboard submit и contrast. `QA_DESIGN_MATRIX.md` сопоставляет UI-01…UI-07 states с уже существующими smoke/screen/golden tests и фиксирует policy platform rendering tolerances. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test` — PASS (71), включая QA-DS matrix и существующие 390/768/1280 goldens; production `scripts/build-web.sh` с test dart-defines, `ENVIRONMENT=ci` и `TENANT_SLUG=ohorodnik-oleksandr` — PASS. | Не добавлялись product flows, новые routes, runtime brand fallbacks или assets. Reference-brand matrix намеренно structural/token-based, а checked-in pixel goldens сохраняются для pilot: font hinting, antialiasing и native camera/video pixels фиксируются state/semantics/layout tests, не platform-sensitive snapshots. |
 | 2026-07-15 | ENV-FIX | Закрыты два технических follow-up: production `scripts/build-web.sh` снова завершился после очистки зависшего локального Flutter процесса; backend проверен в чистом Python 3.13 virtualenv, установленном из `requirements-dev.txt`. README теперь предписывает isolated `.venv` и полный dev requirements, чтобы глобальный `httpx` не мог заменить зафиксированный `0.25.2`, совместимый со Starlette `TestClient`. | Production web build с test dart-defines и `TENANT_SLUG=ohorodnik-oleksandr` — PASS; Python 3.13 venv: `pytest tests/ -q` — PASS (125), `flake8 app/ --select=E9,F63,F7,F82` — PASS (0). | Остаются только Pydantic 2 deprecation warnings; они не являются failures и не относятся к текущим follow-up. |
 | 2026-07-15 | TEST-FIX | Исправлен зафиксированный blocker Flutter test suite: `recipe_detail_page_test.dart` теперь переопределяет `authProvider` через `AuthNotifier.testing()`, поэтому fixture не обращается к неинициализированному `Supabase.instance`. | `flutter test test/recipe_detail_page_test.dart` — PASS (3); полный `flutter test` — PASS (68). | Изменён только тестовый fixture; production auth и UI‑05 scope не менялись. |
 | 2026-07-15 | UI-07 | Изменены camera capture/review/results foundations, permission state/service, confidence parsing и UI-07 tests/goldens. Camera flow теперь принудительно использует dark theme независимо от app theme; capture сохраняет native camera + gallery и явный browser upload fallback. Denied permission повторно запрашивается, permanently denied ведёт в system settings; в обоих случаях галерея остаётся доступна. Low-confidence detection (<70%) не подтверждается автоматически; review поясняет необходимость подтверждения/удаления и не запускает поиск, пока такие позиции не обработаны. Добавлены targeted tests и goldens для recovery на 390/768/1280. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter analyze` — PASS; `flutter test test/ui_07_camera_test.dart` — PASS (5); UI-07 golden update/check 390/768/1280 — PASS. Полный `flutter test` — BLOCKED на pre-existing `recipe_detail_page_test.dart`: fixture создаёт `RecipeDetailPage` без override `authProvider`, поэтому вызывает неинициализированный `Supabase.instance` (3 failures); UI-07 tests проходят. Production `scripts/build-web.sh` с test `API_BASE_URL`, `WEB_APP_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `TENANT_SLUG=ohorodnik-oleksandr` и `ENVIRONMENT=ci` — BLOCKED локально: `flutter build web` остался без дочернего compiler process и вывода свыше 3 минут после `Compiling lib/main.dart for the Web...`; процесс этой задачи остановлен. | Не добавлялись pantry/shopping list, persist scan history, server-side ingredient matching, camera hardware preview, OCR model или новые routes: это CORE-06/CORE-03 и последующие product packages. Текущие capture/upload и backend photo-search adapter сохранены. |
