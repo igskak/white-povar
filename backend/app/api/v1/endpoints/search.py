@@ -12,6 +12,9 @@ from app.services.database import supabase_service
 from app.services.openai_service import openai_service
 from app.core.security import get_current_user
 from app.schemas.chef import Chef
+from app.core.tenant import TenantContext, require_tenant_context
+from app.core.content_access import resolve_recipe_access
+from app.api.v1.endpoints.auth import get_optional_user, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -60,7 +63,6 @@ class AdvancedSearchFilters(BaseModel):
     max_total_time: Optional[int] = None
     dietary_restrictions: Optional[List[str]] = None
     ingredients: Optional[List[str]] = None
-    chef_id: Optional[str] = None
     is_featured: Optional[bool] = None
     tags: Optional[List[str]] = None
     min_servings: Optional[int] = None
@@ -94,7 +96,10 @@ class FilterOptions(BaseModel):
     dietary_restrictions: List[str]
 
 @router.post("/photo", response_model=PhotoSearchResponse)
-async def search_by_photo(request: PhotoSearchRequest):
+async def search_by_photo(
+    request: PhotoSearchRequest,
+    tenant: TenantContext = Depends(require_tenant_context),
+):
     """Search recipes by analyzing ingredients in a photo using OpenAI Vision"""
     try:
         # Validate and process the image
@@ -201,7 +206,7 @@ async def search_by_photo(request: PhotoSearchRequest):
         try:
             suggested_recipes = await _find_recipes_by_ingredients(
                 detected_ingredients, 
-                request.chef_id,
+                tenant.chef_id,
                 request.max_results
             )
             
@@ -230,9 +235,10 @@ async def search_by_photo(request: PhotoSearchRequest):
 @router.get("/text", response_model=TextSearchResponse)
 async def search_by_text(
     q: str,
-    chef_id: Optional[str] = None,
     limit: int = 20,
-    offset: int = 0
+    offset: int = 0,
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Search recipes by text query"""
     try:
@@ -244,7 +250,7 @@ async def search_by_text(
         
         # Search recipes using database service
         result = await supabase_service.search_recipes_by_text(
-            q.strip(), chef_id, limit, offset
+            q.strip(), tenant.chef_id, limit, offset
         )
         
         if not result.data:
@@ -308,7 +314,15 @@ async def search_by_text(
                 recipe_data.setdefault('video_url', None)
                 recipe_data.setdefault('video_file_path', None)
 
+                access = await resolve_recipe_access(recipe_data, tenant, current_user)
+                if not access.exists_in_tenant:
+                    continue
                 recipe = Recipe(**recipe_data)
+                if not access.can_read_body:
+                    recipe = recipe.model_copy(update={
+                        'instructions': [], 'ingredients': [], 'nutrition': None,
+                        'video_url': None, 'video_file_path': None, 'is_locked': True,
+                    })
                 recipes.append(recipe)
 
             except Exception as e:
@@ -428,8 +442,8 @@ async def _find_recipes_by_ingredients(
 @router.get("/suggestions")
 async def get_search_suggestions(
     q: str,
-    chef_id: Optional[str] = None,
-    limit: int = 5
+    limit: int = 5,
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get search suggestions based on partial query"""
     try:
@@ -443,7 +457,7 @@ async def get_search_suggestions(
             }
         
         # Simple implementation - search recipe titles and return unique suggestions
-        result = await supabase_service.search_recipes_by_text(q, chef_id, limit * 2, 0)
+        result = await supabase_service.search_recipes_by_text(q, tenant.chef_id, limit * 2, 0)
         
         suggestions = []
         seen = set()
@@ -480,7 +494,8 @@ async def advanced_search(
     filters: AdvancedSearchFilters,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    current_user: Chef = Depends(get_current_user)
+    current_user: Chef = Depends(get_current_user),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """
     Advanced recipe search with comprehensive filtering
@@ -490,8 +505,7 @@ async def advanced_search(
         query_filters = {'is_public': True}
 
         # Apply filters
-        if filters.chef_id:
-            query_filters['chef_id'] = filters.chef_id
+        query_filters['chef_id'] = tenant.chef_id
 
         if filters.cuisine:
             query_filters['cuisine'] = f"ilike.%{filters.cuisine}%"
@@ -648,13 +662,15 @@ async def advanced_search(
         )
 
 @router.get("/filters", response_model=FilterOptions)
-async def get_filter_options():
+async def get_filter_options(tenant: TenantContext = Depends(require_tenant_context)):
     """
     Get available filter options for the search interface
     """
     try:
         # Get all recipes to analyze available options
-        result = await supabase_service.get_recipes(filters={}, limit=1000, offset=0)
+        result = await supabase_service.get_recipes(
+            filters={'is_public': True, 'chef_id': tenant.chef_id}, limit=1000, offset=0,
+        )
 
         cuisines = set()
         categories = set()

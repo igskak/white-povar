@@ -1,8 +1,8 @@
 # White Povar — детальный план имплементации
 
 Дата: 15 июля 2026  
-Статус: FND-05 выполнена; единый API client и tenant context готовы.
-Следующая задача: `SEC-01`
+Статус: SEC-01 выполнена; tenant isolation и premium teaser contract готовы.
+Следующая задача: `DS-01`
 Канонический consumer-клиент: `frontend/`  
 Backend: `backend/`  
 Design source of truth: `White povar redesign brief document/Handoff Spec.dc.html` и `Stage 1 - Foundations.dc.html`, версия 1.2
@@ -160,7 +160,7 @@ Design source of truth: `White povar redesign brief document/Handoff Spec.dc.htm
 | 4 | FND-03 | Flutter bootstrap, cache и bundled fallback | FND-02 | DONE |
 | 5 | FND-04 | Dynamic themes, fonts и brand assets | FND-03 | DONE |
 | 6 | FND-05 | Единый API client и tenant context | FND-03 | DONE |
-| 7 | SEC-01 | Tenant isolation и premium teaser contract | FND-05 | TODO |
+| 7 | SEC-01 | Tenant isolation и premium teaser contract | FND-05 | DONE |
 | 8 | DS-01 | Shared design-system primitives | FND-04 | TODO |
 | 9 | DS-02 | Routing и adaptive shell | DS-01 | TODO |
 | 10 | UI-01 | Home + brand header + collection promo | DS-02, SEC-01 | TODO |
@@ -698,6 +698,7 @@ python3 -c "from app.main import app; print(app.title)"
 
 | Дата | ID | Результат | Проверки | Примечания |
 |---|---|---|---|---|
+| 2026-07-15 | SEC-01 | Добавлены обязательный resolved `X-Tenant-Slug` context, tenant-scoped запросы recipes/featured/favorites/search/suggestions/filters/photo и AI context. Исключены caller-supplied chef filters; detail и list используют единый access service. Premium rows остаются discoverable как `is_locked` teaser без ingredients, instructions, nutrition и video URLs. Добавлены tenant-scoped entitlements, RLS hardening и двух-tenant contract tests с одинаковым title. | `python3 -m compileall -q app` — PASS; targeted `pytest` (recipe, tenant isolation, bootstrap) — PASS (17); FastAPI import — PASS; полный `pytest tests/ -q`: 118 passed, 4 failed, 3 errors. | Полный suite сохраняет известный внешний blocker локального Python 3.13: несовместимые Starlette `TestClient`/httpx (`Client.__init__(app=...)`) ломают прежние localization/video-тесты. `flake8` не установлен локально; CI запускает lint на Python 3.11. Миграция не применялась: локальной изолированной БД нет; production/staging не затрагивались. |
 | 2026-07-15 | FND-05 | Recipe, search, photo-search и subscription сервисы переведены на единый `ApiClient`; transport добавляет tenant slug, locale, request ID и bearer token только при наличии сессии. Typed `ApiError` различает 401/403/404/409 и network errors; text search получил debounce и отмену предыдущего запроса. Удалены production debug controls, выдававшие premium. | `dart format --output=none --set-exit-if-changed lib test` — PASS; `flutter test` — PASS (21); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | `HttpBrandBootstrapRemoteLoader` остаётся явным startup migration adapter: он загружает bootstrap до создания Riverpod/`ApiClient`; после bootstrap config-запросы используют общий transport. Tenant header передаёт context и не служит авторизацией; её проверка остаётся server-side scope SEC-01. |
 | 2026-07-15 | FND-04 | Добавлены bundled Figtree, JetBrains Mono, Source Serif 4, Golos Text и Lora; `BrandThemeExtension` строит light/dark темы из validated derived tokens, а `ThemeMode.system/light/dark` сохраняется в SharedPreferences. Добавлены безопасные avatar/logo/hero fallbacks и доступный при 200% text scale выбор темы; camera flow сохраняет dark contract и использует dark brand accent при наличии brand theme. | `dart format --output=none --set-exit-if-changed .` — PASS; `flutter test` — PASS (18); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | Premium gold и system success/warning/error остаются system tokens, не tenant-brand roles. Полноценное подключение новых asset widgets к экранным компонентам и перевод legacy screen-level colours — scope последующих DS-01/UI packages; FND-04 не меняет product flows. |
 | 2026-07-15 | FND-03 | Добавлены immutable Dart-модели BrandConfig/TenantBootstrap с fail-closed parsing, bundled validated pilot bootstrap и monogram SVG. Startup выбирает bundled → valid cache, запрашивает remote не дольше 3 секунд и сохраняет валидный ответ только для следующего cold start; app получает tenant bootstrap через Riverpod до `MaterialApp`. | `dart format` — PASS; `flutter test` — PASS (14); `flutter analyze` — PASS; `scripts/build-web.sh` с production dart-defines — PASS. | Remote brand намеренно не применяется в активной сессии. Corrupt/mismatched cache и invalid/timeout remote безопасно оставляют cached или bundled tenant; generic White Povar fallback не используется. Dynamic theme/assets rendering остаются FND-04, общий API client — FND-05. |

@@ -47,7 +47,9 @@ class RecipeBase(BaseModel):
     prep_time_minutes: int = Field(..., ge=0)
     cook_time_minutes: int = Field(..., ge=0)
     servings: int = Field(..., ge=1)
-    instructions: List[str] = Field(..., min_items=1)
+    # Empty only for a locked premium teaser.  Create/update validation remains
+    # enforced by RecipeCreate below.
+    instructions: List[str] = Field(default_factory=list)
     images: List[str] = Field(default_factory=list)
     video_url: Optional[str] = Field(None, description="External video URL (YouTube, TikTok, etc.)")
     video_file_path: Optional[str] = Field(None, description="Path to uploaded video file in storage")
@@ -57,8 +59,6 @@ class RecipeBase(BaseModel):
     
     @validator('instructions')
     def validate_instructions(cls, v):
-        if not v or len(v) == 0:
-            raise ValueError('At least one instruction is required')
         for instruction in v:
             if not instruction.strip():
                 raise ValueError('Instructions cannot be empty')
@@ -93,6 +93,12 @@ class RecipeCreate(RecipeBase):
     ingredients: List[IngredientCreate] = Field(..., min_items=1)
     nutrition: Optional[NutritionBase] = None
 
+    @validator('instructions')
+    def create_requires_instructions(cls, value):
+        if not value:
+            raise ValueError('At least one instruction is required')
+        return value
+
 class RecipeUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, min_length=1, max_length=1000)
@@ -118,6 +124,7 @@ class Recipe(RecipeBase):
     nutrition: Optional[Nutrition] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    is_locked: bool = Field(default=False, description="True when this is a premium teaser")
     
     @validator('total_time_minutes', always=True)
     def calculate_total_time(cls, v, values):

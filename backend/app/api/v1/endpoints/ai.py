@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.services.ai_service import ai_service
 from app.core.premium_access import require_ai_access
 from app.api.v1.endpoints.auth import User
+from app.core.tenant import TenantContext, require_tenant_context
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,8 @@ class NutritionInfo(BaseModel):
 @router.post("/recipe-suggestions", response_model=List[RecipeSuggestion])
 async def get_recipe_suggestions(
     request: RecipeSuggestionRequest,
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get AI-powered recipe suggestions based on available ingredients (Premium Only)"""
 
@@ -90,7 +92,8 @@ async def get_recipe_suggestions(
 @router.post("/ingredient-substitutions", response_model=List[IngredientSubstitution])
 async def get_ingredient_substitutions(
     request: IngredientSubstitutionRequest,
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get AI-powered ingredient substitution suggestions (Premium Only)"""
 
@@ -113,7 +116,8 @@ async def get_ingredient_substitutions(
 @router.post("/cooking-tips", response_model=List[str])
 async def get_cooking_tips(
     request: CookingTipsRequest,
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get AI-powered cooking tips for a recipe (Premium Only)"""
 
@@ -136,7 +140,8 @@ async def get_cooking_tips(
 @router.post("/nutrition-analysis", response_model=NutritionInfo)
 async def analyze_nutrition(
     request: NutritionAnalysisRequest,
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get AI-powered nutritional analysis of a recipe (Premium Only)"""
 
@@ -158,7 +163,8 @@ async def analyze_nutrition(
 @router.post("/improve-instructions", response_model=List[str])
 async def improve_instructions(
     request: ImproveInstructionsRequest,
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get AI-improved recipe instructions (Premium Only)"""
 
@@ -180,7 +186,8 @@ async def improve_instructions(
 @router.get("/suggestions/quick")
 async def get_quick_suggestions(
     ingredients: str,  # Comma-separated ingredients
-    current_user: User = Depends(require_ai_access)
+    current_user: User = Depends(require_ai_access),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get quick recipe suggestions (simplified endpoint)"""
     

@@ -9,6 +9,8 @@ from app.services.database import supabase_service
 from app.api.v1.endpoints.auth import get_optional_user, verify_firebase_token, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
+from app.core.tenant import TenantContext, require_tenant_context
+from app.core.content_access import resolve_recipe_access
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -289,18 +291,32 @@ def _recipe_from_row(recipe_data: Dict[str, Any]) -> Recipe:
         'nutrition': nutrition,
     })
 
+
+def _premium_teaser(recipe_data: Dict[str, Any]) -> Recipe:
+    """Project list/detail metadata without ingredients, steps or video URLs."""
+    teaser = _recipe_from_row({
+        **recipe_data,
+        'recipe_ingredients': [],
+        'recipe_nutrition': [],
+        'instructions': [],
+        'instructions_structured': [],
+        'video_url': None,
+        'video_file_path': None,
+    })
+    return teaser.model_copy(update={'is_locked': True})
+
 @router.get("/", response_model=RecipeList)
 async def get_recipes(
     cuisine: Optional[str] = Query(None, description="Filter by cuisine type"),
     difficulty: Optional[int] = Query(None, ge=1, le=5, description="Filter by difficulty (1-5)"),
     max_time: Optional[int] = Query(None, ge=0, description="Maximum total time in minutes"),
     category: Optional[str] = Query(None, description="Filter by category"),
-    chef_id: Optional[str] = Query(None, description="Filter by chef ID"),
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
     is_featured: Optional[bool] = Query(None, description="Filter featured recipes"),
     limit: int = Query(20, ge=1, le=100, description="Number of recipes to return"),
     offset: int = Query(0, ge=0, description="Number of recipes to skip"),
-    current_user: Optional[User] = Depends(get_optional_user)
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get recipes with optional filtering (respects user subscription tier)"""
     logger.info(
@@ -318,8 +334,7 @@ async def get_recipes(
             filters['max_time'] = max_time
         if category:
             filters['category_id'] = _category_id(category)
-        if chef_id:
-            filters['chef_id'] = chef_id
+        filters['chef_id'] = tenant.chef_id
         if is_featured is not None:
             filters['is_featured'] = is_featured
         if tags:
@@ -337,6 +352,12 @@ async def get_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
+                access = await resolve_recipe_access(recipe_data, tenant, current_user)
+                if not access.exists_in_tenant:
+                    continue
+                if not access.can_read_body:
+                    recipes.append(_premium_teaser(recipe_data))
+                    continue
                 # Ingredients are now included via JOIN, no need for separate query
                 recipe_ingredients = recipe_data.pop('recipe_ingredients', [])
 
@@ -404,23 +425,6 @@ async def get_recipes(
                 # Skip this recipe and continue with others
                 continue
 
-        # Filter recipes based on user subscription tier
-        # Convert recipes to dict for filtering
-        logger.info(f"🔐 Filtering {len(recipes)} recipes for user subscription")
-        recipes_dict = [recipe.dict() for recipe in recipes]
-        filtered_recipes_dict = [
-            recipe for recipe in recipes_dict if not recipe.get('is_premium', False)
-        ]
-        if current_user is not None:
-            filtered_recipes_dict = await filter_recipes_by_subscription(
-                recipes_dict,
-                current_user.id,
-                include_premium=False,
-            )
-        logger.info(f"✅ Filtered to {len(filtered_recipes_dict)} recipes")
-        # Convert back to Recipe objects
-        recipes = [Recipe(**r) for r in filtered_recipes_dict]
-
         # Calculate total count and has_more
         total_count = len(recipes)
         has_more = len(result.data) == limit
@@ -441,14 +445,14 @@ async def get_recipes(
 
 @router.get("/featured", response_model=List[Recipe])
 async def get_featured_recipes(
-    chef_id: Optional[str] = Query(None, description="Filter by chef ID"),
-    limit: int = Query(10, ge=1, le=50, description="Number of featured recipes to return")
+    limit: int = Query(10, ge=1, le=50, description="Number of featured recipes to return"),
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get featured recipes"""
     try:
         filters = {'is_featured': True, 'is_public': True}
-        if chef_id:
-            filters['chef_id'] = chef_id
+        filters['chef_id'] = tenant.chef_id
             
         result = await supabase_service.get_recipes(filters, limit, 0)
         
@@ -458,6 +462,12 @@ async def get_featured_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
+                access = await resolve_recipe_access(recipe_data, tenant, current_user)
+                if not access.exists_in_tenant:
+                    continue
+                if not access.can_read_body:
+                    recipes.append(_premium_teaser(recipe_data))
+                    continue
                 # Get ingredients for each recipe
                 ingredients_result = await supabase_service.get_recipe_ingredients(recipe_data['id'])
                 recipe_ingredients = ingredients_result.get('data', [])
@@ -518,8 +528,7 @@ async def get_featured_recipes(
                         continue
 
                 recipe = Recipe(**normalized_data)
-                if not recipe.is_premium:
-                    recipes.append(recipe)
+                recipes.append(recipe)
             except Exception as e:
                 logger.error(f"Error converting featured recipe data to model: {str(e)}")
                 logger.error(f"Recipe data: {recipe_data}")
@@ -536,12 +545,17 @@ async def get_featured_recipes(
         )
 
 @router.get("/favorites", response_model=List[Recipe])
-async def get_favorite_recipes(current_user: User = Depends(verify_firebase_token)):
+async def get_favorite_recipes(
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
     """Return the authenticated user's saved recipes."""
     favorite_ids = await supabase_service.get_user_favorite_ids(current_user.id)
     if not favorite_ids:
         return []
-    result = await supabase_service.get_recipes({'id': favorite_ids}, min(len(favorite_ids), 100), 0)
+    result = await supabase_service.get_recipes(
+        {'id': favorite_ids, 'chef_id': tenant.chef_id}, min(len(favorite_ids), 100), 0,
+    )
     return [_recipe_from_row(row) for row in _result_data(result)]
 
 
@@ -549,6 +563,7 @@ async def get_favorite_recipes(current_user: User = Depends(verify_firebase_toke
 async def toggle_recipe_favorite(
     recipe_id: str,
     current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Toggle a recipe in the authenticated user's saved list."""
     try:
@@ -556,7 +571,7 @@ async def toggle_recipe_favorite(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recipe ID format")
 
-    if not _result_data(await supabase_service.get_recipe_by_id(recipe_id)):
+    if not _result_data(await supabase_service.get_recipe_by_id(recipe_id, tenant.chef_id)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
 
     is_favorite = await supabase_service.toggle_user_favorite(current_user.id, recipe_id)
@@ -566,7 +581,8 @@ async def toggle_recipe_favorite(
 @router.get("/{recipe_id}", response_model=Recipe)
 async def get_recipe(
     recipe_id: str,
-    current_user: Optional[User] = Depends(get_optional_user)
+    current_user: Optional[User] = Depends(get_optional_user),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get a single recipe by ID (checks premium access for premium recipes)"""
     try:
@@ -579,7 +595,7 @@ async def get_recipe(
                 detail="Invalid recipe ID format"
             )
 
-        result = await supabase_service.get_recipe_by_id(recipe_id)
+        result = await supabase_service.get_recipe_by_id(recipe_id, tenant.chef_id)
 
         if not _result_data(result):
             raise HTTPException(
@@ -589,28 +605,14 @@ async def get_recipe(
 
         recipe_data = _result_data(result)[0]
 
-        is_owner = (
-            current_user is not None
-            and current_user.chef_id is not None
-            and str(recipe_data.get('chef_id')) == current_user.chef_id
-        )
-        if not recipe_data.get('is_public', False) and not is_owner:
+        access = await resolve_recipe_access(recipe_data, tenant, current_user)
+        if not access.exists_in_tenant:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Recipe not found",
             )
 
-        # Check if recipe is premium and validate access
-        is_premium = recipe_data.get('is_premium', False)
-        if is_premium and not is_owner:
-            if current_user is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Sign in to access premium recipes",
-                )
-            await check_recipe_access(recipe_id, is_premium, current_user)
-
-        return _recipe_from_row(recipe_data)
+        return _recipe_from_row(recipe_data) if access.can_read_body else _premium_teaser(recipe_data)
         
     except HTTPException:
         raise
@@ -624,13 +626,14 @@ async def get_recipe(
 @router.post("/", response_model=Recipe, status_code=status.HTTP_201_CREATED)
 async def create_recipe(
     recipe_data: RecipeCreate,
-    current_user: User = Depends(verify_firebase_token)
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Create a new recipe (authenticated users only)"""
     try:
         # Convert Pydantic model to dict
         owned_chef_id = await _owned_chef_id(current_user)
-        if str(recipe_data.chef_id) != owned_chef_id:
+        if owned_chef_id != tenant.chef_id or str(recipe_data.chef_id) != tenant.chef_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Cannot create recipes for another chef",
@@ -650,7 +653,7 @@ async def create_recipe(
         
         # Return the created recipe
         created_recipe_id = _result_data(result)[0]['id']
-        return await get_recipe(created_recipe_id, current_user)
+        return await get_recipe(created_recipe_id, current_user, tenant)
         
     except HTTPException:
         raise
@@ -667,6 +670,7 @@ async def update_recipe(
     recipe_id: str,
     recipe_data: Dict[str, Any],
     current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Update an owned recipe using the frontend's recipe JSON contract."""
     try:
@@ -675,19 +679,22 @@ async def update_recipe(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recipe ID format")
 
     owned_chef_id = await _owned_chef_id(current_user)
+    if owned_chef_id != tenant.chef_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot modify another tenant")
     update_rows = _recipe_payload_to_rows(recipe_data, partial=True)
     if not update_rows:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No supported fields supplied")
     result = await supabase_service.update_owned_recipe(recipe_id, owned_chef_id, update_rows)
     if not _result_data(result):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
-    return await get_recipe(recipe_id, current_user)
+    return await get_recipe(recipe_id, current_user, tenant)
 
 
 @router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_recipe(
     recipe_id: str,
     current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Delete an owned recipe."""
     try:
@@ -695,6 +702,8 @@ async def delete_recipe(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid recipe ID format")
     owned_chef_id = await _owned_chef_id(current_user)
+    if owned_chef_id != tenant.chef_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot modify another tenant")
     result = await supabase_service.delete_owned_recipe(recipe_id, owned_chef_id)
     if not _result_data(result):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")

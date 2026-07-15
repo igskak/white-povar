@@ -8,6 +8,7 @@ from app.api.v1.endpoints import recipes
 from fastapi import HTTPException
 
 from app.api.v1.endpoints.auth import User
+from app.core.tenant import TenantContext
 from app.schemas.recipe import RecipeCreate
 
 
@@ -110,7 +111,7 @@ def test_create_recipe_uses_explicit_current_user_chef_link(monkeypatch):
         assert user_id == owner_id
         return str(owned_chef_id)
 
-    async def fake_get(recipe_id, current_user):
+    async def fake_get(recipe_id, current_user, tenant):
         return {'id': recipe_id, 'owner': current_user.id}
 
     monkeypatch.setattr(recipes.supabase_service, 'create_recipe', fake_create)
@@ -135,6 +136,7 @@ def test_create_recipe_uses_explicit_current_user_chef_link(monkeypatch):
         recipes.create_recipe(
             payload,
             User(id=owner_id, email='owner@example.com', chef_id=str(owned_chef_id)),
+            TenantContext(chef_id=str(owned_chef_id), slug='tenant-a'),
         )
     )
 
@@ -169,6 +171,7 @@ def test_create_recipe_fails_closed_without_user_chef_link(monkeypatch):
             recipes.create_recipe(
                 payload,
                 User(id=str(uuid4()), email='user@example.com'),
+                TenantContext(chef_id=str(payload.chef_id), slug='tenant-a'),
             )
         )
 
@@ -183,7 +186,7 @@ def test_toggle_favorite_uses_authenticated_user(monkeypatch):
     class RecipeResult:
         data = [{'id': recipe_id}]
 
-    async def fake_get_recipe(requested_id):
+    async def fake_get_recipe(requested_id, _chef_id):
         assert requested_id == recipe_id
         return RecipeResult()
 
@@ -198,6 +201,7 @@ def test_toggle_favorite_uses_authenticated_user(monkeypatch):
         recipes.toggle_recipe_favorite(
             recipe_id,
             User(id=user_id, email='user@example.com'),
+            TenantContext(chef_id=str(uuid4()), slug='tenant-a'),
         )
     )
 
@@ -208,11 +212,13 @@ def test_toggle_favorite_uses_authenticated_user(monkeypatch):
 def test_private_recipe_is_hidden_from_guests(monkeypatch):
     recipe_id = str(uuid4())
 
-    async def private_recipe(_recipe_id):
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+
+    async def private_recipe(_recipe_id, _chef_id):
         return {
             'data': [{
                 'id': recipe_id,
-                'chef_id': str(uuid4()),
+                'chef_id': tenant.chef_id,
                 'is_public': False,
                 'is_premium': False,
             }]
@@ -221,6 +227,6 @@ def test_private_recipe_is_hidden_from_guests(monkeypatch):
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', private_recipe)
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(recipes.get_recipe(recipe_id, None))
+        asyncio.run(recipes.get_recipe(recipe_id, None, tenant))
 
     assert error.value.status_code == 404

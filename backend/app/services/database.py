@@ -114,9 +114,18 @@ class SupabaseService:
         except Exception as e:
             logger.error(f"Supabase get_recipes error: {str(e)}")
             raise e
+
+    async def get_active_tenant(self, tenant_slug: str) -> Optional[Dict[str, Any]]:
+        """Resolve an active tenant once; callers must never accept a raw chef id."""
+        client = self.get_client(use_service_key=True)
+        result = (
+            client.table('chefs').select('id,slug').eq('slug', tenant_slug)
+            .eq('is_active', True).limit(1).execute()
+        )
+        return (result.data or [None])[0]
     
-    async def get_recipe_by_id(self, recipe_id: str) -> Dict[str, Any]:
-        """Get single recipe by ID"""
+    async def get_recipe_by_id(self, recipe_id: str, chef_id: str) -> Dict[str, Any]:
+        """Get one recipe only inside an already resolved tenant."""
         try:
             client = self.get_client(use_service_key=True)
 
@@ -125,7 +134,7 @@ class SupabaseService:
                 *,
                 recipe_ingredients(*),
                 recipe_nutrition(*)
-            ''').eq('id', recipe_id).execute()
+            ''').eq('id', recipe_id).eq('chef_id', chef_id).execute()
 
             if not recipe_result.data:
                 return {"data": None}
@@ -152,7 +161,7 @@ class SupabaseService:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, _execute)
     
-    async def search_recipes_by_text(self, query: str, chef_id: Optional[str] = None,
+    async def search_recipes_by_text(self, query: str, chef_id: str,
                                    limit: int = 20, offset: int = 0) -> Dict[str, Any]:
         """Search recipes by text query"""
         try:
@@ -171,9 +180,8 @@ class SupabaseService:
                 f'tags.cs.{{{query}}}'
             )
 
-            # Add chef filter if provided
-            if chef_id:
-                search_query = search_query.eq('chef_id', chef_id)
+            # Tenant scope is mandatory: a client cannot opt out of it.
+            search_query = search_query.eq('chef_id', chef_id)
 
             # Apply limit and offset
             if limit:

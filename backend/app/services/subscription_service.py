@@ -135,6 +135,23 @@ class SubscriptionService:
         )
         logger.info(f"✅ Premium access check result: {result.has_access}")
         return result
+
+    async def has_tenant_entitlement(self, user_id: str, chef_id: str) -> bool:
+        """Return a server-side entitlement for one tenant only.
+
+        Legacy global subscription columns are intentionally not consulted here:
+        they cannot safely prove access to another tenant's catalogue.
+        """
+        try:
+            result = await self.db_service.execute_query(
+                'tenant_entitlements', 'select',
+                filters={'user_id': user_id, 'chef_id': chef_id},
+                use_service_key=True,
+            )
+            return any(row.get('is_active', False) for row in (result.data or []))
+        except Exception:
+            logger.exception('Could not resolve entitlement for user %s and tenant %s', user_id, chef_id)
+            return False
     
     async def update_subscription(
         self,
@@ -332,4 +349,3 @@ class SubscriptionService:
 
 # Global instance
 subscription_service = SubscriptionService()
-
