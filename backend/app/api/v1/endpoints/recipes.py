@@ -6,6 +6,7 @@ import logging
 from app.schemas.recipe import Recipe, RecipeList, RecipeFilters, RecipeCreate
 from app.schemas.chef import ChefConfig
 from app.services.database import supabase_service
+from app.services.analytics_service import emit_analytics
 from app.api.v1.endpoints.auth import get_optional_user, verify_firebase_token, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
@@ -468,6 +469,8 @@ async def set_recipe_favorite(
     is_favorite = await supabase_service.set_user_favorite(
         current_user.id, recipe_id, is_favorite
     )
+    if is_favorite:
+        await emit_analytics(current_user.id, tenant.chef_id, 'recipe_saved')
     return {'recipe_id': recipe_id, 'is_favorite': is_favorite}
 
 
@@ -488,6 +491,8 @@ async def record_recipe_history(
     if not _result_data(await supabase_service.get_recipe_by_id(recipe_id, tenant.chef_id)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
     await supabase_service.record_recipe_history(current_user.id, tenant.chef_id, recipe_id, event)
+    await emit_analytics(current_user.id, tenant.chef_id,
+                         'cooking_completed' if event == 'cooked' else 'recipe_viewed')
 
 
 @router.get("/{recipe_id}", response_model=Recipe)

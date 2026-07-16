@@ -6,7 +6,7 @@ import uvicorn
 import os
 
 from app.core.settings import settings
-from app.api.v1.endpoints import recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio
+from app.api.v1.endpoints import analytics, recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio
 from app.middleware.localization import LocalizationMiddleware
 from app.ingestion.service import startup_ingestion, shutdown_ingestion
 
@@ -45,6 +45,7 @@ app.add_middleware(LocalizationMiddleware)
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["recipes"])
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])
@@ -69,8 +70,8 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "environment": settings.environment}
+    """Liveness probe; intentionally exposes neither configuration nor tenant data."""
+    return {"status": "healthy", "service": "api"}
 
 @app.get("/health/ready")
 async def readiness_check():
@@ -180,7 +181,10 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc: Exception):
     """Handle unexpected exceptions"""
-    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    # Do not put request bodies or exception text in error tracking: those can
+    # contain search transcripts, health data or authentication material.
+    logger.error("Unhandled request error path=%s type=%s", request.url.path,
+                 type(exc).__name__, exc_info=True)
 
     # In debug mode, show the actual error
     if settings.debug:

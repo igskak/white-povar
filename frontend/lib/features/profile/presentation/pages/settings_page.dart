@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/theme_mode_controller.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/config/product_config.dart';
+import '../../../../core/services/analytics_service.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key, this.productConfig = ProductConfig.pilot});
@@ -33,6 +34,11 @@ class SettingsPage extends ConsumerWidget {
                                     onChanged: (mode) => ref
                                         .read(appThemeModeProvider.notifier)
                                         .setMode(mode)))),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Конфіденційність',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: AppSpacing.sm),
+                        const Card(child: _AnalyticsConsentTile()),
                         const SizedBox(height: AppSpacing.lg),
                         Text('Інше',
                             style: Theme.of(context).textTheme.titleLarge),
@@ -68,6 +74,61 @@ class SettingsPage extends ConsumerWidget {
                       ])))),
     );
   }
+}
+
+class _AnalyticsConsentTile extends ConsumerStatefulWidget {
+  const _AnalyticsConsentTile();
+
+  @override
+  ConsumerState<_AnalyticsConsentTile> createState() =>
+      _AnalyticsConsentTileState();
+}
+
+class _AnalyticsConsentTileState extends ConsumerState<_AnalyticsConsentTile> {
+  bool _enabled = false;
+  bool _loaded = false;
+  bool _saving = false;
+
+  Future<void> _load() async {
+    try {
+      final enabled = await ref.read(analyticsServiceProvider).consent();
+      if (mounted) {
+        setState(() {
+          _enabled = enabled;
+          _loaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loaded = true);
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+        value: _enabled,
+        onChanged: !_loaded || _saving
+            ? null
+            : (value) async {
+                setState(() => _saving = true);
+                try {
+                  await ref.read(analyticsServiceProvider).setConsent(value);
+                  if (mounted) setState(() => _enabled = value);
+                } finally {
+                  if (mounted) setState(() => _saving = false);
+                }
+              },
+        title: const Text('Анонімна аналітика використання'),
+        subtitle: const Text(
+            'Допомагає покращувати пошук і приготування. Не надсилаємо текст запитів, інгредієнти, email або чеки.'),
+      );
 }
 
 class _ThemeModeOptions extends StatelessWidget {

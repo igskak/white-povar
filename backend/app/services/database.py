@@ -190,6 +190,27 @@ class SupabaseService:
             filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
         )
 
+    async def analytics_consent(self, user_id: str, chef_id: str) -> bool:
+        result = await self.execute_query('analytics_consents', 'select', filters={
+            'user_id': user_id, 'chef_id': chef_id,
+        }, use_service_key=True)
+        return bool((result.data or [{}])[0].get('analytics_consent'))
+
+    async def set_analytics_consent(self, user_id: str, chef_id: str, consent: bool):
+        return self.get_client(use_service_key=True).table('analytics_consents').upsert({
+            'user_id': user_id, 'chef_id': chef_id, 'analytics_consent': consent,
+        }, on_conflict='user_id,chef_id').execute()
+
+    async def record_analytics_event(self, user_id: str, chef_id: str, name: str,
+                                     outcome: str, client_version: Optional[str] = None) -> None:
+        """Write an allowlisted aggregate event only after tenant-scoped consent."""
+        if not await self.analytics_consent(user_id, chef_id):
+            return
+        self.get_client(use_service_key=True).table('analytics_events').insert({
+            'user_id': user_id, 'chef_id': chef_id, 'name': name,
+            'outcome': outcome, 'client_version': client_version,
+        }).execute()
+
     async def get_generated_recipe_drafts(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
         result = (self.get_client(use_service_key=True).table('generated_recipe_drafts').select('*')
                   .eq('user_id', user_id).eq('chef_id', chef_id)

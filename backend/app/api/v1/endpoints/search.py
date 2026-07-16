@@ -20,6 +20,7 @@ from app.core.content_access import resolve_recipe_access
 from app.api.v1.endpoints.auth import get_optional_user, User
 from app.api.v1.endpoints.recipes import _premium_teaser, _recipe_from_row
 from app.services.voice_intent_service import parse_voice_intent
+from app.services.analytics_service import emit_analytics
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -491,6 +492,9 @@ async def search_catalog(
         facets = {
             'tags': sorted({tag for row in rows for tag in row.get('tags', [])}),
         }
+        if current_user:
+            await emit_analytics(current_user.id, tenant.chef_id, 'search_completed',
+                                 'success' if recipes else 'empty')
         return CatalogSearchResponse(
             recipes=recipes,
             total_count=total_count,
@@ -569,6 +573,9 @@ async def retrieve_for_voice_intent(
                     sum(item.match_type == 'exact' for item in recommendations),
                     sum(item.match_type == 'partial' for item in recommendations),
                     bool(confirmation_required))
+        if current_user:
+            await emit_analytics(current_user.id, tenant.chef_id, 'voice_search_completed',
+                                 'success' if recommendations else 'empty')
         return VoiceIntentRetrievalResponse(
             intent=intent,
             confirmation_required=confirmation_required,
