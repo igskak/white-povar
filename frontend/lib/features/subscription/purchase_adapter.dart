@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../../core/api/api_client.dart';
 import 'store_catalog_service.dart';
 
 /// Boundary for StoreKit / Play Billing and server entitlement confirmation.
@@ -18,7 +21,9 @@ enum PaywallPhase {
   idle,
   productsLoading,
   productsUnavailable,
+  notAllowlisted,
   purchasing,
+  confirmationPending,
   success,
   error,
   userCancelled,
@@ -37,6 +42,8 @@ class PurchaseProduct {
     this.detail,
     this.trial,
     this.badge,
+    this.accessScope = PurchaseAccessScope.tenant,
+    this.collectionIds = const [],
   });
 
   final String id;
@@ -45,7 +52,11 @@ class PurchaseProduct {
   final String? detail;
   final String? trial;
   final String? badge;
+  final PurchaseAccessScope accessScope;
+  final List<String> collectionIds;
 }
+
+enum PurchaseAccessScope { tenant, collection }
 
 class PaywallSnapshot {
   const PaywallSnapshot({
@@ -66,6 +77,8 @@ class PurchaseOutcome {
     this.phase, {
     this.message,
     this.requiresEntitlementConfirmation = false,
+    this.accessScope,
+    this.collectionId,
   });
 
   final PaywallPhase phase;
@@ -74,6 +87,8 @@ class PurchaseOutcome {
   /// StoreKit/Play completion merely means the store accepted a transaction.
   /// It never grants access: COM-03 waits for the server-issued entitlement.
   final bool requiresEntitlementConfirmation;
+  final PurchaseAccessScope? accessScope;
+  final String? collectionId;
 }
 
 /// The web does not sell products in the MVP. It can only reflect server-side
@@ -139,14 +154,128 @@ class FakePurchaseAdapter implements PurchaseAdapter {
   Future<void> manageSubscription() async {}
 }
 
-PurchaseAdapter createPurchaseAdapter() => kDebugMode
-    ? FakePurchaseAdapter()
-    : kIsWeb
-        ? const DisabledPurchaseAdapter()
+PurchaseAdapter createPurchaseAdapter(ApiClient apiClient) => kIsWeb
+    ? WebDemoPurchaseAdapter(apiClient)
+    : kDebugMode
+        ? FakePurchaseAdapter()
         : NativeStoreCatalogAdapter(
             catalog: StoreCatalogService(),
             purchases: InAppPurchase.instance,
           );
+
+/// Web demo commerce is server-catalogue driven. It never sends client-owned
+/// price, duration, user, or collection values. The notifier still refreshes
+/// the server entitlement before presenting premium access.
+class WebDemoPurchaseAdapter implements PurchaseAdapter {
+  WebDemoPurchaseAdapter(this._apiClient, {Uuid? uuid})
+      : _uuid = uuid ?? const Uuid();
+
+  final ApiClient _apiClient;
+  final Uuid _uuid;
+  bool _demoPurchaseAvailable = false;
+
+  @override
+  Future<PaywallSnapshot> load() async {
+    try {
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/commerce/catalogue',
+      );
+      final data = response.data ?? const <String, dynamic>{};
+      _demoPurchaseAvailable = data['commerceMode'] == 'demo' &&
+          data['demoPurchaseAvailable'] == true;
+      final offers = (data['offers'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => _productFromOffer(Map<String, dynamic>.from(item)))
+          .toList(growable: false);
+      if (offers.isEmpty) {
+        return const PaywallSnapshot(
+          phase: PaywallPhase.productsUnavailable,
+          message: 'Демо-пропозиції зараз недоступні.',
+        );
+      }
+      if (data['commerceMode'] == 'demo' && !_demoPurchaseAvailable) {
+        return PaywallSnapshot(
+          phase: PaywallPhase.notAllowlisted,
+          products: offers,
+          message: 'Демо-доступ поки недоступний для цього акаунта.',
+        );
+      }
+      if (data['commerceMode'] != 'demo') {
+        return PaywallSnapshot(
+          phase: PaywallPhase.productsUnavailable,
+          products: offers,
+          message: 'Оформлення доступу зараз недоступне.',
+        );
+      }
+      return PaywallSnapshot(phase: PaywallPhase.idle, products: offers);
+    } catch (_) {
+      return const PaywallSnapshot(
+        phase: PaywallPhase.productsUnavailable,
+        message: 'Не вдалося завантажити пропозиції. Спробуйте ще раз.',
+      );
+    }
+  }
+
+  @override
+  Future<PurchaseOutcome> purchase(PurchaseProduct product) async {
+    if (!_demoPurchaseAvailable) {
+      return const PurchaseOutcome(PaywallPhase.notAllowlisted);
+    }
+    try {
+      final response = await _apiClient.post<Map<String, dynamic>>(
+        '/api/v1/commerce/demo-purchases',
+        data: {'offerKey': product.id},
+        options: Options(headers: {'Idempotency-Key': _uuid.v4()}),
+      );
+      final result = response.data ?? const <String, dynamic>{};
+      if (result['accepted'] != true)
+        return const PurchaseOutcome(PaywallPhase.error);
+      return PurchaseOutcome(
+        PaywallPhase.confirmationPending,
+        requiresEntitlementConfirmation: true,
+        accessScope: result['scopeType'] == 'collection'
+            ? PurchaseAccessScope.collection
+            : PurchaseAccessScope.tenant,
+        collectionId: result['collectionId']?.toString(),
+      );
+    } catch (_) {
+      return const PurchaseOutcome(
+        PaywallPhase.error,
+        message: 'Не вдалося підтвердити демо-доступ. Спробуйте ще раз.',
+      );
+    }
+  }
+
+  @override
+  Future<PurchaseOutcome> restore() async => const PurchaseOutcome(
+        PaywallPhase.confirmationPending,
+        requiresEntitlementConfirmation: true,
+      );
+
+  @override
+  Future<void> manageSubscription() async {}
+
+  PurchaseProduct _productFromOffer(Map<String, dynamic> offer) {
+    final amount = offer['amountMinor'];
+    final currency = offer['currency']?.toString() ?? '';
+    final price = amount is num ? '${amount / 100} $currency' : currency;
+    final collectionIds = (offer['collectionIds'] as List? ?? const [])
+        .map((id) => id.toString())
+        .toList(growable: false);
+    return PurchaseProduct(
+      id: offer['offerKey'].toString(),
+      title: offer['title']?.toString() ?? 'Premium-доступ',
+      price: price,
+      detail: offer['description']?.toString(),
+      badge: offer['badge']?.toString(),
+      trial: offer['trialDays'] == null ? null : '${offer['trialDays']} днів',
+      accessScope: offer['accessScope'] == 'collection'
+          ? PurchaseAccessScope.collection
+          : PurchaseAccessScope.tenant,
+      collectionIds: collectionIds,
+    );
+  }
+}
 
 /// Loads display data and launches StoreKit / Play Billing. No native purchase
 /// result can grant UI access before the billing webhook creates an entitlement.

@@ -5,7 +5,7 @@ import 'commerce_entitlement_service.dart';
 import 'purchase_adapter.dart';
 
 final purchaseAdapterProvider = Provider<PurchaseAdapter>(
-  (ref) => createPurchaseAdapter(),
+  (ref) => createPurchaseAdapter(ref.watch(apiClientProvider)),
 );
 
 final selectedPurchaseProductProvider = StateProvider<String?>((_) => null);
@@ -41,7 +41,7 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
     );
     final outcome = await _adapter.purchase(product);
     if (outcome.requiresEntitlementConfirmation) {
-      await _confirmEntitlement();
+      await _confirmEntitlement(outcome);
     } else {
       state = PaywallSnapshot(
         phase: outcome.phase,
@@ -61,7 +61,7 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
     );
     final outcome = await _adapter.restore();
     if (outcome.requiresEntitlementConfirmation) {
-      await _confirmEntitlement();
+      await _confirmEntitlement(outcome);
     } else {
       state = PaywallSnapshot(
         phase: outcome.phase,
@@ -74,8 +74,13 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
 
   Future<void> manageSubscription() => _adapter.manageSubscription();
 
-  Future<void> _confirmEntitlement() async {
+  Future<void> _confirmEntitlement([PurchaseOutcome? outcome]) async {
     final products = state.products;
+    state = PaywallSnapshot(
+      phase: PaywallPhase.confirmationPending,
+      products: products,
+      message: 'Підтверджуємо доступ на сервері…',
+    );
     for (var attempt = 0; attempt < 6; attempt++) {
       try {
         final entitlement = await _readEntitlement();
@@ -84,6 +89,18 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
             phase: entitlement.phase,
             products: products,
             renewsOn: entitlement.renewsOn,
+          );
+          return;
+        }
+        // A one-off entitlement is collection-scoped, so the generic tenant
+        // status deliberately stays false. The server purchase result is still
+        // followed by this mandatory read before returning to that collection.
+        if (outcome?.accessScope == PurchaseAccessScope.collection &&
+            outcome?.collectionId != null) {
+          state = PaywallSnapshot(
+            phase: PaywallPhase.success,
+            products: products,
+            message: 'Демо-доступ до колекції активовано.',
           );
           return;
         }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/brand_theme.dart';
 import '../../../app/theme/tokens/app_tokens.dart';
@@ -58,7 +59,8 @@ class _PaywallCard extends ConsumerWidget {
     final brand = ref.watch(tenantBootstrapProvider).brandConfig.brand;
     final purchasing = snapshot.phase == PaywallPhase.purchasing;
     final active = _isEntitled(snapshot.phase);
-    final unavailable = snapshot.phase == PaywallPhase.productsUnavailable;
+    final unavailable = snapshot.phase == PaywallPhase.productsUnavailable ||
+        snapshot.phase == PaywallPhase.notAllowlisted;
     final selectedId = ref.watch(selectedPurchaseProductProvider) ??
         snapshot.products.firstOrNull?.id;
     final selectedProduct = snapshot.products
@@ -131,15 +133,31 @@ class _PaywallCard extends ConsumerWidget {
                 ),
               const SizedBox(height: 4),
               AppButton(
-                label: _ctaLabel(selectedProduct),
+                label: 'Активувати демо-доступ',
                 expand: true,
                 isLoading: purchasing,
                 onPressed: purchasing || selectedProduct == null
                     ? null
-                    : () => ref
-                        .read(paywallProvider.notifier)
-                        .purchase(selectedProduct),
+                    : () async {
+                        await ref
+                            .read(paywallProvider.notifier)
+                            .purchase(selectedProduct);
+                        final phase = ref.read(paywallProvider).phase;
+                        if (context.mounted &&
+                            phase == PaywallPhase.success &&
+                            selectedProduct.accessScope ==
+                                PurchaseAccessScope.collection &&
+                            selectedProduct.collectionIds.isNotEmpty) {
+                          context.go(
+                            '/collections/${selectedProduct.collectionIds.first}',
+                          );
+                        }
+                      },
               ),
+              const SizedBox(height: 8),
+              const Text('Кошти не списуються',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFFB9AC98))),
             ],
           ],
           if (_needsMessage(snapshot.phase)) ...[
@@ -162,7 +180,7 @@ class _PaywallCard extends ConsumerWidget {
                     ref.read(paywallProvider.notifier).manageSubscription())
           else
             AppButton(
-                label: 'Відновити покупку',
+                label: 'Оновити доступ',
                 variant: AppButtonVariant.text,
                 expand: true,
                 isLoading: purchasing,
@@ -193,7 +211,9 @@ bool _needsMessage(PaywallPhase phase) =>
     phase == PaywallPhase.grace ||
     phase == PaywallPhase.billingRetry ||
     phase == PaywallPhase.expired ||
-    phase == PaywallPhase.cancelled;
+    phase == PaywallPhase.cancelled ||
+    phase == PaywallPhase.notAllowlisted ||
+    phase == PaywallPhase.confirmationPending;
 String _ctaLabel(PurchaseProduct? product) =>
     product?.trial ??
     (product == null
@@ -324,6 +344,10 @@ class _StatusMessage extends StatelessWidget {
               : Icons.error_outline,
       message: snapshot.message ??
           switch (snapshot.phase) {
+            PaywallPhase.notAllowlisted =>
+              'Демо-доступ недоступний для цього акаунта.',
+            PaywallPhase.confirmationPending =>
+              'Підтверджуємо доступ на сервері…',
             PaywallPhase.success => 'Premium активовано.',
             PaywallPhase.userCancelled =>
               'Покупку скасовано. Кошти не списано.',

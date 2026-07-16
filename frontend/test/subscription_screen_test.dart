@@ -44,8 +44,8 @@ void main() {
     await tester.pumpWidget(_app(adapter));
     await tester.pump();
 
-    await tester.tap(find.text('7 днів безкоштовно'));
-    await tester.tap(find.text('7 днів безкоштовно'));
+    await tester.tap(find.text('Активувати демо-доступ'));
+    await tester.tap(find.text('Активувати демо-доступ'));
     await tester.pump();
 
     expect(adapter.purchaseCalls, 1);
@@ -101,7 +101,15 @@ final _scenarios = <({PaywallPhase phase, String expectedText})>[
     phase: PaywallPhase.productsUnavailable,
     expectedText: 'Продукти зараз недоступні.'
   ),
+  (
+    phase: PaywallPhase.notAllowlisted,
+    expectedText: 'Демо-доступ недоступний для цього акаунта.'
+  ),
   (phase: PaywallPhase.purchasing, expectedText: 'Premium-колекції та рецепти'),
+  (
+    phase: PaywallPhase.confirmationPending,
+    expectedText: 'Підтверджуємо доступ на сервері…'
+  ),
   (phase: PaywallPhase.success, expectedText: 'Premium активовано.'),
   (
     phase: PaywallPhase.error,
