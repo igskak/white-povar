@@ -58,7 +58,7 @@ dependencies:
   sign_in_with_apple: ^6.1.2
 
   # Supabase
-  supabase_flutter: ^2.0.0
+  supabase_flutter: ^2.15.4
 
   # Local Storage
   shared_preferences: ^2.2.2
