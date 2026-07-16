@@ -35,7 +35,11 @@ class AuthService {
     _authStateController.add(_currentUser);
 
     _authStateSubscription = _supabase.auth.onAuthStateChange.listen((data) {
-      _currentUser = data.session?.user;
+      _currentUser = resolveAuthUser(
+        event: data.event,
+        sessionUser: data.session?.user,
+        currentUser: _supabase.auth.currentUser,
+      );
       _authStateController.add(_currentUser);
       if (_currentUser != null) {
         unawaited(_syncUserWithBackend(_currentUser!));
@@ -215,4 +219,20 @@ class AuthService {
     _authStateSubscription?.cancel();
     _authStateController.close();
   }
+}
+
+@visibleForTesting
+User? resolveAuthUser({
+  required AuthChangeEvent event,
+  required User? sessionUser,
+  required User? currentUser,
+}) {
+  if (event == AuthChangeEvent.signedOut) {
+    return null;
+  }
+
+  // Some lifecycle/initialization events can carry no session even though the
+  // client already has a newer active session. Only an explicit logout event
+  // is authoritative enough to clear the app's authenticated user.
+  return sessionUser ?? currentUser;
 }
