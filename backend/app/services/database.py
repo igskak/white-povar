@@ -190,6 +190,27 @@ class SupabaseService:
             filters={'user_id': user_id, 'chef_id': chef_id}, use_service_key=True,
         )
 
+    async def get_notification_preferences(self, user_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
+        result = await self.execute_query('notification_preferences', 'select', filters={
+            'user_id': user_id, 'chef_id': chef_id,
+        }, use_service_key=True)
+        return (result.data or [None])[0]
+
+    async def upsert_notification_preferences(self, user_id: str, chef_id: str, data: Dict[str, Any]):
+        return self.get_client(use_service_key=True).table('notification_preferences').upsert({
+            'user_id': user_id, 'chef_id': chef_id, **data,
+        }, on_conflict='user_id,chef_id').execute()
+
+    async def upsert_push_device(self, user_id: str, chef_id: str, token: str, platform: str):
+        return self.get_client(use_service_key=True).table('push_devices').upsert({
+            'user_id': user_id, 'chef_id': chef_id, 'token': token, 'platform': platform,
+        }, on_conflict='user_id,chef_id,token').execute()
+
+    async def delete_push_devices(self, user_id: str, chef_id: str):
+        return await self.execute_query('push_devices', 'delete', filters={
+            'user_id': user_id, 'chef_id': chef_id,
+        }, use_service_key=True)
+
     async def analytics_consent(self, user_id: str, chef_id: str) -> bool:
         result = await self.execute_query('analytics_consents', 'select', filters={
             'user_id': user_id, 'chef_id': chef_id,

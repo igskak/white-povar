@@ -109,7 +109,10 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
 
   Future<void> signOut() async {
     try {
-      await _authService!.signOut();
+      // Best effort is not enough: retain the session on a revoke failure so
+      // the user can retry rather than silently leaving a live device binding.
+      await _authService!.unregisterPushDevices();
+      await _authService.signOut();
       await CookingProgressStore().clearPrivateData();
       await CollectionResumeStore().clearPrivateData();
     } catch (e) {

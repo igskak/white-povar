@@ -120,6 +120,18 @@ class AuthService {
     }
   }
 
+  Future<void> unregisterPushDevices() async {
+    final token = await getIdToken();
+    if (token == null) throw Exception('No active session');
+    final response = await http.delete(
+      Uri.parse('${AppConfig.apiBaseUrl}/api/v1/lifecycle/me/devices'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) {
+      throw Exception('Could not revoke notification device');
+    }
+  }
+
   /// Starts a Supabase PKCE identity-linking flow for the signed-in account.
   Future<bool> linkIdentity(OAuthProvider provider) {
     return _supabase.auth.linkIdentity(provider, redirectTo: _redirectUrl);

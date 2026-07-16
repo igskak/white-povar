@@ -6,7 +6,7 @@ import uvicorn
 import os
 
 from app.core.settings import settings
-from app.api.v1.endpoints import analytics, recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio
+from app.api.v1.endpoints import analytics, recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio, lifecycle
 from app.middleware.localization import LocalizationMiddleware
 from app.ingestion.service import startup_ingestion, shutdown_ingestion
 
@@ -46,6 +46,7 @@ app.add_middleware(LocalizationMiddleware)
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(lifecycle.router, prefix="/api/v1/lifecycle", tags=["lifecycle"])
 app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["recipes"])
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
 app.include_router(ai.router, prefix="/api/v1/ai", tags=["ai-assistant"])

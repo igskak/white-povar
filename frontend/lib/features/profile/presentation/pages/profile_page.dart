@@ -141,6 +141,12 @@ class _SignedInProfile extends ConsumerWidget {
                   onTap: () => context.push('/preferences')),
               const Divider(height: 1),
               _ProfileRow(
+                  icon: Icons.notifications_outlined,
+                  title: 'Сповіщення',
+                  subtitle: 'Новий контент, нагадування й таймери',
+                  onTap: () => context.push('/notification-preferences')),
+              const Divider(height: 1),
+              _ProfileRow(
                   icon: Icons.kitchen_outlined,
                   title: 'Кладова і покупки',
                   subtitle: 'Продукти вдома та список покупок',

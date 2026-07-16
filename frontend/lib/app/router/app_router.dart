@@ -15,6 +15,7 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/pantry/presentation/pages/pantry_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/preferences_page.dart';
+import '../../features/profile/presentation/pages/notification_preferences_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
 import '../../features/recipes/presentation/pages/cooking_mode_page.dart';
 import '../../features/recipes/presentation/pages/recipe_detail_page.dart';
@@ -36,6 +37,7 @@ class AppRoutePaths {
   static const profile = '/profile';
   static const settings = '/settings';
   static const preferences = '/preferences';
+  static const notificationPreferences = '/notification-preferences';
   static const pantry = '/pantry';
   static const camera = '/camera';
   static const cameraReview = '/camera/review';
@@ -94,6 +96,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutePaths.preferences,
         builder: (_, __) => const PreferencesPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.notificationPreferences,
+        builder: (_, __) => const NotificationPreferencesPage(),
       ),
       GoRoute(
           path: AppRoutePaths.pantry, builder: (_, __) => const PantryPage()),
