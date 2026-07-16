@@ -54,16 +54,17 @@ class SettingsPage extends ConsumerWidget {
                               icon: Icons.help_outline,
                               title: 'Допомога та підтримка',
                               value: productConfig.supportEmail,
-                              unavailable:
-                                  'Контакти підтримки зʼявляться перед запуском.'),
+                              unavailable: 'Контакт підтримки налаштовується.'),
                           const Divider(height: 1),
-                          _ConfigRow(
+                          _NoticeRow(
                               icon: Icons.description_outlined,
-                              title: 'Умови та конфіденційність',
-                              value: productConfig.privacyUrl ??
-                                  productConfig.termsUrl,
-                              unavailable:
-                                  'Правові документи зʼявляться перед запуском.'),
+                              title: 'Конфіденційність у демо',
+                              notice: productConfig.demoPrivacyNotice),
+                          const Divider(height: 1),
+                          _NoticeRow(
+                              icon: Icons.info_outline,
+                              title: 'Умови демо-доступу',
+                              notice: productConfig.demoUseNotice),
                         ])),
                         const SizedBox(height: AppSpacing.xl),
                         Center(
@@ -178,5 +179,34 @@ class _ConfigRow extends StatelessWidget {
             ? null
             : () => ScaffoldMessenger.of(context)
                 .showSnackBar(SnackBar(content: Text(value!))),
+      );
+}
+
+class _NoticeRow extends StatelessWidget {
+  const _NoticeRow(
+      {required this.icon, required this.title, required this.notice});
+  final IconData icon;
+  final String title;
+  final String notice;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: const Text('Переглянути'),
+        trailing: const Icon(Icons.open_in_new),
+        onTap: () => showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(title),
+            content: Text(notice),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Зрозуміло'),
+              ),
+            ],
+          ),
+        ),
       );
 }

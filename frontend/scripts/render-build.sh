@@ -5,6 +5,7 @@ set -euo pipefail
 : "${SUPABASE_URL:?SUPABASE_URL is required}"
 : "${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY is required}"
 : "${TENANT_SLUG:?TENANT_SLUG is required for production builds}"
+: "${SUPPORT_EMAIL:?SUPPORT_EMAIL is required for production builds}"
 
 FLUTTER_VERSION="$(< .flutter-version)"
 FLUTTER_CACHE_ROOT="${RENDER_CACHE_DIR:-$HOME/.cache}"

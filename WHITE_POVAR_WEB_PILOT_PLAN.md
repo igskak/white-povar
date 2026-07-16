@@ -2,9 +2,9 @@
 
 Дата: 16 июля 2026
 
-Статус: `PILOT-00`, `DB-01`, `DEMO-01` и `DEMO-02` завершены
+Статус: `PILOT-00`, `DB-01`, `DEMO-01`, `DEMO-02` и `CFG-01` завершены
 
-Следующая задача: `CFG-01`
+Следующая задача: `REL-01`
 
 Production web: `https://white-povar-p79r.onrender.com`
 
@@ -160,7 +160,7 @@ demo-аккаунты, reset procedure и короткий сценарий по
 | 2 | DB-01 | Migration inventory, ledger и safe runner | PILOT-00 | DONE |
 | 3 | DEMO-01 | Demo-commerce backend и entitlement contract | PILOT-00 | DONE |
 | 4 | DEMO-02 | Web paywall и demo purchase UX | DEMO-01 | DONE |
-| 5 | CFG-01 | Production config, CORS, OAuth и secrets contract | PILOT-00 | TODO |
+| 5 | CFG-01 | Production config, CORS, OAuth и secrets contract | PILOT-00 | DONE |
 | 6 | REL-01 | Full local qualification и release candidate | DB-01, DEMO-02, CFG-01 | TODO |
 | 7 | DB-02 | Production backup, migrations и seed verification | REL-01 | TODO |
 | 8 | DEPLOY-01 | API и Flutter Web production deploy | DB-02 | TODO |
@@ -898,6 +898,7 @@ blocker.
 
 | Дата | ID | Результат | Проверки / production evidence | Риски / следующий шаг |
 |---|---|---|---|---|
+| 2026-07-16 | CFG-01 | Render contract теперь сохраняет Render web origin вместе с проверенными Firebase origins; API fail-closed валидирует production secrets/config, DB URL, commerce mode и соответствие `WEB_APP_URL` CORS allowlist, не раскрывая values. Web получает только public Dart defines, production build требует support email; Google OAuth скрыт до подтверждённой конфигурации, Apple не предлагается на web. Settings содержит честные in-app demo privacy/use notices и build label. Добавлен runbook Supabase Auth/Render без secret values. | Локальные CORS preflight/readiness contract tests (4 passed), backend flake8, Flutter format и полный `flutter test -r compact` (87 passed) — PASS; `flutter analyze` имеет только 2 pre-existing info diagnostics. Production-like web build с тестовыми public values и `git diff --check` — PASS. Полный backend pytest был остановлен: в этом окружении он завис на collection без вывода; это фиксируется для `REL-01`. Production Render/Supabase не изменялись, migrations не применялись и deploy не выполнялся. | Перед `REL-01` владелец продукта должен вне git задать Render `SUPPORT_EMAIL`, demo allowlist и завершить Supabase Site URL/redirect URLs; Google включать только после browser OAuth verification. Future custom domain — отдельный follow-up. Следующая задача: `REL-01`. |
 | 2026-07-16 | DEMO-02 | Release web adapter заменён на server-catalogue demo flow: CTA «Активувати демо-доступ», заметное disclosure «Кошти не списуються», allowlist/unavailable/loading/purchasing/server-confirmation/error/active/expired состояния и refresh server entitlement после каждой активации/обновления доступа. One-off после server confirmation возвращает к mapped collection; native store adapter сохранён для mobile. Обновлены widget-state tests и goldens 390/768/1280. | `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, targeted paywall goldens/tests, полный `flutter test -r compact`, production-like `flutter build web --release` и `git diff --check` — PASS. Production не изменялся, migrations не применялись и web не deployed. | До production flow необходимы `CFG-01` и `REL-01`; allowlist и kill switch остаются только server-side. Следующая задача: `CFG-01`. |
 | 2026-07-16 | DEMO-01 | Добавлен fail-closed server commerce mode (`disabled|demo|stripe`) и server-only email allowlist; authenticated tenant catalogue с display metadata; demo purchase принимает только `offerKey` и `Idempotency-Key`, а user/tenant/scope/price/duration определяются сервером. Новая migration расширяет offers, добавляет `demo` source, защищённый service-role-only transactional RPC, seed monthly/annual и conditional one-off offer, а также internal CLI `backend/tools/demo_commerce.py` для list/grant/revoke/reset. Existing RevenueCat/mobile endpoints не менялись. | Targeted DEMO/commerce/migration tests, полный backend suite, flake8 и `git diff --check` — PASS. Migrations/seed не применялись, production не изменялся и не заявляется deployed. | До DB-02 migration ожидает обычный ledger/backup flow. `DEMO-02` должен использовать catalogue и server confirmation, не раскрывая allowlist и не открывая premium по client success. Следующая задача: `DEMO-02`. |
 | 2026-07-16 | DB-01 | Добавлены фиксированный `backend/migrations/manifest.json` (20 managed timestamped migrations), SHA-256 ledger `schema_migrations`, fail-closed runner `backend/tools/migrate.py` с `status`/read-only `plan`/`apply`, project-ref guard, advisory lock, транзакцией migration+ledger и checksum fail-closed. Три legacy SQL отмечены manual-review и не запускаются runner; старый direct runner теперь отказывает. Добавлена recovery procedure для DB-02. Pending migrations не применялись. | Unit checks manifest/checksum/status/project-ref: 3 passed; disposable PostgreSQL integration подтвердил idempotent rerun и rollback failed migration. Полный backend suite: 196 passed; flake8, `flutter analyze`, `flutter test -r compact` и `git diff --check` прошли. Read-only production `plan` был остановлен до соединения: локальный venv не содержит новый driver до переустановки requirements; production DB не менялась. | Перед DB-02 установить обновлённые backend requirements в release environment, сохранить backup/PITR evidence, выполнить production `plan` и вручную сверить applied state трёх legacy files; только затем разрешён `apply`. Следующая задача: `DEMO-01`. |

@@ -13,6 +13,11 @@ if [ "$ENVIRONMENT" != "development" ] && [ -z "$TENANT_SLUG" ]; then
   exit 1
 fi
 
+if [ "$ENVIRONMENT" = "production" ] && [ -z "${SUPPORT_EMAIL:-}" ]; then
+  echo "SUPPORT_EMAIL is required for production builds." >&2
+  exit 1
+fi
+
 # Local development is the only context allowed to use the pilot tenant by default.
 TENANT_SLUG="${TENANT_SLUG:-ohorodnik-oleksandr}"
 
@@ -24,4 +29,7 @@ flutter build web \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
   --dart-define=ENVIRONMENT="$ENVIRONMENT" \
-  --dart-define=TENANT_SLUG="$TENANT_SLUG"
+  --dart-define=TENANT_SLUG="$TENANT_SLUG" \
+  --dart-define=SUPPORT_EMAIL="${SUPPORT_EMAIL:-}" \
+  --dart-define=BUILD_LABEL="${BUILD_LABEL:-v1.0.0}" \
+  --dart-define=GOOGLE_OAUTH_ENABLED="${GOOGLE_OAUTH_ENABLED:-false}"

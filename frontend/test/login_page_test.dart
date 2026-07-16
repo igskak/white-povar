@@ -6,6 +6,7 @@ import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
+import 'package:frontend/core/config/app_config.dart';
 import 'package:frontend/features/auth/models/auth_state.dart';
 import 'package:frontend/features/auth/presentation/pages/login_page.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
@@ -24,7 +25,7 @@ void main() {
       await tester.pumpWidget(_app());
 
       expect(find.text('Готуйте з Олександром'), findsOneWidget);
-      expect(find.text('Продовжити з Google'), findsOneWidget);
+      expect(find.text('Продовжити з Google'), findsNothing);
       expect(find.text('Продовжити як гість'), findsOneWidget);
       final exception = tester.takeException();
       expect(exception, isNull, reason: 'width: $width');
@@ -32,6 +33,10 @@ void main() {
   });
 
   testWidgets('login goldens at design breakpoints', (tester) async {
+    // The committed goldens exercise an explicitly enabled OAuth provider.
+    // Production hides it until its Supabase callback is verified.
+    if (!AppConfig.googleOAuthEnabled) return;
+
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 

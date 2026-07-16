@@ -17,4 +17,9 @@ void main() {
       ),
     );
   });
+
+  test('does not enable Google OAuth without an explicit public build flag',
+      () {
+    expect(AppConfig.googleOAuthEnabled, isFalse);
+  });
 }

@@ -37,6 +37,18 @@ class AppConfig {
     'WEB_APP_URL',
     defaultValue: 'https://white-povar-p79r.onrender.com',
   );
+  static const String supportEmail = String.fromEnvironment(
+    'SUPPORT_EMAIL',
+    defaultValue: '',
+  );
+  static const String buildLabel = String.fromEnvironment(
+    'BUILD_LABEL',
+    defaultValue: 'v1.0.0',
+  );
+  static const bool googleOAuthEnabled = bool.fromEnvironment(
+    'GOOGLE_OAUTH_ENABLED',
+    defaultValue: false,
+  );
   static const String authCallbackPath = '/auth/callback';
   static const String webAuthCallbackUrl = '$webAppUrl$authCallbackPath';
   static const String mobileAuthCallbackUrl =
@@ -59,6 +71,7 @@ class AppConfig {
     if (supabaseUrl.isEmpty) missing.add('SUPABASE_URL');
     if (supabaseAnonKey.isEmpty) missing.add('SUPABASE_ANON_KEY');
     if (tenantSlug.isEmpty) missing.add('TENANT_SLUG');
+    if (isProduction && supportEmail.isEmpty) missing.add('SUPPORT_EMAIL');
 
     if (missing.isNotEmpty) {
       throw StateError(

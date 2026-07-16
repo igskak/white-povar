@@ -44,6 +44,14 @@ services:
         sync: false
       - key: ENVIRONMENT
         value: production
+      # These are public Flutter build values, not secrets. Configure the
+      # support address in Render before activating the pilot.
+      - key: SUPPORT_EMAIL
+        sync: false
+      - key: BUILD_LABEL
+        value: pilot-2026.07.16
+      - key: GOOGLE_OAUTH_ENABLED
+        value: "false"
 
   - type: web
     name: white-povar-api
@@ -70,7 +78,9 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: ALLOWED_ORIGINS
-        value: https://white-povar.web.app,https://white-povar.firebaseapp.com
+        value: https://white-povar-p79r.onrender.com,https://white-povar.web.app,https://white-povar.firebaseapp.com
+      - key: WEB_APP_URL
+        value: https://white-povar-p79r.onrender.com
       - key: DEFAULT_LOCALE
         value: uk
       - key: SUPPORTED_LOCALES
@@ -90,4 +100,8 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: OPENAI_API_KEY
+        sync: false
+      - key: COMMERCE_MODE
+        value: demo
+      - key: DEMO_COMMERCE_ALLOWED_EMAILS
         sync: false

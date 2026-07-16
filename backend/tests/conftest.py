@@ -25,7 +25,15 @@ os.environ["SUPABASE_KEY"] = _FAKE_SUPABASE_ANON_KEY
 os.environ["SUPABASE_SERVICE_KEY"] = _FAKE_SUPABASE_SERVICE_KEY
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci")
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql://postgres:test-password@localhost:5432/test_db"
+)
 os.environ.setdefault("FIREBASE_PROJECT_ID", "test-firebase-project")
+# Keep app-level CORS tests independent from a developer's private .env.
+os.environ["ALLOWED_ORIGINS"] = (
+    "https://white-povar-p79r.onrender.com,"
+    "https://white-povar.web.app,https://white-povar.firebaseapp.com"
+)
 
 # Keep imports deterministic whether pytest is invoked as `pytest` or
 # `python -m pytest`, from the repository root or from `backend/`.

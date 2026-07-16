@@ -8,6 +8,7 @@ import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/branding/brand_providers.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../models/auth_state.dart';
 import '../../providers/auth_provider.dart';
@@ -440,13 +441,14 @@ class _LoginForm extends StatelessWidget {
                 Expanded(child: Divider(color: Color(0xFF3A332A)))
               ]),
               const SizedBox(height: 12),
-              AppButton(
-                  label: 'Продовжити з Google',
-                  icon: Icons.g_mobiledata_rounded,
-                  variant: AppButtonVariant.secondary,
-                  expand: true,
-                  onPressed:
-                      isLoading ? null : () => onProviderPressed('Google')),
+              if (AppConfig.googleOAuthEnabled)
+                AppButton(
+                    label: 'Продовжити з Google',
+                    icon: Icons.g_mobiledata_rounded,
+                    variant: AppButtonVariant.secondary,
+                    expand: true,
+                    onPressed:
+                        isLoading ? null : () => onProviderPressed('Google')),
               if (!kIsWeb &&
                   defaultTargetPlatform != TargetPlatform.android) ...[
                 const SizedBox(height: 8),

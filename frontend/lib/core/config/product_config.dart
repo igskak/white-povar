@@ -1,22 +1,28 @@
-/// Product-owned links and labels that are intentionally independent from
-/// [BrandConfig]. Real endpoints are supplied before the pilot release.
+import 'app_config.dart';
+
+/// Product-owned public labels and notices, independent from [BrandConfig].
 class ProductConfig {
   const ProductConfig({
     required this.appName,
     required this.versionLabel,
     this.supportEmail,
-    this.privacyUrl,
-    this.termsUrl,
+    required this.demoPrivacyNotice,
+    required this.demoUseNotice,
   });
 
   final String appName;
   final String versionLabel;
   final String? supportEmail;
-  final String? privacyUrl;
-  final String? termsUrl;
+  final String demoPrivacyNotice;
+  final String demoUseNotice;
 
   static const pilot = ProductConfig(
-    appName: 'White Povar',
-    versionLabel: 'v1.0.0',
+    appName: 'Огороднік Олександр',
+    versionLabel: AppConfig.buildLabel,
+    supportEmail: AppConfig.supportEmail,
+    demoPrivacyNotice:
+        'У демо-версії ми обробляємо дані акаунта лише для роботи сервісу. Не додавайте чутливі дані до публічних полів.',
+    demoUseNotice:
+        'Демо-доступ не є оплатою: кошти не списуються, а доступ може бути відкликаний для завершення пілоту.',
   );
 }

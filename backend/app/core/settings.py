@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     firebase_project_id: Optional[str] = None
 
     # CORS - Production ready origins
-    allowed_origins: str = "https://white-povar-p79r.onrender.com,http://localhost:3000,http://localhost:8080"
+    web_app_url: str = "https://white-povar-p79r.onrender.com"
+    allowed_origins: str = (
+        "https://white-povar-p79r.onrender.com,"
+        "https://white-povar.web.app,https://white-povar.firebaseapp.com"
+    )
 
     # Database
     database_url: Optional[str] = None
@@ -78,16 +82,6 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
         
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Construct database URL from Supabase URL if not provided
-        if not self.database_url and self.supabase_url:
-            # Convert Supabase URL to PostgreSQL connection string
-            # Format: postgresql://postgres:[password]@[host]:5432/postgres
-            supabase_host = self.supabase_url.replace("https://", "").replace("http://", "")
-            # Note: In production, you'd get the actual DB password from Supabase dashboard
-            self.database_url = f"postgresql://postgres:password@{supabase_host}:5432/postgres"
-    
     @property
     def cors_origins(self) -> List[str]:
         """Parse allowed_origins string into a list for CORS configuration"""
@@ -101,6 +95,34 @@ class Settings(BaseSettings):
                 if origin not in origins:
                     origins.append(origin)
         return origins
+
+    def missing_required_production_settings(self) -> List[str]:
+        """Return setting names only, never their values, for safe probes/logs."""
+        required = {
+            "SECRET_KEY": self.secret_key,
+            "SUPABASE_URL": self.supabase_url,
+            "SUPABASE_KEY": self.supabase_key,
+            "SUPABASE_SERVICE_KEY": self.supabase_service_key,
+            "DATABASE_URL": self.database_url,
+            "OPENAI_API_KEY": self.openai_api_key,
+            "WEB_APP_URL": self.web_app_url,
+        }
+        missing = [name for name, value in required.items() if not value or not value.strip()]
+        if self.web_app_url and self.web_app_url not in self.cors_origins:
+            missing.append("ALLOWED_ORIGINS")
+        if self.commerce_mode.strip().lower() not in {"disabled", "demo", "stripe"}:
+            missing.append("COMMERCE_MODE")
+        return missing
+
+    def validate_startup_configuration(self) -> None:
+        """Fail closed before serving production traffic with incomplete config."""
+        if not self.is_production:
+            return
+        missing = self.missing_required_production_settings()
+        if missing:
+            raise RuntimeError(
+                "Production configuration is incomplete: " + ", ".join(missing)
+            )
 
     @property
     def is_production(self) -> bool:

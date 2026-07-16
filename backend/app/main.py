@@ -14,6 +14,7 @@ from app.ingestion.service import startup_ingestion, shutdown_ingestion
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    settings.validate_startup_configuration()
     await startup_ingestion()
     yield
     # Shutdown
@@ -78,15 +79,11 @@ async def health_check():
 @app.get("/health/ready")
 async def readiness_check():
     """Readiness check for required production configuration."""
-    missing = []
-    for key, value in {
-        "SUPABASE_URL": settings.supabase_url,
-        "SUPABASE_KEY": settings.supabase_key,
-        "SUPABASE_SERVICE_KEY": settings.supabase_service_key,
-        "OPENAI_API_KEY": settings.openai_api_key,
-    }.items():
-        if not value:
-            missing.append(key)
+    missing = (
+        settings.missing_required_production_settings()
+        if settings.is_production
+        else []
+    )
 
     if missing:
         raise HTTPException(
