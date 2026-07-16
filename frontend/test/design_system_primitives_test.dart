@@ -215,7 +215,7 @@ void main() {
       find.byType(Scaffold),
       matchesGoldenFile('goldens/design_system_primitives.png'),
     );
-  });
+  }, tags: 'golden');
 }
 
 final _brandConfig = BrandConfig.fromJson({

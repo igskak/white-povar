@@ -49,7 +49,7 @@ void main() {
         matchesGoldenFile('goldens/login_page_${width.toInt()}.png'),
       );
     }
-  });
+  }, tags: 'golden');
 
   testWidgets('login remains usable at 200% text scale', (tester) async {
     await tester.pumpWidget(_app(textScaler: const TextScaler.linear(2)));

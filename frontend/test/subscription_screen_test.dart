@@ -84,7 +84,7 @@ void main() {
         matchesGoldenFile('goldens/subscription_${width.toInt()}.png'),
       );
     }
-  });
+  }, tags: 'golden');
 }
 
 const _product = PurchaseProduct(

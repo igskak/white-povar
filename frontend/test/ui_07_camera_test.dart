@@ -84,7 +84,7 @@ void main() {
         matchesGoldenFile('goldens/camera_permission_${width.toInt()}.png'),
       );
     }
-  });
+  }, tags: 'golden');
 
   test('weak detection must be confirmed before it enters recipe search', () {
     final ingredients = IngredientEditNotifier()

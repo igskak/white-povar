@@ -68,7 +68,7 @@ void main() {
         matchesGoldenFile('goldens/profile_guest_${width.toInt()}.png'),
       );
     }
-  });
+  }, tags: 'golden');
 }
 
 GoRouter _profileRouter() => GoRouter(
