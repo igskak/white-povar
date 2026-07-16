@@ -47,6 +47,10 @@ class Settings(BaseSettings):
 
     # Database
     database_url: Optional[str] = None
+    # Used exclusively by the fail-closed migration runner to ensure a release
+    # environment is targeting the intended Supabase project.  It is not a
+    # secret and is intentionally not exposed by application endpoints.
+    expected_supabase_project_ref: Optional[str] = None
 
     # File Storage
     supabase_storage_bucket: str = "recipe-images"

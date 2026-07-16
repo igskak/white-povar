@@ -1,4 +1,4 @@
-from app.core.settings import settings
+from app.core.settings import Settings, settings
 import asyncio
 
 import pytest
@@ -50,3 +50,17 @@ def test_render_web_origin_passes_cors_preflight():
     assert response.headers["access-control-allow-origin"] == (
         "https://white-povar-p79r.onrender.com"
     )
+
+
+def test_migration_project_ref_is_accepted_as_server_only_configuration():
+    configured = Settings(
+        _env_file=None,
+        secret_key="test-secret",
+        supabase_url="https://project.supabase.co",
+        supabase_key="test-anon-key",
+        supabase_service_key="test-service-key",
+        openai_api_key="test-openai-key",
+        expected_supabase_project_ref="qnlfvpqmkmbvzmzqgjpo",
+    )
+
+    assert configured.expected_supabase_project_ref == "qnlfvpqmkmbvzmzqgjpo"
