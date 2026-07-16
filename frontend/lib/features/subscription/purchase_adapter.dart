@@ -228,8 +228,9 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
         options: Options(headers: {'Idempotency-Key': _uuid.v4()}),
       );
       final result = response.data ?? const <String, dynamic>{};
-      if (result['accepted'] != true)
+      if (result['accepted'] != true) {
         return const PurchaseOutcome(PaywallPhase.error);
+      }
       return PurchaseOutcome(
         PaywallPhase.confirmationPending,
         requiresEntitlementConfirmation: true,

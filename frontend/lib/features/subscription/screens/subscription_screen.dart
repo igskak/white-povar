@@ -214,12 +214,6 @@ bool _needsMessage(PaywallPhase phase) =>
     phase == PaywallPhase.cancelled ||
     phase == PaywallPhase.notAllowlisted ||
     phase == PaywallPhase.confirmationPending;
-String _ctaLabel(PurchaseProduct? product) =>
-    product?.trial ??
-    (product == null
-        ? 'Оформити підписку'
-        : 'Продовжити з ${product.title.toLowerCase()}');
-
 class _ProductsLoading extends StatelessWidget {
   const _ProductsLoading();
   @override
