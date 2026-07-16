@@ -11,6 +11,7 @@ import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../pantry/providers/pantry_provider.dart';
+import '../../../menu_plan/providers/menu_plan_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
@@ -76,6 +77,18 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                             content: Text(
                                 'Відсутні інгредієнти додано до покупок')));
                   },
+            onAddToPlan: locked || !auth.isAuthenticated
+                ? null
+                : () async {
+                    await ref.read(menuPlanServiceProvider).add(
+                        day: DateTime.now(),
+                        recipeId: recipe.id,
+                        servings: recipe.servings);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Рецепт заплановано на сьогодні')));
+                  },
           );
         },
       ),
@@ -122,11 +135,13 @@ class _RecipeDetailContent extends StatelessWidget {
       {required this.recipe,
       required this.locked,
       required this.onUnlock,
-      this.onAddToShopping});
+      this.onAddToShopping,
+      this.onAddToPlan});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
   final Future<void> Function()? onAddToShopping;
+  final Future<void> Function()? onAddToPlan;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -137,7 +152,8 @@ class _RecipeDetailContent extends StatelessWidget {
               recipe: recipe,
               locked: locked,
               onUnlock: onUnlock,
-              onAddToShopping: onAddToShopping);
+              onAddToShopping: onAddToShopping,
+              onAddToPlan: onAddToPlan);
           if (desktop) {
             return Row(children: [
               SizedBox(width: 520, child: hero),
@@ -203,11 +219,13 @@ class _RecipeBody extends StatelessWidget {
       {required this.recipe,
       required this.locked,
       required this.onUnlock,
-      this.onAddToShopping});
+      this.onAddToShopping,
+      this.onAddToPlan});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
   final Future<void> Function()? onAddToShopping;
+  final Future<void> Function()? onAddToPlan;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -232,6 +250,12 @@ class _RecipeBody extends StatelessWidget {
                     icon: Icons.add_shopping_cart_outlined,
                     variant: AppButtonVariant.secondary,
                     onPressed: onAddToShopping),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                    label: 'Запланувати на тиждень',
+                    icon: Icons.calendar_month_outlined,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: onAddToPlan),
               ],
               const SizedBox(height: AppSpacing.xl),
               if (locked)

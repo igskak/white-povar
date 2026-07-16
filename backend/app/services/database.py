@@ -322,6 +322,89 @@ class SupabaseService:
         if missing:
             self.get_client(use_service_key=True).table('shopping_list_items').insert(missing).execute()
         return await self.get_shopping_list_items(user_id, chef_id)
+
+    async def get_menu_plan_slots(self, user_id: str, chef_id: str, start, end) -> List[Dict[str, Any]]:
+        result = (self.get_client(use_service_key=True).table('menu_plan_slots').select('*')
+                  .eq('user_id', user_id).eq('chef_id', chef_id)
+                  .gte('planned_for', start.isoformat()).lte('planned_for', end.isoformat())
+                  .order('planned_for').order('position').order('created_at').execute())
+        return result.data or []
+
+    async def get_menu_plan_recipe(self, recipe_id: str, chef_id: str, collection_id: str | None) -> Optional[Dict[str, Any]]:
+        """Verify tenant ownership, but never turn a slot write into an access check."""
+        client = self.get_client(use_service_key=True)
+        recipe = (client.table('recipes').select('id,chef_id,title,servings,is_premium,image_url')
+                  .eq('id', recipe_id).eq('chef_id', chef_id).execute()).data or []
+        if not recipe:
+            return None
+        if collection_id:
+            item = (client.table('collection_items').select('id,collections!inner(id,chef_id)')
+                    .eq('collection_id', collection_id).eq('recipe_id', recipe_id)
+                    .eq('collections.chef_id', chef_id).execute()).data or []
+            if not item:
+                return None
+        return recipe[0]
+
+    async def create_menu_plan_slot(self, user_id: str, chef_id: str, data: Dict[str, Any], recipe: Dict[str, Any]) -> Dict[str, Any]:
+        values = {**data, 'user_id': user_id, 'chef_id': chef_id,
+                  'title': recipe['title'], 'is_premium': recipe.get('is_premium', False),
+                  'image_url': recipe.get('image_url')}
+        result = self.get_client(use_service_key=True).table('menu_plan_slots').insert(values).execute()
+        return result.data[0]
+
+    async def update_menu_plan_slot(self, slot_id: str, user_id: str, chef_id: str, data: Dict[str, Any], recipe: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        values = {**data, 'title': recipe['title'], 'is_premium': recipe.get('is_premium', False),
+                  'image_url': recipe.get('image_url')}
+        result = (self.get_client(use_service_key=True).table('menu_plan_slots').update(values)
+                  .eq('id', slot_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
+        return (result.data or [None])[0]
+
+    async def delete_menu_plan_slot(self, slot_id: str, user_id: str, chef_id: str):
+        return await self.execute_query('menu_plan_slots', 'delete', filters={'id': slot_id, 'user_id': user_id, 'chef_id': chef_id}, use_service_key=True)
+
+    async def reorder_menu_plan_slots(self, slot_ids: List[str], user_id: str, chef_id: str) -> None:
+        """All supplied IDs must be owned by this user+tenant before any write."""
+        rows = (self.get_client(use_service_key=True).table('menu_plan_slots').select('id')
+                .in_('id', slot_ids).eq('user_id', user_id).eq('chef_id', chef_id).execute()).data or []
+        if len(rows) != len(set(slot_ids)):
+            raise ValueError('Menu plan slots must belong to the current user and tenant')
+        client = self.get_client(use_service_key=True)
+        for position, slot_id in enumerate(slot_ids):
+            client.table('menu_plan_slots').update({'position': position}).eq('id', slot_id).eq('user_id', user_id).eq('chef_id', chef_id).execute()
+
+    async def add_menu_plan_missing_ingredients(self, user_id: str, chef_id: str, start, end) -> List[Dict[str, Any]]:
+        slots = await self.get_menu_plan_slots(user_id, chef_id, start, end)
+        pantry_names = {str(item['name']).strip().lower() for item in await self.get_pantry_items(user_id, chef_id)}
+        recipe_ids = list({str(slot['recipe_id']) for slot in slots})
+        if not recipe_ids:
+            return await self.get_shopping_list_items(user_id, chef_id)
+        recipes = (self.get_client(use_service_key=True).table('recipes').select('id,servings,recipe_ingredients(*)')
+                   .in_('id', recipe_ids).eq('chef_id', chef_id).execute()).data or []
+        by_id = {str(recipe['id']): recipe for recipe in recipes}
+        combined: Dict[tuple[str, str | None], float | None] = {}
+        for slot in slots:
+            recipe = by_id.get(str(slot['recipe_id']))
+            if not recipe:
+                continue
+            factor = int(slot['servings']) / max(int(recipe.get('servings') or 1), 1)
+            for ingredient in recipe.get('recipe_ingredients') or []:
+                name = str(ingredient.get('display_name') or '').strip().lower()
+                if not name or name in pantry_names:
+                    continue
+                key = (name, ingredient.get('unit_id'))
+                amount = ingredient.get('amount')
+                combined[key] = None if amount is None else (combined.get(key) or 0) + float(amount) * factor
+        existing = await self.get_shopping_list_items(user_id, chef_id)
+        existing_by_key = {(str(item['name']).strip().lower(), item.get('unit')): item for item in existing if not item.get('checked')}
+        client = self.get_client(use_service_key=True)
+        for (name, unit), quantity in combined.items():
+            row = existing_by_key.get((name, unit))
+            if row:
+                updated_quantity = None if quantity is None else (float(row['quantity']) if row.get('quantity') else 0) + quantity
+                client.table('shopping_list_items').update({'quantity': updated_quantity}).eq('id', row['id']).eq('user_id', user_id).eq('chef_id', chef_id).execute()
+            else:
+                client.table('shopping_list_items').insert({'user_id': user_id, 'chef_id': chef_id, 'name': name, 'quantity': quantity, 'unit': unit, 'category': 'Інше', 'checked': False}).execute()
+        return await self.get_shopping_list_items(user_id, chef_id)
     
     async def get_recipe_by_id(self, recipe_id: str, chef_id: str) -> Dict[str, Any]:
         """Get one recipe only inside an already resolved tenant."""

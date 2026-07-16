@@ -9,6 +9,7 @@ import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../menu_plan/providers/menu_plan_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../models/collection.dart';
 import '../../providers/collection_provider.dart';
@@ -77,6 +78,21 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
                     onTap: item.isLocked
                         ? () => _openGate(authenticated)
                         : () => _openItem(collection, item),
+                    onPlan: item.isLocked || !authenticated
+                        ? null
+                        : () async {
+                            await ref.read(menuPlanServiceProvider).add(
+                                day: DateTime.now(),
+                                recipeId: item.content.id,
+                                collectionId: collection.id,
+                                servings: item.content.servings);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Матеріал заплановано на сьогодні')));
+                            }
+                          },
                   ),
                 )),
           ]),
@@ -198,10 +214,14 @@ class _CollectionGate extends StatelessWidget {
 
 class _CollectionItemCard extends StatelessWidget {
   const _CollectionItemCard(
-      {required this.item, required this.isResume, required this.onTap});
+      {required this.item,
+      required this.isResume,
+      required this.onTap,
+      this.onPlan});
   final CollectionItem item;
   final bool isResume;
   final VoidCallback onTap;
+  final Future<void> Function()? onPlan;
 
   @override
   Widget build(BuildContext context) => ContentCard(
@@ -239,6 +259,11 @@ class _CollectionItemCard extends StatelessWidget {
                   Text(item.content.description,
                       maxLines: 1, overflow: TextOverflow.ellipsis),
               ])),
+          if (onPlan != null)
+            IconButton(
+                icon: const Icon(Icons.calendar_month_outlined),
+                tooltip: 'Запланувати',
+                onPressed: onPlan),
           Icon(item.isLocked ? Icons.lock_outline : Icons.chevron_right),
         ]),
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../models/pantry_models.dart';
 import '../../providers/pantry_provider.dart';
@@ -12,6 +13,12 @@ class PantryPage extends ConsumerWidget {
       child: Scaffold(
           appBar: AppBar(
               title: const Text('Кладова і покупки'),
+              actions: [
+                IconButton(
+                    tooltip: 'Меню на тиждень',
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    onPressed: () => context.push('/menu-plan'))
+              ],
               bottom: const TabBar(
                   tabs: [Tab(text: 'Кладова'), Tab(text: 'Покупки')])),
           floatingActionButton: FloatingActionButton.extended(

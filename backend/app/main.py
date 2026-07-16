@@ -6,7 +6,7 @@ import uvicorn
 import os
 
 from app.core.settings import settings
-from app.api.v1.endpoints import analytics, recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio, lifecycle
+from app.api.v1.endpoints import analytics, recipes, search, auth, ai, config, ingestion, videos, subscription, pantry, collections, commerce, studio, lifecycle, menu_plans
 from app.middleware.localization import LocalizationMiddleware
 from app.ingestion.service import startup_ingestion, shutdown_ingestion
 
@@ -56,6 +56,7 @@ app.include_router(ingestion.router, prefix="/api/v1/ingestion", tags=["ingestio
 app.include_router(videos.router, prefix="/api/v1/videos", tags=["videos"])
 app.include_router(subscription.router, prefix="/api/v1/subscription", tags=["subscription"])
 app.include_router(pantry.router, prefix="/api/v1", tags=["pantry"])
+app.include_router(menu_plans.router, prefix="/api/v1", tags=["menu-planner"])
 app.include_router(collections.router, prefix="/api/v1/collections", tags=["collections"])
 app.include_router(commerce.router, prefix="/api/v1/commerce", tags=["commerce"])
 app.include_router(studio.router, prefix="/api/v1/studio", tags=["internal-studio"])
