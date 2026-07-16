@@ -27,7 +27,10 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version-file: frontend/.flutter-version
+        # Keep CI on the exact SDK used by Render's build script. The action's
+        # version-file input only supports pubspec/FVM config formats, not the
+        # plain-text .flutter-version consumed by frontend/scripts/render-build.sh.
+        flutter-version: '3.24.5'
         cache: true
         
     - name: Get dependencies
