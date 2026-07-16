@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""
-Script to run database migrations directly using psycopg2.
+"""DEPRECATED: never use this runner for production migrations.
+
+Use ``python3 tools/migrate.py plan`` or ``apply`` instead.  This legacy file is
+kept only so existing local references do not silently point at a different tool.
 """
 import os
 import sys
@@ -12,6 +14,8 @@ load_dotenv()
 
 def run_migrations():
     """Run all migration files."""
+    print("Deprecated: use python3 tools/migrate.py; refusing unsafe execution.")
+    sys.exit(2)
     try:
         import psycopg2
     except ImportError:
@@ -75,4 +79,3 @@ def run_migrations():
 
 if __name__ == "__main__":
     run_migrations()
-

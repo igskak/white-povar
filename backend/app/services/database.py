@@ -163,6 +163,25 @@ class SupabaseService:
         )
         return result.data or []
 
+    async def get_active_web_offers(self, chef_id: str) -> List[Dict[str, Any]]:
+        """Return tenant-owned display metadata; pricing is never client input."""
+        result = (
+            self.get_client(use_service_key=True).table('offers')
+            .select('offer_key,title,description,amount_minor,currency,billing_period,badge,trial_days,product:products(kind,product_content(collection_id))')
+            .eq('chef_id', chef_id).eq('status', 'active').execute()
+        )
+        return result.data or []
+
+    async def issue_demo_purchase(self, *, user_id: str, chef_id: str,
+                                  offer_key: str, idempotency_key: str) -> Dict[str, Any]:
+        result = self.get_client(use_service_key=True).rpc('issue_demo_purchase', {
+            'p_user_id': user_id,
+            'p_chef_id': chef_id,
+            'p_offer_key': offer_key,
+            'p_idempotency_key': idempotency_key,
+        }).execute()
+        return (result.data or [{}])[0]
+
     async def process_revenuecat_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Use the migration-owned transactional RPC for idempotent webhook processing."""
         result = self.get_client(use_service_key=True).rpc(

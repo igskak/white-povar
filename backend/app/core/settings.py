@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     # This value is server-only; it must never be supplied as a dart-define.
     revenuecat_webhook_authorization: Optional[str] = None
 
+    # Web pilot commerce is intentionally server-controlled.  The allowlist is
+    # never part of a client response, log record, or bundled configuration.
+    commerce_mode: str = "disabled"
+    demo_commerce_allowed_emails: str = ""
+
     # Firebase (deprecated - now using Supabase Auth)
     # Kept for backward compatibility, but no longer required
     firebase_project_id: Optional[str] = None
@@ -127,6 +132,19 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def normalized_commerce_mode(self) -> str:
+        mode = self.commerce_mode.strip().lower()
+        return mode if mode in {"disabled", "demo", "stripe"} else "disabled"
+
+    @property
+    def demo_commerce_allowed_email_set(self) -> set[str]:
+        return {
+            email.strip().casefold()
+            for email in self.demo_commerce_allowed_emails.split(",")
+            if email.strip()
+        }
 
     @property
     def supported_locales_list(self) -> List[str]:

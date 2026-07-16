@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "Forward-only production migration inventory. Checksums are calculated from the checked-in SQL at runtime.",
+  "migrations": [
+    {"id": "legacy_subscription_schema", "filename": "add_premium_subscription_system.sql", "managed": false, "risk": "historical data update; applied state is unknown and it must never be replayed automatically"},
+    {"id": "legacy_subscription_backfill", "filename": "update_existing_users_subscription.sql", "managed": false, "risk": "historical data update; applied state is unknown and it must never be replayed automatically"},
+    {"id": "legacy_sample_premium_recipe", "filename": "mark_sample_premium_recipe.sql", "managed": false, "risk": "non-deterministic sample-data mutation; never run in production"},
+    {"id": "2026_07_11_enable_row_level_security", "filename": "2026_07_11_enable_row_level_security.sql", "requires": ["legacy_subscription_schema"], "recovery": "restore from backup if policy rollout causes an access regression"},
+    {"id": "2026_07_15_published_brand_configs", "filename": "2026_07_15_published_brand_configs.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_recipe_content_kinds", "filename": "2026_07_15_recipe_content_kinds.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_collections", "filename": "2026_07_15_collections.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_tenant_entitlements_and_teasers", "filename": "2026_07_15_tenant_entitlements_and_teasers.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_commerce_access", "filename": "2026_07_15_commerce_access.sql", "requires": ["2026_07_15_collections", "2026_07_15_tenant_entitlements_and_teasers"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_mobile_store_webhooks", "filename": "2026_07_15_mobile_store_webhooks.sql", "requires": ["2026_07_15_commerce_access"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_user_history_and_cooking_progress", "filename": "2026_07_15_user_history_and_cooking_progress.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_user_preference_profiles", "filename": "2026_07_15_user_preference_profiles.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_pantry_and_shopping_list", "filename": "2026_07_15_pantry_and_shopping_list.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_ai_generated_drafts", "filename": "2026_07_15_ai_generated_drafts.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_studio_drafts", "filename": "2026_07_15_studio_drafts.sql", "requires": ["2026_07_15_published_brand_configs"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_studio_config_publish", "filename": "2026_07_15_studio_config_publish.sql", "requires": ["2026_07_15_published_brand_configs"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_studio_assets", "filename": "2026_07_15_studio_assets.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_15_studio_releases", "filename": "2026_07_15_studio_releases.sql", "requires": ["2026_07_15_published_brand_configs", "2026_07_15_studio_drafts"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_16_observability", "filename": "2026_07_16_observability.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_16_lifecycle_notifications", "filename": "2026_07_16_lifecycle_notifications.sql", "requires": [], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_16_studio_content_merchandising", "filename": "2026_07_16_studio_content_merchandising.sql", "requires": ["2026_07_15_collections", "2026_07_15_commerce_access"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_16_weekly_menu_planner", "filename": "2026_07_16_weekly_menu_planner.sql", "requires": ["2026_07_15_collections"], "recovery": "forward fix or restore from backup"},
+    {"id": "2026_07_16_demo_commerce", "filename": "2026_07_16_demo_commerce.sql", "requires": ["2026_07_15_commerce_access", "2026_07_15_collections"], "recovery": "revoke affected demo entitlements or restore from backup"},
+    {"id": "2026_07_15_seed_ohorodnik_brand_config", "filename": "2026_07_15_seed_ohorodnik_brand_config.sql", "requires": ["2026_07_15_published_brand_configs"], "optional": true, "recovery": "delete only the specifically seeded tenant records after approval"}
+  ]
+}

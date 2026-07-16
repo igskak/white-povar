@@ -223,8 +223,11 @@ async def delete_current_user(current_user: User = Depends(verify_firebase_token
             'users', 'delete', filters={'id': current_user.id}, use_service_key=True
         )
         supabase_service.service_client.auth.admin.delete_user(current_user.id)
-    except Exception as e:
-        logger.error("User deletion failed for %s: %s", current_user.id, e)
+    except Exception:
+        # Error sinks must not receive provider exception text: it can contain
+        # request or account data. The route and exception class are enough for
+        # operational triage, matching the observability redaction policy.
+        logger.error("User deletion failed for authenticated account")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Could not delete account",

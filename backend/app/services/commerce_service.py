@@ -14,6 +14,15 @@ from app.core.settings import settings
 from app.services.database import supabase_service
 
 
+def demo_purchase_enabled_for(email: str) -> bool:
+    """Fail closed for unknown modes and never reveal the allowlist."""
+    return (
+        settings.normalized_commerce_mode == 'demo'
+        and bool(email)
+        and email.casefold() in settings.demo_commerce_allowed_email_set
+    )
+
+
 def verify_revenuecat_authorization(value: str | None) -> None:
     expected = settings.revenuecat_webhook_authorization
     if not expected:

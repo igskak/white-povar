@@ -1,18 +1,81 @@
 """Tenant-safe mobile store catalogue and trusted billing webhooks."""
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.auth import User, verify_firebase_token
 from app.core.tenant import TenantContext, require_tenant_context
 from app.services.commerce_service import (
+    demo_purchase_enabled_for,
     process_revenuecat_webhook,
     verify_revenuecat_authorization,
 )
+from app.core.settings import settings
 from app.services.database import supabase_service
 from app.services.subscription_service import SubscriptionService
 
 router = APIRouter()
+
+
+class DemoPurchaseRequest(BaseModel):
+    offer_key: str = Field(min_length=1, max_length=120, alias='offerKey')
+
+    model_config = {'populate_by_name': True}
+
+
+def _web_offer(row):
+    product = row.get('product') or {}
+    content = product.get('product_content') or []
+    collection_ids = [item['collection_id'] for item in content if item.get('collection_id')]
+    return {
+        'offerKey': row['offer_key'], 'title': row.get('title'),
+        'description': row.get('description'), 'amountMinor': row.get('amount_minor'),
+        'currency': row.get('currency'), 'billingPeriod': row.get('billing_period'),
+        'badge': row.get('badge'), 'trialDays': row.get('trial_days'),
+        'productKind': product.get('kind'),
+        'accessScope': 'tenant' if product.get('kind') == 'subscription' else 'collection',
+        'collectionIds': collection_ids,
+    }
+
+
+@router.get('/catalogue')
+async def catalogue(
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    rows = await supabase_service.get_active_web_offers(tenant.chef_id)
+    return {
+        'offers': [_web_offer(row) for row in rows],
+        'commerceMode': settings.normalized_commerce_mode,
+        # This indicates eligibility only; the allowlist itself remains server-only.
+        'demoPurchaseAvailable': demo_purchase_enabled_for(current_user.email),
+    }
+
+
+@router.post('/demo-purchases')
+async def demo_purchase(
+    body: DemoPurchaseRequest,
+    idempotency_key: str | None = Header(None, alias='Idempotency-Key'),
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    if settings.normalized_commerce_mode != 'demo':
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail='Demo commerce is unavailable')
+    if not demo_purchase_enabled_for(current_user.email):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail='Demo commerce is unavailable')
+    if not idempotency_key or len(idempotency_key) > 200:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Idempotency-Key is required')
+    result = await supabase_service.issue_demo_purchase(
+        user_id=current_user.id, chef_id=tenant.chef_id,
+        offer_key=body.offer_key, idempotency_key=idempotency_key,
+    )
+    if not result.get('accepted'):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Offer not found')
+    return result
 
 
 @router.get('/store-products')
