@@ -26,6 +26,20 @@ services:
       - path: /flutter_bootstrap.js
         name: Cache-Control
         value: no-cache
+      # Flutter loads these files by stable names. Keep them revalidating so a
+      # browser never combines a new HTML shell with a previous release bundle.
+      - path: /main.dart.js
+        name: Cache-Control
+        value: no-cache
+      - path: /flutter.js
+        name: Cache-Control
+        value: no-cache
+      - path: /flutter_service_worker.js
+        name: Cache-Control
+        value: no-cache
+      - path: /version.json
+        name: Cache-Control
+        value: no-cache
       - path: /assets/*
         name: Cache-Control
         value: public, max-age=31536000, immutable
