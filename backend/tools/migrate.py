@@ -16,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS_DIR = ROOT / "migrations"
 MANIFEST_PATH = MIGRATIONS_DIR / "manifest.json"
 LOCK_ID = 781469310221
+BASELINE_ALLOWED_LEGACY_IDS = {
+    "legacy_subscription_schema",
+    "legacy_subscription_backfill",
+}
 LEDGER_SQL = """
 CREATE TABLE IF NOT EXISTS public.schema_migrations (
     migration_id TEXT PRIMARY KEY,
@@ -103,7 +107,15 @@ def classify(manifest, ledger):
         current_checksum = checksum(migration)
         entry = {"id": migration["id"], "filename": migration["filename"], "checksum": current_checksum}
         if not migration.get("managed", True):
-            entry["state"] = "manual-review"
+            if ledger is not None and migration["id"] in ledger:
+                saved = ledger[migration["id"]]
+                entry["state"] = (
+                    "baseline-applied"
+                    if saved["filename"] == migration["filename"] and saved["checksum"] == current_checksum
+                    else "checksum-mismatch"
+                )
+            else:
+                entry["state"] = "manual-review"
         elif ledger is None:
             entry["state"] = "ledger-missing"
         elif migration["id"] in ledger:
@@ -143,10 +155,11 @@ def apply_pending(conn, manifest, rows):
         with conn.cursor() as cursor:
             cursor.execute("SELECT pg_advisory_xact_lock(%s)", (LOCK_ID,))
             cursor.execute(LEDGER_SQL)
-    # A new ledger has no rows, so entries previously reported as ledger-missing
-    # become pending (or dependency-blocked) only after its creation commits.
-    rows = classify(manifest, ledger_rows(conn) or {})
     for migration in manifest:
+        # Re-read the ledger before every manifest entry. Earlier migrations in
+        # this same invocation may satisfy a dependency that was blocked in the
+        # initial plan, while preserving the manifest's fixed order.
+        rows = classify(manifest, ledger_rows(conn) or {})
         row = next(item for item in rows if item["id"] == migration["id"])
         if row["state"] != "pending":
             continue
@@ -165,9 +178,46 @@ def apply_pending(conn, manifest, rows):
         print(f"applied {migration['id']}")
 
 
+def baseline_legacy(conn, manifest, migration_ids):
+    """Record specifically verified historical migrations without executing SQL."""
+    selected = set(migration_ids)
+    if not selected:
+        raise MigrationError("At least one legacy migration ID is required for baseline")
+    by_id = {migration["id"]: migration for migration in manifest}
+    if selected - BASELINE_ALLOWED_LEGACY_IDS:
+        raise MigrationError("Only explicitly approved legacy migrations can be baselined")
+    if any(migration_id not in by_id or by_id[migration_id].get("managed", True) for migration_id in selected):
+        raise MigrationError("Baseline accepts legacy migration IDs only")
+    with conn.transaction():
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(%s)", (LOCK_ID,))
+            cursor.execute(LEDGER_SQL)
+            existing = ledger_rows(conn) or {}
+            for migration_id in selected:
+                migration = by_id[migration_id]
+                saved = existing.get(migration_id)
+                current_checksum = checksum(migration)
+                if saved:
+                    if saved["filename"] != migration["filename"] or saved["checksum"] != current_checksum:
+                        raise MigrationError("Checksum mismatch; refusing to baseline migration")
+                    continue
+                cursor.execute(
+                    "INSERT INTO public.schema_migrations (migration_id, filename, checksum_sha256, duration_ms) VALUES (%s, %s, %s, 0)",
+                    (migration_id, migration["filename"], current_checksum),
+                )
+    for migration_id in sorted(selected):
+        print(f"baseline recorded {migration_id}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("status", "plan", "apply"))
+    parser.add_argument("command", choices=("status", "plan", "apply", "baseline-legacy"))
+    parser.add_argument(
+        "--migration",
+        dest="migration_ids",
+        action="append",
+        help="Explicitly verified historical migration ID; only allowed with baseline-legacy",
+    )
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
     manifest = load_manifest()
@@ -180,8 +230,10 @@ def main():
             elif args.command == "plan":
                 print_status(rows)
                 print("Read-only preflight complete; no migrations were applied.")
-            else:
+            elif args.command == "apply":
                 apply_pending(conn, manifest, rows)
+            else:
+                baseline_legacy(conn, manifest, args.migration_ids or [])
     except MigrationError as error:
         print(f"Migration runner refused: {error}", file=sys.stderr)
         return 2

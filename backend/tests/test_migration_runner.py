@@ -14,7 +14,7 @@ SPEC.loader.exec_module(migrate)
 def test_manifest_files_checksums_and_dependencies_are_valid():
     manifest = migrate.load_manifest()
     managed = [item for item in manifest if item.get("managed", True)]
-    assert len(managed) == 21
+    assert len(managed) == 22
     assert all(len(migrate.checksum(item)) == 64 for item in manifest)
     assert manifest[0]["id"] == "legacy_subscription_schema"
     assert any(item["id"] == "2026_07_15_commerce_access" for item in manifest)
@@ -40,6 +40,20 @@ def test_status_reports_pending_applied_and_checksum_mismatch():
     assert states["legacy_sample_premium_recipe"] == "manual-review"
 
 
+def test_status_reports_verified_legacy_baseline_without_replaying_sql():
+    manifest = migrate.load_manifest()
+    legacy = next(item for item in manifest if item["id"] == "legacy_subscription_schema")
+    ledger = {
+        legacy["id"]: {
+            "filename": legacy["filename"],
+            "checksum": migrate.checksum(legacy),
+        }
+    }
+    states = {row["id"]: row["state"] for row in migrate.classify(manifest, ledger)}
+    assert states[legacy["id"]] == "baseline-applied"
+    assert "legacy_sample_premium_recipe" not in migrate.BASELINE_ALLOWED_LEGACY_IDS
+
+
 def test_project_ref_must_match_and_sql_keeps_transaction_atomic():
     migrate.verify_project_ref("abcdefghijklmnopqrst", "https://abcdefghijklmnopqrst.supabase.co")
     try:
@@ -52,6 +66,28 @@ def test_project_ref_must_match_and_sql_keeps_transaction_atomic():
     sql = migrate.migration_sql(migration)
     assert not sql.lstrip().upper().startswith("BEGIN;")
     assert not sql.rstrip().upper().endswith("COMMIT;")
+
+
+def test_manifest_dependencies_become_pending_after_prior_ledger_entry():
+    manifest = migrate.load_manifest()
+    dependency = next(item for item in manifest if item["id"] == "2026_07_15_collections")
+    dependent = next(item for item in manifest if item["id"] == "2026_07_15_commerce_access")
+    before = {row["id"]: row["state"] for row in migrate.classify(manifest, {})}
+    assert before[dependent["id"]] == "blocked"
+    ledger = {
+        dependency["id"]: {
+            "filename": dependency["filename"],
+            "checksum": migrate.checksum(dependency),
+        },
+        "2026_07_15_tenant_entitlements_and_teasers": {
+            "filename": "2026_07_15_tenant_entitlements_and_teasers.sql",
+            "checksum": migrate.checksum(
+                next(item for item in manifest if item["id"] == "2026_07_15_tenant_entitlements_and_teasers")
+            ),
+        },
+    }
+    after = {row["id"]: row["state"] for row in migrate.classify(manifest, ledger)}
+    assert after[dependent["id"]] == "pending"
 
 
 @pytest.mark.skipif(

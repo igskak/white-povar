@@ -25,6 +25,7 @@
     {"id": "2026_07_16_studio_content_merchandising", "filename": "2026_07_16_studio_content_merchandising.sql", "requires": ["2026_07_15_collections", "2026_07_15_commerce_access"], "recovery": "forward fix or restore from backup"},
     {"id": "2026_07_16_weekly_menu_planner", "filename": "2026_07_16_weekly_menu_planner.sql", "requires": ["2026_07_15_collections"], "recovery": "forward fix or restore from backup"},
     {"id": "2026_07_16_demo_commerce", "filename": "2026_07_16_demo_commerce.sql", "requires": ["2026_07_15_commerce_access", "2026_07_15_collections"], "recovery": "revoke affected demo entitlements or restore from backup"},
-    {"id": "2026_07_15_seed_ohorodnik_brand_config", "filename": "2026_07_15_seed_ohorodnik_brand_config.sql", "requires": ["2026_07_15_published_brand_configs"], "optional": true, "recovery": "delete only the specifically seeded tenant records after approval"}
+    {"id": "2026_07_15_seed_ohorodnik_brand_config", "filename": "2026_07_15_seed_ohorodnik_brand_config.sql", "requires": ["2026_07_15_published_brand_configs"], "optional": true, "recovery": "delete only the specifically seeded tenant records after approval"},
+    {"id": "2026_07_16_seed_demo_commerce_offers", "filename": "2026_07_16_seed_demo_commerce_offers.sql", "requires": ["2026_07_16_demo_commerce", "2026_07_15_seed_ohorodnik_brand_config"], "recovery": "archive only the specifically seeded offers/products after approval"}
   ]
 }
