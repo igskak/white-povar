@@ -214,6 +214,7 @@ bool _needsMessage(PaywallPhase phase) =>
     phase == PaywallPhase.cancelled ||
     phase == PaywallPhase.notAllowlisted ||
     phase == PaywallPhase.confirmationPending;
+
 class _ProductsLoading extends StatelessWidget {
   const _ProductsLoading();
   @override

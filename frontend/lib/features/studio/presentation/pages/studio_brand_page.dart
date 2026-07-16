@@ -376,7 +376,10 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             child: const Text('Запросити iOS build')),
       ]),
       Row(children: [
-        SizedBox(width: 140, child: AppTextField(controller: _rollbackVersion, label: 'Версія rollback')),
+        SizedBox(
+            width: 140,
+            child: AppTextField(
+                controller: _rollbackVersion, label: 'Версія rollback')),
         const SizedBox(width: 8),
         OutlinedButton(
             onPressed: _releasing
