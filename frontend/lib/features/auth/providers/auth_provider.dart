@@ -40,9 +40,12 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
   Future<void> signInWithEmail(String email, String password) async {
     state = const AppAuthState.loading();
     try {
-      await _authService!.signInWithEmail(email, password);
-      if (_authService.currentUser == null) {
+      final response = await _authService!.signInWithEmail(email, password);
+      final user = response.user ?? _authService.currentUser;
+      if (user == null) {
         state = const AppAuthState.unauthenticated();
+      } else {
+        state = AppAuthState.authenticated(user);
       }
     } catch (e) {
       state = AppAuthState.error(e.toString());

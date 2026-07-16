@@ -53,7 +53,10 @@ class AuthService {
       if (response.user != null) {
         _currentUser = response.user;
         _authStateController.add(response.user);
-        await _syncUserWithBackend(response.user!);
+        // Profile sync is best-effort. Do not hold the auth transition open on
+        // a separate API request: the UI must retain the successful session
+        // even if that request is slow or temporarily unavailable.
+        unawaited(_syncUserWithBackend(response.user!));
       }
 
       return response;
