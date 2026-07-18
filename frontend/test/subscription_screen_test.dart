@@ -6,6 +6,7 @@ import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
+import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/subscription/paywall_provider.dart';
 import 'package:frontend/features/subscription/purchase_adapter.dart';
 import 'package:frontend/features/subscription/providers/subscription_provider.dart';
@@ -18,6 +19,7 @@ void main() {
       purchaseAdapterProvider.overrideWithValue(FakePurchaseAdapter(
         snapshot: const PaywallSnapshot(phase: PaywallPhase.active),
       )),
+      authProvider.overrideWith((_) => AuthNotifier.testing()),
     ]);
     addTearDown(container.dispose);
 
@@ -155,6 +157,7 @@ Widget _app(PurchaseAdapter adapter, {TextScaler? textScaler}) => ProviderScope(
       overrides: [
         tenantBootstrapProvider.overrideWithValue(_bootstrap),
         purchaseAdapterProvider.overrideWithValue(adapter),
+        authProvider.overrideWith((_) => AuthNotifier.testing()),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../auth/models/auth_state.dart';
+import '../auth/providers/auth_provider.dart';
 import 'commerce_entitlement_service.dart';
 import 'purchase_adapter.dart';
 
@@ -11,10 +13,27 @@ final purchaseAdapterProvider = Provider<PurchaseAdapter>(
 final selectedPurchaseProductProvider = StateProvider<String?>((_) => null);
 
 final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallSnapshot>(
-  (ref) => PaywallNotifier(
-    ref.watch(purchaseAdapterProvider),
-    () => CommerceEntitlementService(ref.read(apiClientProvider)).read(),
-  ),
+  (ref) {
+    final notifier = PaywallNotifier(
+      ref.watch(purchaseAdapterProvider),
+      () => CommerceEntitlementService(ref.read(apiClientProvider)).read(),
+    );
+    // A persisted browser session is restored asynchronously. Refresh only
+    // once authentication is known, otherwise the initial anonymous request
+    // would leave recipe and cooking gates locked after a page reload.
+    final initialAuth = ref.read(authProvider);
+    if (initialAuth.isAuthenticated) {
+      notifier.refreshEntitlement();
+    }
+    ref.listen<AppAuthState>(authProvider, (_, next) {
+      if (next.isAuthenticated) {
+        notifier.refreshEntitlement();
+      } else if (!next.isLoading) {
+        notifier.clearEntitlement();
+      }
+    });
+    return notifier;
+  },
 );
 
 class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
@@ -23,7 +42,7 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
     // Premium gates can be opened without visiting the paywall first. Read the
     // server-issued entitlement as soon as the shared notifier is created;
     // the catalogue is still loaded lazily by the paywall screen.
-    Future<void>.microtask(_refreshEntitlement);
+    Future<void>.microtask(refreshEntitlement);
   }
 
   final PurchaseAdapter _adapter;
@@ -87,13 +106,20 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
 
   Future<void> manageSubscription() => _adapter.manageSubscription();
 
-  Future<void> _refreshEntitlement() async {
+  Future<void> refreshEntitlement() async {
     final entitlement = await _readActiveEntitlement();
     if (entitlement == null) return;
     state = PaywallSnapshot(
       phase: entitlement.phase,
       products: state.products,
       renewsOn: entitlement.renewsOn,
+    );
+  }
+
+  void clearEntitlement() {
+    state = PaywallSnapshot(
+      phase: PaywallPhase.idle,
+      products: state.products,
     );
   }
 
