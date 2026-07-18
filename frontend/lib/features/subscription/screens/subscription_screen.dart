@@ -7,6 +7,7 @@ import '../../../app/theme/tokens/app_tokens.dart';
 import '../../../core/branding/brand_assets.dart';
 import '../../../core/branding/brand_providers.dart';
 import '../../../core/widgets/design_system.dart';
+import '../../collections/providers/collection_provider.dart';
 import '../purchase_adapter.dart';
 import '../paywall_provider.dart';
 
@@ -148,8 +149,14 @@ class _PaywallCard extends ConsumerWidget {
                             selectedProduct.accessScope ==
                                 PurchaseAccessScope.collection &&
                             selectedProduct.collectionIds.isNotEmpty) {
+                          final collectionId =
+                              selectedProduct.collectionIds.first;
+                          // The collection page may already be in the router
+                          // cache with its pre-purchase locked projection.
+                          // Re-read the server decision before returning to it.
+                          ref.invalidate(collectionDetailProvider(collectionId));
                           context.go(
-                            '/collections/${selectedProduct.collectionIds.first}',
+                            '/collections/$collectionId',
                           );
                         }
                       },
