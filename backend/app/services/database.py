@@ -180,7 +180,15 @@ class SupabaseService:
             'p_offer_key': offer_key,
             'p_idempotency_key': idempotency_key,
         }).execute()
-        return (result.data or [{}])[0]
+        # PostgREST returns a JSONB RPC result as an object, unlike table and
+        # RETURNS TABLE calls which return a list.  Do not index the JSONB
+        # object: that turns an accepted demo purchase into a server error.
+        payload = result.data
+        if isinstance(payload, dict):
+            return payload
+        if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+            return payload[0]
+        return {}
 
     async def process_revenuecat_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Use the migration-owned transactional RPC for idempotent webhook processing."""

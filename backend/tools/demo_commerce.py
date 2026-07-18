@@ -50,7 +50,10 @@ def command_grant(args: argparse.Namespace) -> None:
         'p_user_id': _user_id(args.email), 'p_chef_id': _tenant_id(args.tenant),
         'p_offer_key': args.offer_key, 'p_idempotency_key': f'internal-grant-{uuid4()}',
     }).execute()
-    print(json.dumps((result.data or [{}])[0], ensure_ascii=False, default=str))
+    payload = result.data
+    if isinstance(payload, list):
+        payload = payload[0] if payload else {}
+    print(json.dumps(payload or {}, ensure_ascii=False, default=str))
 
 
 def command_revoke(args: argparse.Namespace) -> None:

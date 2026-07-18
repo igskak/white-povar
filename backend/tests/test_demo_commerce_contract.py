@@ -8,6 +8,7 @@ from app.api.v1.endpoints import commerce
 from app.api.v1.endpoints.auth import User
 from app.core.settings import settings
 from app.core.tenant import TenantContext
+from app.services.database import SupabaseService
 from app.services import commerce_service
 
 
@@ -61,6 +62,31 @@ def test_demo_purchase_requires_mode_allowlist_and_idempotency(monkeypatch):
     with pytest.raises(HTTPException) as denied:
         asyncio.run(commerce.demo_purchase(body, 'retry-2', User(id='user-a', email='other@example.com'), _tenant()))
     assert denied.value.status_code == 403
+
+
+def test_demo_purchase_rpc_accepts_jsonb_object_response(monkeypatch):
+    class Result:
+        data = {'accepted': True, 'entitlementId': 'ent-1', 'scopeType': 'tenant'}
+
+    class Rpc:
+        def execute(self):
+            return Result()
+
+    class Client:
+        def rpc(self, name, params):
+            assert name == 'issue_demo_purchase'
+            assert params['p_offer_key'] == 'demo-monthly'
+            return Rpc()
+
+    service = SupabaseService.__new__(SupabaseService)
+    monkeypatch.setattr(service, 'get_client', lambda use_service_key: Client())
+
+    result = asyncio.run(service.issue_demo_purchase(
+        user_id='user-a', chef_id='tenant-a', offer_key='demo-monthly',
+        idempotency_key='retry-1',
+    ))
+
+    assert result == Result.data
 
 
 def test_demo_migration_has_atomic_server_owned_contract_and_seed():
