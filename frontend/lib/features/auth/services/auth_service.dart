@@ -20,6 +20,8 @@ class AuthService {
   StreamSubscription<AuthState>? _authStateSubscription;
   User? _currentUser;
   bool _isInitialized = false;
+  Completer<void>? _initialSessionReady;
+  static const Duration _initialSessionTimeout = Duration(seconds: 2);
 
   Stream<User?> get authStateChanges => _authStateController.stream;
 
@@ -27,14 +29,21 @@ class AuthService {
 
   void initialize() {
     if (_isInitialized) {
+      if (_supabase.auth.currentSession != null) {
+        _completeInitialSession();
+      }
       _authStateController.add(currentUser);
       return;
     }
 
     _isInitialized = true;
+    _initialSessionReady ??= Completer<void>();
     AuthDiagnostics.start(_supabase.auth);
     _currentUser = _supabase.auth.currentUser;
     _authStateController.add(_currentUser);
+    if (_supabase.auth.currentSession != null) {
+      _completeInitialSession();
+    }
 
     _authStateSubscription = _supabase.auth.onAuthStateChange.listen((data) {
       _currentUser = resolveAuthUser(
@@ -42,6 +51,7 @@ class AuthService {
         sessionUser: data.session?.user,
         currentUser: _supabase.auth.currentUser,
       );
+      _completeInitialSession();
       _authStateController.add(_currentUser);
       if (_currentUser != null) {
         unawaited(_syncUserWithBackend(_currentUser!));
@@ -177,11 +187,32 @@ class AuthService {
 
   Future<String?> getIdToken() async {
     try {
-      return _supabase.auth.currentSession?.accessToken;
+      initialize();
+      var token = _supabase.auth.currentSession?.accessToken;
+      if (token != null && token.isNotEmpty) return token;
+
+      // Supabase web restores a persisted session asynchronously. All initial
+      // consumer reads share this bounded wait, so protected content is not
+      // cached as an anonymous teaser before its bearer token is available.
+      final ready = _initialSessionReady;
+      if (ready != null && !ready.isCompleted) {
+        try {
+          await ready.future.timeout(_initialSessionTimeout);
+        } on TimeoutException {
+          // An anonymous visitor remains a guest after the bounded wait.
+        }
+      }
+      token = _supabase.auth.currentSession?.accessToken;
+      return token;
     } catch (e) {
       debugPrint('AuthService token error: $e');
       return null;
     }
+  }
+
+  void _completeInitialSession() {
+    final ready = _initialSessionReady;
+    if (ready != null && !ready.isCompleted) ready.complete();
   }
 
   Future<void> _syncUserWithBackend(User user) async {
