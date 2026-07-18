@@ -19,7 +19,12 @@ final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallSnapshot>(
 
 class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
   PaywallNotifier(this._adapter, this._readEntitlement)
-      : super(const PaywallSnapshot(phase: PaywallPhase.productsLoading));
+      : super(const PaywallSnapshot(phase: PaywallPhase.productsLoading)) {
+    // Premium gates can be opened without visiting the paywall first. Read the
+    // server-issued entitlement as soon as the shared notifier is created;
+    // the catalogue is still loaded lazily by the paywall screen.
+    Future<void>.microtask(_refreshEntitlement);
+  }
 
   final PurchaseAdapter _adapter;
   final Future<PaywallSnapshot> Function() _readEntitlement;
@@ -27,7 +32,15 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
 
   Future<void> load() async {
     state = const PaywallSnapshot(phase: PaywallPhase.productsLoading);
-    state = await _adapter.load();
+    final catalogue = await _adapter.load();
+    final entitlement = await _readActiveEntitlement();
+    state = entitlement == null
+        ? catalogue
+        : PaywallSnapshot(
+            phase: entitlement.phase,
+            products: catalogue.products,
+            renewsOn: entitlement.renewsOn,
+          );
   }
 
   Future<void> purchase(PurchaseProduct product) async {
@@ -73,6 +86,27 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
   }
 
   Future<void> manageSubscription() => _adapter.manageSubscription();
+
+  Future<void> _refreshEntitlement() async {
+    final entitlement = await _readActiveEntitlement();
+    if (entitlement == null) return;
+    state = PaywallSnapshot(
+      phase: entitlement.phase,
+      products: state.products,
+      renewsOn: entitlement.renewsOn,
+    );
+  }
+
+  Future<PaywallSnapshot?> _readActiveEntitlement() async {
+    try {
+      final entitlement = await _readEntitlement();
+      return _isEntitled(entitlement.phase) ? entitlement : null;
+    } catch (_) {
+      // An unauthenticated or temporarily unavailable read must never grant
+      // access and must not block the public catalogue.
+      return null;
+    }
+  }
 
   Future<void> _confirmEntitlement([PurchaseOutcome? outcome]) async {
     final products = state.products;

@@ -8,10 +8,24 @@ import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
 import 'package:frontend/features/subscription/paywall_provider.dart';
 import 'package:frontend/features/subscription/purchase_adapter.dart';
+import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 import 'package:frontend/features/subscription/screens/subscription_screen.dart';
 import 'package:frontend/core/widgets/design_system.dart';
 
 void main() {
+  test('server-entitled paywall state unlocks shared premium gates', () async {
+    final container = ProviderContainer(overrides: [
+      purchaseAdapterProvider.overrideWithValue(FakePurchaseAdapter(
+        snapshot: const PaywallSnapshot(phase: PaywallPhase.active),
+      )),
+    ]);
+    addTearDown(container.dispose);
+
+    await container.read(paywallProvider.notifier).load();
+
+    expect(container.read(isPremiumProvider), isTrue);
+  });
+
   for (final scenario in _scenarios) {
     testWidgets('paywall renders ${scenario.phase.name} state', (tester) async {
       await tester.pumpWidget(

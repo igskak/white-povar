@@ -6,6 +6,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/auth_service.dart';
 import '../models/subscription.dart';
 import '../models/subscription_state.dart';
+import '../paywall_provider.dart';
+import '../purchase_adapter.dart';
 import '../services/subscription_service.dart';
 
 class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
@@ -85,6 +87,12 @@ final subscriptionProvider =
 
 // Convenience providers
 final isPremiumProvider = Provider<bool>((ref) {
+  final commercePhase = ref.watch(paywallProvider).phase;
+  if (commercePhase == PaywallPhase.active ||
+      commercePhase == PaywallPhase.grace ||
+      commercePhase == PaywallPhase.billingRetry) {
+    return true;
+  }
   final subscriptionState = ref.watch(subscriptionProvider);
   return subscriptionState.isPremium;
 });
