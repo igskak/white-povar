@@ -58,12 +58,20 @@ class AppRoutePaths {
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // The router instance must stay stable across auth transitions: recreating
+  // GoRouter mid-login resets navigation to initialLocation, which both loses
+  // the pending `returnTo` target and dumps the user on Home after sign-in.
+  // Auth changes only re-run `redirect` via refreshListenable.
+  final authRefresh = ValueNotifier(0);
+  ref
+    ..onDispose(authRefresh.dispose)
+    ..listen(authProvider, (_, __) => authRefresh.value++);
 
   return GoRouter(
     initialLocation: AppRoutePaths.home,
+    refreshListenable: authRefresh,
     redirect: (context, state) => RouteGuards.authRedirect(
-      authState: authState,
+      authState: ref.read(authProvider),
       uri: state.uri,
     ),
     routes: [

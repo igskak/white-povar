@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/config/app_config.dart';
+import 'auth_diagnostics.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -31,6 +32,7 @@ class AuthService {
     }
 
     _isInitialized = true;
+    AuthDiagnostics.start(_supabase.auth);
     _currentUser = _supabase.auth.currentUser;
     _authStateController.add(_currentUser);
 
