@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../theme/brand_theme.dart';
+import '../../core/branding/brand_assets.dart';
+import '../../core/branding/brand_config.dart';
+import '../../core/branding/brand_providers.dart';
 import '../../features/auth/presentation/pages/auth_callback_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -251,7 +254,7 @@ Widget _recipeDetail(GoRouterState state) {
       : RecipeDetailPage(recipeId: recipeId);
 }
 
-class AdaptiveNavigationShell extends StatelessWidget {
+class AdaptiveNavigationShell extends ConsumerWidget {
   const AdaptiveNavigationShell({
     super.key,
     required this.selectedIndex,
@@ -264,7 +267,7 @@ class AdaptiveNavigationShell extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 600) {
@@ -273,6 +276,7 @@ class AdaptiveNavigationShell extends StatelessWidget {
             return _DesktopNavigationShell(
               selectedIndex: selectedIndex,
               onDestinationSelected: onDestinationSelected,
+              brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
               child: child,
             );
           }
@@ -314,11 +318,13 @@ class _DesktopNavigationShell extends StatelessWidget {
     required this.selectedIndex,
     required this.onDestinationSelected,
     required this.child,
+    required this.brand,
   });
 
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
   final Widget child;
+  final BrandDetails brand;
 
   static const _items = <({String label, IconData icon, IconData selected})>[
     (label: 'Головна', icon: Icons.home_outlined, selected: Icons.home_rounded),
@@ -354,18 +360,14 @@ class _DesktopNavigationShell extends StatelessWidget {
                 children: [
                   const SizedBox(height: 24),
                   Semantics(
-                    label: 'White Povar',
+                    label: brand.name,
                     image: true,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: theme.extension<BrandThemeExtension>()?.accent ??
-                            scheme.primary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const SizedBox(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: SizedBox(
                         width: 44,
                         height: 44,
-                        child: Icon(Icons.restaurant_rounded),
+                        child: BrandAvatar(brand: brand, radius: 22),
                       ),
                     ),
                   ),
@@ -393,7 +395,7 @@ class _DesktopNavigationShell extends StatelessWidget {
           Expanded(
             child: Column(
               children: [
-                _DesktopTopBar(dividerColor: dividerColor),
+                _DesktopTopBar(dividerColor: dividerColor, brand: brand),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
@@ -473,9 +475,10 @@ class _DesktopRailDestination extends StatelessWidget {
 }
 
 class _DesktopTopBar extends StatelessWidget {
-  const _DesktopTopBar({required this.dividerColor});
+  const _DesktopTopBar({required this.dividerColor, required this.brand});
 
   final Color dividerColor;
+  final BrandDetails brand;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -487,12 +490,9 @@ class _DesktopTopBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                'WHITE POVAR',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      letterSpacing: 1.8,
-                      fontWeight: FontWeight.w800,
-                    ),
+              child: BrandLogo(
+                brand: brand,
+                height: 30,
               ),
             ),
             SizedBox(

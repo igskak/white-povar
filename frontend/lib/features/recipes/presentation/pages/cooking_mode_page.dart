@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -111,6 +113,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             title: recipe.title,
             step: _step,
             steps: recipe.instructions,
+            imageUrl: recipe.images.isEmpty ? null : recipe.images.first,
             onExit: _confirmExit,
             onTimer: () => _startTimer(recipe),
             timerLabel: _timerLabel(),
@@ -118,7 +121,12 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
               setState(() => _step = step);
               await _saveProgress(recipe);
             },
-            onPrevious: _step == 0 ? null : () => setState(() => _step--),
+            onPrevious: _step == 0
+                ? null
+                : () async {
+                    setState(() => _step--);
+                    await _saveProgress(recipe);
+                  },
             onNext: () async {
               if (_step == recipe.instructions.length - 1) {
                 setState(() => _complete = true);
@@ -192,6 +200,7 @@ class _CookingStep extends StatelessWidget {
       {required this.title,
       required this.step,
       required this.steps,
+      required this.imageUrl,
       required this.onExit,
       required this.onTimer,
       required this.timerLabel,
@@ -201,6 +210,7 @@ class _CookingStep extends StatelessWidget {
   final String title;
   final int step;
   final List<String> steps;
+  final String? imageUrl;
   final VoidCallback onExit;
   final VoidCallback onTimer;
   final String? timerLabel;
@@ -216,6 +226,7 @@ class _CookingStep extends StatelessWidget {
     final content = _StepContent(
       step: step,
       steps: steps,
+      imageUrl: imageUrl,
       onExit: onExit,
       onTimer: onTimer,
       timerLabel: timerLabel,
@@ -228,6 +239,7 @@ class _CookingStep extends StatelessWidget {
           SizedBox(
             width: 320,
             child: _StepList(
+              title: title,
               active: step,
               steps: steps,
               onSelected: onSelectStep,
@@ -235,11 +247,10 @@ class _CookingStep extends StatelessWidget {
           ),
           const VerticalDivider(width: 1, color: Color(0xFF2E2820)),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(56, 40, 56, 32),
-              child: content,
-            ),
-          ),
+              child: Padding(
+                  padding: const EdgeInsets.fromLTRB(56, 40, 56, 32),
+                  child: _DesktopCookingShortcuts(
+                      onPrevious: onPrevious, onNext: onNext, child: content))),
         ]),
       );
     }
@@ -261,6 +272,7 @@ class _StepContent extends StatelessWidget {
   const _StepContent(
       {required this.step,
       required this.steps,
+      required this.imageUrl,
       required this.onExit,
       required this.onTimer,
       required this.timerLabel,
@@ -268,69 +280,172 @@ class _StepContent extends StatelessWidget {
       required this.onNext});
   final int step;
   final List<String> steps;
+  final String? imageUrl;
   final VoidCallback onExit;
   final VoidCallback onTimer;
   final String? timerLabel;
   final VoidCallback? onPrevious;
   final VoidCallback onNext;
   @override
-  Widget build(BuildContext context) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          AppIconButton(
-              icon: Icons.close,
-              tooltip: 'Вийти з режиму готування',
-              onPressed: onExit,
-              filled: true),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(child: _Progress(step: step, total: steps.length)),
-          IconButton(
-            tooltip: 'Поставити таймер',
-            onPressed: onTimer,
-            icon: const Icon(Icons.timer_outlined, color: AppColorsV2.onInk),
-          ),
-        ]),
-        if (timerLabel != null)
-          Semantics(
-              liveRegion: true,
-              child: Text(timerLabel!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColorsV2.onInk))),
-        const Spacer(),
-        Text('КРОК ${step + 1}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                color: AppColorsV2.accent,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.8)),
-        const SizedBox(height: AppSpacing.md),
+  Widget build(BuildContext context) {
+    final desktop = MediaQuery.sizeOf(context).width >= 1024;
+    final stepCopy = Column(mainAxisSize: MainAxisSize.min, children: [
+      Text('КРОК ${step + 1}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+              color: AppColorsV2.accent,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.8)),
+      const SizedBox(height: AppSpacing.md),
+      Semantics(
+          liveRegion: true,
+          child: Text(steps[step],
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(color: AppColorsV2.onInk, height: 1.25))),
+    ]);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        AppIconButton(
+            icon: Icons.close,
+            tooltip: 'Вийти з режиму готування',
+            onPressed: onExit,
+            filled: true),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(child: _Progress(step: step, total: steps.length)),
+        IconButton(
+          tooltip: 'Поставити таймер',
+          onPressed: onTimer,
+          icon: const Icon(Icons.timer_outlined, color: AppColorsV2.onInk),
+        ),
+      ]),
+      if (timerLabel != null)
         Semantics(
             liveRegion: true,
-            child: Text(steps[step],
+            child: Text(timerLabel!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: AppColorsV2.onInk, height: 1.25))),
-        const Spacer(),
+                style: const TextStyle(color: AppColorsV2.onInk))),
+      const Spacer(),
+      if (desktop)
         Row(children: [
-          Expanded(
-              child: AppButton(
-                  label: 'Назад',
-                  icon: Icons.arrow_back,
-                  onPressed: onPrevious,
-                  variant: AppButtonVariant.secondary)),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-              flex: 2,
-              child: AppButton(
-                  label: step == steps.length - 1 ? 'Завершити' : 'Далі',
-                  icon: step == steps.length - 1
-                      ? Icons.check
-                      : Icons.arrow_forward,
-                  onPressed: onNext))
-        ]),
-      ]);
+          Expanded(flex: 3, child: stepCopy),
+          const SizedBox(width: 40),
+          Expanded(flex: 2, child: _CookingStepPhoto(imageUrl: imageUrl)),
+        ])
+      else
+        stepCopy,
+      const Spacer(),
+      Row(children: [
+        Expanded(
+            child: AppButton(
+                label: 'Назад',
+                icon: Icons.arrow_back,
+                onPressed: onPrevious,
+                variant: AppButtonVariant.secondary)),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+            flex: 2,
+            child: AppButton(
+                label: step == steps.length - 1 ? 'Завершити' : 'Далі',
+                icon: step == steps.length - 1
+                    ? Icons.check
+                    : Icons.arrow_forward,
+                onPressed: onNext))
+      ]),
+      if (desktop) ...[
+        const SizedBox(height: AppSpacing.sm),
+        const Text('← / → для навігації',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54)),
+      ],
+    ]);
+  }
+}
+
+class _DesktopCookingShortcuts extends StatelessWidget {
+  const _DesktopCookingShortcuts({
+    required this.onPrevious,
+    required this.onNext,
+    required this.child,
+  });
+
+  final VoidCallback? onPrevious;
+  final VoidCallback onNext;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Focus(
+        autofocus: true,
+        child: Shortcuts(
+          shortcuts: const {
+            SingleActivator(LogicalKeyboardKey.arrowLeft):
+                _PreviousStepIntent(),
+            SingleActivator(LogicalKeyboardKey.arrowRight): _NextStepIntent(),
+          },
+          child: Actions(
+            actions: {
+              _PreviousStepIntent: CallbackAction<_PreviousStepIntent>(
+                onInvoke: (_) {
+                  onPrevious?.call();
+                  return null;
+                },
+              ),
+              _NextStepIntent: CallbackAction<_NextStepIntent>(
+                onInvoke: (_) {
+                  onNext();
+                  return null;
+                },
+              ),
+            },
+            child: child,
+          ),
+        ),
+      );
+}
+
+class _PreviousStepIntent extends Intent {
+  const _PreviousStepIntent();
+}
+
+class _NextStepIntent extends Intent {
+  const _NextStepIntent();
+}
+
+class _CookingStepPhoto extends StatelessWidget {
+  const _CookingStepPhoto({required this.imageUrl});
+
+  final String? imageUrl;
+  static const _fallback = DecoratedBox(
+    decoration: BoxDecoration(
+      color: Color(0xFF2E2820),
+      borderRadius: AppRadius.lg,
+    ),
+    child: Center(
+      child: Icon(Icons.restaurant_menu_rounded,
+          size: 52, color: AppColorsV2.onInk),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl == null || imageUrl!.isEmpty) {
+      return const AspectRatio(aspectRatio: 1, child: _fallback);
+    }
+    return AspectRatio(
+      aspectRatio: 1,
+      child: ClipRRect(
+        borderRadius: AppRadius.lg,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          fit: BoxFit.cover,
+          errorWidget: (_, __, ___) => _fallback,
+          placeholder: (_, __) => _fallback,
+        ),
+      ),
+    );
+  }
 }
 
 class _Progress extends StatelessWidget {
@@ -352,7 +467,11 @@ class _Progress extends StatelessWidget {
 
 class _StepList extends StatelessWidget {
   const _StepList(
-      {required this.active, required this.steps, required this.onSelected});
+      {required this.title,
+      required this.active,
+      required this.steps,
+      required this.onSelected});
+  final String title;
   final int active;
   final List<String> steps;
   final ValueChanged<int> onSelected;
@@ -360,7 +479,18 @@ class _StepList extends StatelessWidget {
   Widget build(BuildContext context) => Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 18),
-          child: _Progress(step: active, total: steps.length),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: AppColorsV2.onInk)),
+            const SizedBox(height: AppSpacing.md),
+            _Progress(step: active, total: steps.length),
+          ]),
         ),
         const Divider(height: 1, color: Color(0xFF2E2820)),
         Expanded(

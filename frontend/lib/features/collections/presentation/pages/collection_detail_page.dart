@@ -58,7 +58,7 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
           child: _CollectionHero(collection: collection, author: brand.name)),
       SliverToBoxAdapter(
           child: ResponsiveContainer(
-        maxWidth: 920,
+        maxWidth: 1120,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.xxl),
@@ -130,7 +130,7 @@ class _CollectionHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-      height: 300,
+      height: MediaQuery.sizeOf(context).width >= 1024 ? 380 : 300,
       child: Stack(fit: StackFit.expand, children: [
         collection.coverUrl == null || collection.coverUrl!.isEmpty
             ? const _HeroFallback()

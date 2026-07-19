@@ -51,48 +51,67 @@ class _SavedRecipesBody extends ConsumerWidget {
             onRetry: () => context.go('/search'),
           );
         }
-        return RefreshIndicator(
-          onRefresh: () async => ref.refresh(favoriteRecipesProvider.future),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
-                sliver: SliverToBoxAdapter(
-                  child: Text('Ваша колекція',
-                      style: Theme.of(context).textTheme.headlineMedium),
+        return ResponsiveContainer(
+          maxWidth: 1180,
+          child: RefreshIndicator(
+            onRefresh: () async => ref.refresh(favoriteRecipesProvider.future),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.md,
+                      AppSpacing.md, AppSpacing.md, AppSpacing.sm),
+                  sliver: SliverToBoxAdapter(
+                    child: LayoutBuilder(
+                        builder: (context, constraints) => Row(
+                              children: [
+                                Expanded(
+                                  child: Text('Ваша колекція',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium),
+                                ),
+                                if (constraints.maxWidth >= 600)
+                                  Text('${recipes.length} рецептів',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelLarge),
+                              ],
+                            )),
+                  ),
                 ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                sliver: SliverLayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = constraints.crossAxisExtent >= 900
-                        ? 3
-                        : constraints.crossAxisExtent >= 600
-                            ? 2
-                            : 1;
-                    return SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: columns,
-                        childAspectRatio: columns == 1 ? .92 : .72,
-                        crossAxisSpacing: AppSpacing.md,
-                        mainAxisSpacing: AppSpacing.md,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => RecipeCard(
-                          recipe: recipes[index],
-                          onTap: () =>
-                              context.push('/recipes/${recipes[index].id}'),
+                SliverPadding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.crossAxisExtent >= 1080
+                          ? 4
+                          : constraints.crossAxisExtent >= 720
+                              ? 3
+                              : constraints.crossAxisExtent >= 600
+                                  ? 2
+                                  : 1;
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columns,
+                          childAspectRatio: columns == 1 ? .92 : .72,
+                          crossAxisSpacing: AppSpacing.md,
+                          mainAxisSpacing: AppSpacing.md,
                         ),
-                        childCount: recipes.length,
-                      ),
-                    );
-                  },
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => RecipeCard(
+                            recipe: recipes[index],
+                            onTap: () =>
+                                context.push('/recipes/${recipes[index].id}'),
+                          ),
+                          childCount: recipes.length,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

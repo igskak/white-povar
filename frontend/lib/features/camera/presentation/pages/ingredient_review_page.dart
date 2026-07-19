@@ -112,72 +112,38 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
       );
     }
 
-    return Column(
-      children: [
+    return LayoutBuilder(builder: (context, constraints) {
+      final desktop = constraints.maxWidth >= 720;
+      final ingredientsPanel = _IngredientsPanel(
+        ingredients: ingredients,
+        confirmedCount: confirmedCount,
+        needsConfirmation: needsConfirmation,
+        onIngredientTap: _editIngredient,
+        onIngredientToggle: _toggleIngredient,
+        onIngredientDelete: _deleteIngredient,
+      );
+      if (desktop) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(children: [
+            Expanded(
+                flex: 4, child: _CapturedPhoto(image: widget.capturedImage)),
+            const SizedBox(width: 24),
+            Expanded(flex: 5, child: ingredientsPanel),
+          ]),
+        );
+      }
+      return Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: SizedBox(
-            height: 130,
-            width: double.infinity,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: kIsWeb
-                  ? Image.network(widget.capturedImage.path, fit: BoxFit.cover)
-                  : Image.file(File(widget.capturedImage.path),
-                      fit: BoxFit.cover),
-            ),
-          ),
+              height: 130,
+              width: double.infinity,
+              child: _CapturedPhoto(image: widget.capturedImage)),
         ),
-        if (needsConfirmation)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: ContentCard(
-              semanticLabel:
-                  'Потрібне підтвердження слабко розпізнаних продуктів',
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Підтвердьте або видаліть продукти з низькою точністю, щоб знайти рецепти.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(
-                'Знайдені продукти',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const Spacer(),
-              Text('Підтверджено: $confirmedCount'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ingredients.isEmpty
-              ? const StateView.empty(
-                  title: 'Продукти не знайдено',
-                  subtitle: 'Додайте інгредієнти вручну або зробіть нове фото.',
-                  icon: Icons.search_off,
-                )
-              : IngredientListWidget(
-                  ingredients: ingredients,
-                  onIngredientTap: _editIngredient,
-                  onIngredientToggle: _toggleIngredient,
-                  onIngredientDelete: _deleteIngredient,
-                ),
-        ),
-      ],
-    );
+        Expanded(child: ingredientsPanel),
+      ]);
+    });
   }
 
   void _editIngredient(DetectedIngredient ingredient) {
@@ -258,4 +224,77 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
           content: Text('Підтверджені продукти додано до кладової')));
     }
   }
+}
+
+class _CapturedPhoto extends StatelessWidget {
+  const _CapturedPhoto({required this.image});
+
+  final XFile image;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: kIsWeb
+            ? Image.network(image.path, fit: BoxFit.cover)
+            : Image.file(File(image.path), fit: BoxFit.cover),
+      );
+}
+
+class _IngredientsPanel extends StatelessWidget {
+  const _IngredientsPanel({
+    required this.ingredients,
+    required this.confirmedCount,
+    required this.needsConfirmation,
+    required this.onIngredientTap,
+    required this.onIngredientToggle,
+    required this.onIngredientDelete,
+  });
+
+  final List<DetectedIngredient> ingredients;
+  final int confirmedCount;
+  final bool needsConfirmation;
+  final ValueChanged<DetectedIngredient> onIngredientTap;
+  final ValueChanged<String> onIngredientToggle;
+  final ValueChanged<String> onIngredientDelete;
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        if (needsConfirmation)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ContentCard(
+              semanticLabel:
+                  'Потрібне підтвердження слабко розпізнаних продуктів',
+              child: Row(children: [
+                const Icon(Icons.warning_amber_rounded),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(
+                        'Підтвердьте або видаліть продукти з низькою точністю, щоб знайти рецепти.',
+                        style: Theme.of(context).textTheme.bodyMedium)),
+              ]),
+            ),
+          ),
+        Row(children: [
+          Text('Знайдені продукти',
+              style: Theme.of(context).textTheme.titleMedium),
+          const Spacer(),
+          Text('Підтверджено: $confirmedCount'),
+        ]),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ingredients.isEmpty
+              ? const StateView.empty(
+                  title: 'Продукти не знайдено',
+                  subtitle: 'Додайте інгредієнти вручну або зробіть нове фото.',
+                  icon: Icons.search_off,
+                )
+              : IngredientListWidget(
+                  ingredients: ingredients,
+                  onIngredientTap: onIngredientTap,
+                  onIngredientToggle: onIngredientToggle,
+                  onIngredientDelete: onIngredientDelete,
+                ),
+        ),
+      ]);
 }

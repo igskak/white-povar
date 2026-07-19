@@ -95,39 +95,42 @@ class PhotoSearchResultsPage extends ConsumerWidget {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.76,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: state.suggestedRecipes.length,
-            itemBuilder: (context, index) {
-              final recipeJson = state.suggestedRecipes[index];
+          child: LayoutBuilder(builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 760 ? 3 : 2;
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                childAspectRatio: columns == 3 ? .78 : .76,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: state.suggestedRecipes.length,
+              itemBuilder: (context, index) {
+                final recipeJson = state.suggestedRecipes[index];
 
-              try {
-                final recipe = Recipe.fromJson(recipeJson);
-                return RecipeCard(
-                  recipe: recipe,
-                  onTap: () => context.push('/recipes/${recipe.id}'),
-                  showMatchIndicator: true,
-                  matchedIngredients: _calculateMatchedIngredients(
-                      recipe, confirmedIngredients),
-                );
-              } catch (_) {
-                return const Card(
-                  child: Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text('Рецепт недоступний'),
+                try {
+                  final recipe = Recipe.fromJson(recipeJson);
+                  return RecipeCard(
+                    recipe: recipe,
+                    onTap: () => context.push('/recipes/${recipe.id}'),
+                    showMatchIndicator: true,
+                    matchedIngredients: _calculateMatchedIngredients(
+                        recipe, confirmedIngredients),
+                  );
+                } catch (_) {
+                  return const Card(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text('Рецепт недоступний'),
+                      ),
                     ),
-                  ),
-                );
-              }
-            },
-          ),
+                  );
+                }
+              },
+            );
+          }),
         ),
       ],
     );

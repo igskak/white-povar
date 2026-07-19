@@ -29,13 +29,20 @@ class CollectionListPage extends ConsumerWidget {
                       icon: Icons.collections_bookmark_outlined,
                     )
                   : ResponsiveContainer(
-                      maxWidth: 1040,
+                      maxWidth: 1180,
                       child: GridView.builder(
                         padding: const EdgeInsets.all(AppSpacing.md),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount:
-                              MediaQuery.sizeOf(context).width >= 700 ? 2 : 1,
-                          mainAxisExtent: 190,
+                              MediaQuery.sizeOf(context).width >= 1120
+                                  ? 3
+                                  : MediaQuery.sizeOf(context).width >= 700
+                                      ? 2
+                                      : 1,
+                          mainAxisExtent:
+                              MediaQuery.sizeOf(context).width >= 1024
+                                  ? 220
+                                  : 190,
                           crossAxisSpacing: AppSpacing.md,
                           mainAxisSpacing: AppSpacing.md,
                         ),
@@ -63,7 +70,7 @@ class _CollectionCard extends StatelessWidget {
         semanticLabel: 'Відкрити колекцію ${collection.title}',
         child: Row(children: [
           SizedBox(
-              width: 132,
+              width: MediaQuery.sizeOf(context).width >= 1024 ? 148 : 132,
               height: double.infinity,
               child: _Cover(url: collection.coverUrl)),
           Expanded(
