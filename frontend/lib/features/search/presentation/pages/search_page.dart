@@ -619,22 +619,23 @@ class _SearchHeader extends StatelessWidget {
             ),
           ),
         const SizedBox(height: AppSpacing.xs),
-        Row(children: [
-          if (showFilterButton)
-            AppButton(
-                label: showFilters ? 'Сховати фільтри' : 'Фільтри',
-                icon: Icons.tune_outlined,
-                variant: AppButtonVariant.text,
-                onPressed: onToggleFilters),
-          if (activeTag != null)
-            Padding(
-                padding:
-                    EdgeInsets.only(left: showFilterButton ? AppSpacing.xs : 0),
-                child: AppChip(
+        Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (showFilterButton)
+                AppButton(
+                    label: showFilters ? 'Сховати фільтри' : 'Фільтри',
+                    icon: Icons.tune_outlined,
+                    variant: AppButtonVariant.text,
+                    onPressed: onToggleFilters),
+              if (activeTag != null)
+                AppChip(
                     label: 'Тег: $activeTag',
                     selected: true,
-                    onSelected: (_) => onClear()))
-        ]),
+                    onSelected: (_) => onClear())
+            ]),
         if (showFilterButton)
           AnimatedSize(
               duration: AppMotion.medium,
@@ -819,6 +820,8 @@ class _SearchResults extends StatelessWidget {
             for (final item in recommendations) item.recipe.id: item,
           };
           final columns = constraints.maxWidth >= 600 ? 3 : 1;
+          final threeColumnAspectRatio =
+              constraints.maxWidth >= 900 ? .60 : .45;
           return GridView.builder(
             key: const ValueKey('search-results-grid'),
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -826,7 +829,7 @@ class _SearchResults extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: AppSpacing.md,
               crossAxisSpacing: AppSpacing.md,
-              childAspectRatio: columns == 1 ? .75 : .60,
+              childAspectRatio: columns == 1 ? .75 : threeColumnAspectRatio,
             ),
             itemCount: recipes.length,
             itemBuilder: (context, index) {
