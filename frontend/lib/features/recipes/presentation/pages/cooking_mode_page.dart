@@ -161,10 +161,6 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   }
 
   Future<void> _confirmExit() async {
-    if (_step == 0) {
-      context.pop();
-      return;
-    }
     final exit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -235,8 +231,9 @@ class _CookingStep extends StatelessWidget {
     );
     if (desktop) {
       return SafeArea(
-        child: Row(children: [
+        child: Row(key: const ValueKey('desktop-cooking-layout'), children: [
           SizedBox(
+            key: const ValueKey('desktop-cooking-step-list'),
             width: 320,
             child: _StepList(
               title: title,
@@ -247,6 +244,7 @@ class _CookingStep extends StatelessWidget {
           ),
           const VerticalDivider(width: 1, color: Color(0xFF2E2820)),
           Expanded(
+              key: const ValueKey('desktop-cooking-active-step'),
               child: Padding(
                   padding: const EdgeInsets.fromLTRB(56, 40, 56, 32),
                   child: _DesktopCookingShortcuts(
@@ -496,29 +494,34 @@ class _StepList extends StatelessWidget {
           child: ListView.builder(
               padding: const EdgeInsets.all(AppSpacing.md),
               itemCount: steps.length,
-              itemBuilder: (_, index) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: ListTile(
-                      selected: index == active,
-                      shape: const RoundedRectangleBorder(
-                          borderRadius: AppRadius.md),
-                      leading: CircleAvatar(
-                          backgroundColor: index == active
-                              ? AppColorsV2.accent
-                              : index < active
-                                  ? AppColorsV2.success
-                                  : const Color(0xFF2E2820),
-                          child: index < active
-                              ? const Icon(Icons.check,
-                                  color: AppColorsV2.ink, size: 18)
-                              : Text('${index + 1}')),
-                      title: Text(steps[index],
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: AppColorsV2.onInk)),
-                      onTap: () => onSelected(index),
-                    ),
-                  )),
+              itemBuilder: (_, index) {
+                final enabled = index <= active;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: ListTile(
+                    key: ValueKey('cooking-step-$index'),
+                    enabled: enabled,
+                    selected: index == active,
+                    shape: const RoundedRectangleBorder(
+                        borderRadius: AppRadius.md),
+                    leading: CircleAvatar(
+                        backgroundColor: index == active
+                            ? AppColorsV2.accent
+                            : index < active
+                                ? AppColorsV2.success
+                                : const Color(0xFF2E2820),
+                        child: index < active
+                            ? const Icon(Icons.check,
+                                color: AppColorsV2.ink, size: 18)
+                            : Text('${index + 1}')),
+                    title: Text(steps[index],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColorsV2.onInk)),
+                    onTap: enabled ? () => onSelected(index) : null,
+                  ),
+                );
+              }),
         ),
       ]);
 }

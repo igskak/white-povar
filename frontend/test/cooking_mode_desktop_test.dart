@@ -35,13 +35,54 @@ void main() {
 
     expect(find.text('КРОК 1'), findsOneWidget);
     expect(find.text('← / → для навігації'), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('desktop-cooking-layout')), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-cooking-step-list')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-cooking-active-step')),
+        findsOneWidget);
     expect(FocusManager.instance.primaryFocus, isNotNull);
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const ValueKey('cooking-step-1')))
+          .enabled,
+      isFalse,
+    );
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
 
     expect(find.text('КРОК 2'), findsOneWidget);
+    expect(
+      tester
+          .widget<ListTile>(find.byKey(const ValueKey('cooking-step-0')))
+          .enabled,
+      isTrue,
+    );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('unfinished cooking asks for confirmation from the first step',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        recipeDetailProvider(_recipe.id).overrideWith((_) async => _recipe),
+        authProvider.overrideWith((_) => AuthNotifier.testing()),
+        isPremiumProvider.overrideWithValue(true),
+      ],
+      child: MaterialApp(
+        theme: AppThemeV2.dark(_brand),
+        home: const CookingModePage(recipeId: 'cook-1'),
+      ),
+    ));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.byTooltip('Вийти з режиму готування'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Завершити приготування?'), findsOneWidget);
+    expect(find.text('Залишитись'), findsOneWidget);
   });
 }
 
