@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/api_error.dart';
 import 'store_catalog_service.dart';
 
 /// Boundary for StoreKit / Play Billing and server entitlement confirmation.
@@ -239,6 +240,11 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
             : PurchaseAccessScope.tenant,
         collectionId: result['collectionId']?.toString(),
       );
+    } on ApiError catch (error) {
+      return PurchaseOutcome(
+        PaywallPhase.error,
+        message: _demoPurchaseErrorMessage(error),
+      );
     } catch (_) {
       return const PurchaseOutcome(
         PaywallPhase.error,
@@ -277,6 +283,16 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
     );
   }
 }
+
+String _demoPurchaseErrorMessage(ApiError error) => switch (error.type) {
+      ApiErrorType.unauthorized =>
+        'Увійдіть знову, щоб активувати демо-доступ.',
+      ApiErrorType.forbidden => 'Демо-доступ недоступний для цього акаунта.',
+      ApiErrorType.timeout ||
+      ApiErrorType.network =>
+        'Не вдалося зв’язатися з сервером. Спробуйте ще раз.',
+      _ => 'Не вдалося підтвердити демо-доступ. Спробуйте ще раз.',
+    };
 
 /// Loads display data and launches StoreKit / Play Billing. No native purchase
 /// result can grant UI access before the billing webhook creates an entitlement.
