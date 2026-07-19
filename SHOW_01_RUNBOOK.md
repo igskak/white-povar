@@ -45,6 +45,13 @@
 - Use the prepared screenshots in the QA journal if Render is waking or the
   connection is unstable; do not claim a live charge.
 
+## Emergency demo-commerce stop
+
+Set the API service environment variable `COMMERCE_MODE=disabled` in Render
+and deploy/restart that service. The server then fails closed: existing client
+screens do not grant access and no new demo purchase can be issued. Restore
+the approved `demo` value only after an authenticated catalogue check.
+
 ## Feedback prompts
 
 - What makes a branded cooking app valuable for your audience?
