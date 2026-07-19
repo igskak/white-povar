@@ -206,10 +206,9 @@ class _SignedInProfile extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 320,
-                child: _DesktopProfileSidebar(
-                    displayName: displayName, email: email),
+                child: _DesktopProfileSidebar(),
               ),
               const VerticalDivider(width: 1),
               Expanded(child: content),
@@ -247,35 +246,12 @@ class _SignedInProfile extends ConsumerWidget {
 }
 
 class _DesktopProfileSidebar extends StatelessWidget {
-  const _DesktopProfileSidebar(
-      {required this.displayName, required this.email});
-
-  final String displayName;
-  final String email;
+  const _DesktopProfileSidebar();
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            UserAvatar(name: displayName, radius: 30),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium),
-                    Text(email,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ]),
-            ),
-          ]),
-          const SizedBox(height: AppSpacing.xl),
           _SidebarDestination(
               icon: Icons.person_outline,
               label: 'Профіль',
