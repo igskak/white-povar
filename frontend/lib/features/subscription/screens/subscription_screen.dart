@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -207,7 +208,7 @@ class _PaywallCard extends ConsumerWidget {
     final unavailable = snapshot.phase == PaywallPhase.productsUnavailable ||
         snapshot.phase == PaywallPhase.notAllowlisted;
     final selectedId = ref.watch(selectedPurchaseProductProvider) ??
-        snapshot.products.firstOrNull?.id;
+        _recommendedProduct(snapshot.products)?.id;
     final selectedProduct = snapshot.products
         .where((product) => product.id == selectedId)
         .firstOrNull;
@@ -218,136 +219,158 @@ class _PaywallCard extends ConsumerWidget {
         borderRadius:
             MediaQuery.sizeOf(context).width >= 600 ? AppRadius.lg : null,
       ),
-      child: ListView(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
-        children: [
-          if (!isDesktop)
-            Row(children: [
-              AppIconButton(
-                icon: Icons.close,
-                tooltip: 'Закрити',
-                onPressed: purchasing ? null : onClose,
-              ),
-              const Spacer(),
-              Text('ПІДПИСКА',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: context.brandTheme.accentOnDark,
-                      letterSpacing: 1.4)),
-            ]),
-          const SizedBox(height: 10),
-          SizedBox(
-              height: 130,
-              child: ClipRRect(
-                  borderRadius: AppRadius.md,
-                  child: BrandHero(brand: brand, role: 'paywall'))),
-          const SizedBox(height: 18),
-          if (active)
-            _ActivePanel(snapshot: snapshot)
-          else ...[
-            Text(brand.voice.paywallTitle,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: const Color(0xFFF3E9DA),
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text('— ${brand.creatorName}, ${brand.name}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: context.brandTheme.accentOnDark,
-                    fontStyle: FontStyle.italic)),
-            const SizedBox(height: 16),
-            const _Benefit(
-                icon: Icons.check_circle, text: 'Premium-колекції та рецепти'),
-            const _Benefit(
-                icon: Icons.check_circle,
-                text: 'AI-поради й пошук за фото без лімітів'),
-            const SizedBox(height: 14),
-            if (snapshot.phase == PaywallPhase.productsLoading)
-              const _ProductsLoading()
-            else if (unavailable)
-              _Unavailable(message: snapshot.message)
-            else ...[
-              for (final product in snapshot.products)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: _ProductOption(
-                    product: product,
-                    selected: product.id == selectedId,
-                    enabled: !purchasing,
-                    onTap: () => ref
-                        .read(selectedPurchaseProductProvider.notifier)
-                        .state = product.id,
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!isDesktop)
+              Row(children: [
+                AppIconButton(
+                  icon: Icons.close,
+                  tooltip: 'Закрити',
+                  onPressed: purchasing ? null : onClose,
                 ),
+                const Spacer(),
+                Text('ПІДПИСКА',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: context.brandTheme.accentOnDark,
+                        letterSpacing: 1.4)),
+              ]),
+            const SizedBox(height: 10),
+            SizedBox(
+                height: 130,
+                child: ClipRRect(
+                    borderRadius: AppRadius.md,
+                    child: BrandHero(brand: brand, role: 'paywall'))),
+            const SizedBox(height: 18),
+            if (active)
+              _ActivePanel(snapshot: snapshot)
+            else ...[
+              Text(brand.voice.paywallTitle,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: const Color(0xFFF3E9DA),
+                      fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
-              AppButton(
-                label: 'Активувати демо-доступ',
-                expand: true,
-                isLoading: purchasing,
-                onPressed: purchasing || selectedProduct == null
-                    ? null
-                    : () async {
-                        await ref
-                            .read(paywallProvider.notifier)
-                            .purchase(selectedProduct);
-                        final phase = ref.read(paywallProvider).phase;
-                        if (context.mounted &&
-                            phase == PaywallPhase.success &&
-                            selectedProduct.accessScope ==
-                                PurchaseAccessScope.collection &&
-                            selectedProduct.collectionIds.isNotEmpty) {
-                          final collectionId =
-                              selectedProduct.collectionIds.first;
-                          // The collection page may already be in the router
-                          // cache with its pre-purchase locked projection.
-                          // Re-read the server decision before returning to it.
-                          ref.invalidate(
-                              collectionDetailProvider(collectionId));
-                          context.go(
-                            '/collections/$collectionId',
-                          );
-                        }
-                      },
-              ),
-              const SizedBox(height: 8),
-              const Text('Кошти не списуються',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFFB9AC98))),
+              Text('— ${brand.creatorName}, ${brand.name}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: context.brandTheme.accentOnDark,
+                      fontStyle: FontStyle.italic)),
+              const SizedBox(height: 16),
+              const _Benefit(
+                  icon: Icons.check_circle,
+                  text: 'Premium-колекції та рецепти'),
+              const _Benefit(
+                  icon: Icons.check_circle,
+                  text: 'AI-поради й пошук за фото без лімітів'),
+              const _Benefit(
+                  icon: Icons.check_circle,
+                  text: 'Збереження, планування меню та список покупок'),
+              const _Benefit(
+                  icon: Icons.check_circle,
+                  text: 'Нові авторські колекції без реклами'),
+              const SizedBox(height: 14),
+              if (snapshot.phase == PaywallPhase.productsLoading)
+                const _ProductsLoading()
+              else if (unavailable)
+                _Unavailable(
+                  phase: snapshot.phase,
+                  message: snapshot.message,
+                  onRetry: () => ref.read(paywallProvider.notifier).load(),
+                )
+              else ...[
+                for (final product in snapshot.products)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _ProductOption(
+                      product: product,
+                      selected: product.id == selectedId,
+                      enabled: !purchasing,
+                      onTap: () => ref
+                          .read(selectedPurchaseProductProvider.notifier)
+                          .state = product.id,
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                AppButton(
+                  label: kIsWeb
+                      ? 'Активувати демо-доступ'
+                      : selectedProduct?.trial != null
+                          ? 'Спробувати ${selectedProduct!.trial}'
+                          : 'Продовжити',
+                  expand: true,
+                  isLoading: purchasing,
+                  onPressed: purchasing || selectedProduct == null
+                      ? null
+                      : () async {
+                          await ref
+                              .read(paywallProvider.notifier)
+                              .purchase(selectedProduct);
+                          final phase = ref.read(paywallProvider).phase;
+                          if (context.mounted &&
+                              phase == PaywallPhase.success &&
+                              selectedProduct.accessScope ==
+                                  PurchaseAccessScope.collection &&
+                              selectedProduct.collectionIds.isNotEmpty) {
+                            final collectionId =
+                                selectedProduct.collectionIds.first;
+                            // The collection page may already be in the router
+                            // cache with its pre-purchase locked projection.
+                            // Re-read the server decision before returning to it.
+                            ref.invalidate(
+                                collectionDetailProvider(collectionId));
+                            context.go(
+                              '/collections/$collectionId',
+                            );
+                          }
+                        },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                    kIsWeb
+                        ? 'Кошти не списуються'
+                        : selectedProduct?.detail ??
+                            'Скасувати можна в налаштуваннях магазину.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFB9AC98))),
+              ],
             ],
+            if (_needsMessage(snapshot.phase)) ...[
+              const SizedBox(height: 14),
+              _StatusMessage(
+                  snapshot: snapshot,
+                  onRetry: snapshot.phase == PaywallPhase.error ||
+                          snapshot.phase == PaywallPhase.billingRetry
+                      ? () => ref.read(paywallProvider.notifier).load()
+                      : null),
+            ],
+            const SizedBox(height: 12),
+            if (active)
+              AppButton(
+                  label: 'Керувати підпискою',
+                  icon: Icons.open_in_new,
+                  variant: AppButtonVariant.secondary,
+                  expand: true,
+                  onPressed: () =>
+                      ref.read(paywallProvider.notifier).manageSubscription())
+            else if (!unavailable)
+              AppButton(
+                  label: 'Відновити покупку',
+                  variant: AppButtonVariant.text,
+                  expand: true,
+                  isLoading: purchasing,
+                  onPressed: purchasing
+                      ? null
+                      : () => ref.read(paywallProvider.notifier).restore()),
+            const SizedBox(height: 4),
+            Text('Умови · Конфіденційність',
+                textAlign: TextAlign.center,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: const Color(0xFF8D8271))),
           ],
-          if (_needsMessage(snapshot.phase)) ...[
-            const SizedBox(height: 14),
-            _StatusMessage(
-                snapshot: snapshot,
-                onRetry: snapshot.phase == PaywallPhase.error ||
-                        snapshot.phase == PaywallPhase.billingRetry
-                    ? () => ref.read(paywallProvider.notifier).load()
-                    : null),
-          ],
-          const SizedBox(height: 12),
-          if (active)
-            AppButton(
-                label: 'Керувати підпискою',
-                icon: Icons.open_in_new,
-                variant: AppButtonVariant.secondary,
-                expand: true,
-                onPressed: () =>
-                    ref.read(paywallProvider.notifier).manageSubscription())
-          else
-            AppButton(
-                label: 'Оновити доступ',
-                variant: AppButtonVariant.text,
-                expand: true,
-                isLoading: purchasing,
-                onPressed: unavailable || purchasing
-                    ? null
-                    : () => ref.read(paywallProvider.notifier).restore()),
-          const SizedBox(height: 4),
-          Text('Умови · Конфіденційність',
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: const Color(0xFF8D8271))),
-        ],
+        ),
       ),
     );
   }
@@ -357,6 +380,20 @@ bool _isEntitled(PaywallPhase phase) =>
     phase == PaywallPhase.active ||
     phase == PaywallPhase.grace ||
     phase == PaywallPhase.billingRetry;
+
+PurchaseProduct? _recommendedProduct(List<PurchaseProduct> products) {
+  if (products.isEmpty) return null;
+  final annual = products.where((product) {
+    final value =
+        '${product.id} ${product.title} ${product.badge ?? ''}'.toLowerCase();
+    return value.contains('annual') ||
+        value.contains('year') ||
+        value.contains('річ') ||
+        value.contains('вигід');
+  });
+  return annual.firstOrNull ?? products.first;
+}
+
 bool _needsMessage(PaywallPhase phase) =>
     phase == PaywallPhase.success ||
     phase == PaywallPhase.error ||
@@ -365,7 +402,6 @@ bool _needsMessage(PaywallPhase phase) =>
     phase == PaywallPhase.billingRetry ||
     phase == PaywallPhase.expired ||
     phase == PaywallPhase.cancelled ||
-    phase == PaywallPhase.notAllowlisted ||
     phase == PaywallPhase.confirmationPending;
 
 class _ProductsLoading extends StatelessWidget {
@@ -379,12 +415,63 @@ class _ProductsLoading extends StatelessWidget {
 }
 
 class _Unavailable extends StatelessWidget {
-  const _Unavailable({this.message});
+  const _Unavailable({
+    required this.phase,
+    required this.onRetry,
+    this.message,
+  });
+
+  final PaywallPhase phase;
   final String? message;
+  final VoidCallback onRetry;
+
   @override
-  Widget build(BuildContext context) => _Notice(
-      icon: Icons.phone_android_outlined,
-      message: message ?? 'Продукти зараз недоступні.');
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: const Color(0xFF221E18),
+          border: Border.all(color: const Color(0xFF4A4234)),
+          borderRadius: AppRadius.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              phase == PaywallPhase.notAllowlisted
+                  ? Icons.person_off_outlined
+                  : Icons.storefront_outlined,
+              color: context.brandTheme.accentOnDark,
+              size: 30,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              phase == PaywallPhase.notAllowlisted
+                  ? 'Доступ недоступний для акаунта'
+                  : 'Каталог тимчасово недоступний',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: const Color(0xFFF3E9DA),
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              message ??
+                  (phase == PaywallPhase.notAllowlisted
+                      ? 'Демо-доступ недоступний для цього акаунта.'
+                      : 'Не вдалося отримати доступні плани. Спробуйте оновити каталог.'),
+              style: const TextStyle(color: Color(0xFFB9AC98)),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            AppButton(
+              label: 'Оновити каталог',
+              icon: Icons.refresh,
+              variant: AppButtonVariant.secondary,
+              expand: true,
+              onPressed: onRetry,
+            ),
+          ],
+        ),
+      );
 }
 
 class _ActivePanel extends StatelessWidget {
@@ -455,6 +542,10 @@ class _ProductOption extends StatelessWidget {
                               fontWeight: FontWeight.w700)),
                       if (product.detail != null)
                         Text(product.detail!,
+                            style: const TextStyle(
+                                color: Color(0xFFB9AC98), fontSize: 12))
+                      else if (product.trial != null)
+                        Text(product.trial!,
                             style: const TextStyle(
                                 color: Color(0xFFB9AC98), fontSize: 12))
                     ])),

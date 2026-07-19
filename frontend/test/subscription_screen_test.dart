@@ -61,8 +61,10 @@ void main() {
     await tester.pumpWidget(_app(adapter));
     await tester.pump();
 
-    await tester.tap(find.text('Активувати демо-доступ'));
-    await tester.tap(find.text('Активувати демо-доступ'));
+    final purchaseCta = find.text('Спробувати 7 днів безкоштовно');
+    await tester.ensureVisible(purchaseCta);
+    await tester.tap(purchaseCta);
+    await tester.tap(purchaseCta);
     await tester.pump();
 
     expect(adapter.purchaseCalls, 1);
@@ -77,6 +79,20 @@ void main() {
     await tester.pump();
     expect(find.text('Керувати підпискою'), findsOneWidget);
     expect(find.text('Відновити покупку'), findsNothing);
+  });
+
+  testWidgets('annual product is recommended even when monthly comes first',
+      (tester) async {
+    final adapter = _ProductSelectionAdapter();
+    await tester.pumpWidget(_app(adapter));
+    await tester.pump();
+
+    final purchaseCta = find.text('Спробувати 7 днів безкоштовно');
+    await tester.ensureVisible(purchaseCta);
+    await tester.tap(purchaseCta);
+    await tester.pump();
+
+    expect(adapter.purchasedProductId, 'test.annual');
   });
 
   testWidgets('paywall remains usable at 200% text scale', (tester) async {
@@ -145,7 +161,7 @@ final _scenarios = <({PaywallPhase phase, String expectedText})>[
   (phase: PaywallPhase.productsLoading, expectedText: 'Завантаження'),
   (
     phase: PaywallPhase.productsUnavailable,
-    expectedText: 'Продукти зараз недоступні.'
+    expectedText: 'Каталог тимчасово недоступний'
   ),
   (
     phase: PaywallPhase.notAllowlisted,
@@ -229,6 +245,31 @@ class _CountingAdapter extends FakePurchaseAdapter {
   Future<PurchaseOutcome> purchase(PurchaseProduct product) {
     purchaseCalls++;
     return Future.value(const PurchaseOutcome(PaywallPhase.success));
+  }
+}
+
+class _ProductSelectionAdapter extends FakePurchaseAdapter {
+  _ProductSelectionAdapter()
+      : super(
+          snapshot: const PaywallSnapshot(
+            phase: PaywallPhase.idle,
+            products: [
+              PurchaseProduct(
+                id: 'test.monthly',
+                title: 'Місячний',
+                price: 'monthly price',
+              ),
+              _product,
+            ],
+          ),
+        );
+
+  String? purchasedProductId;
+
+  @override
+  Future<PurchaseOutcome> purchase(PurchaseProduct product) async {
+    purchasedProductId = product.id;
+    return const PurchaseOutcome(PaywallPhase.success);
   }
 }
 
