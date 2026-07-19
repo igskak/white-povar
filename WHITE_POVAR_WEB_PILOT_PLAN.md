@@ -164,9 +164,9 @@ demo-аккаунты, reset procedure и короткий сценарий по
 | 6 | REL-01 | Full local qualification и release candidate | DB-01, DEMO-02, CFG-01 | DONE |
 | 7 | DB-02 | Production backup, migrations и seed verification | REL-01 | DONE |
 | 8 | DEPLOY-01 | API и Flutter Web production deploy | DB-02 | DONE |
-| 9 | QA-01 | Production smoke, security и rollback verification | DEPLOY-01 | BLOCKED |
+| 9 | QA-01 | Production smoke, security и rollback verification | DEPLOY-01 | DONE |
 | 10 | CONTENT-01 | Show-ready brand assets и content pack | DEPLOY-01 | DONE |
-| 11 | SHOW-01 | Demo accounts, reset и презентационный сценарий | QA-01, CONTENT-01 | BLOCKED |
+| 11 | SHOW-01 | Demo accounts, reset и презентационный сценарий | QA-01, CONTENT-01 | DONE |
 | 12 | STRIPE-01 | Stripe Checkout test mode | SHOW-01, product decision | PARKED |
 | 13 | MOBILE-01 | RevenueCat/App Store/Play iteration | web pilot feedback | PARKED |
 
