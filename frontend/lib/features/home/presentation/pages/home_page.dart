@@ -129,10 +129,9 @@ class _MobileHome extends StatelessWidget {
                   userName: userName,
                   onProfileTap: onProfileTap,
                   onScanTap: onScanTap,
-                  onCollectionTap: onCollectionTap,
                 ),
               ),
-              ..._recipeSlivers(recipes, onOpenRecipe),
+              ..._recipeSlivers(recipes, onOpenRecipe, context),
               const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
             ],
           ),
@@ -140,7 +139,10 @@ class _MobileHome extends StatelessWidget {
       );
 
   List<Widget> _recipeSlivers(
-          AsyncValue<List<Recipe>> state, ValueChanged<Recipe> onOpenRecipe) =>
+    AsyncValue<List<Recipe>> state,
+    ValueChanged<Recipe> onOpenRecipe,
+    BuildContext context,
+  ) =>
       state.when(
         data: (recipes) {
           if (recipes.isEmpty) {
@@ -156,12 +158,42 @@ class _MobileHome extends StatelessWidget {
               ),
             ];
           }
+          final featured = recipes.firstWhere(
+            (recipe) => recipe.isFeatured,
+            orElse: () => recipes.first,
+          );
+          final feed =
+              recipes.where((recipe) => recipe.id != featured.id).toList();
           return [
             SliverToBoxAdapter(
               child: ResponsiveContainer(
                 maxWidth: 480,
-                padding: EdgeInsets.zero,
-                child: _RecipeFeed(recipes: recipes, onOpen: onOpenRecipe),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FeaturedRecipeHero(
+                      key: const ValueKey('mobile-featured-recipe-hero'),
+                      recipe: featured,
+                      compact: true,
+                      onOpen: () => onOpenRecipe(featured),
+                    ),
+                    if (brand.voice.courseName != null &&
+                        brand.courseTag != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _CollectionPromo(
+                        courseName: brand.voice.courseName!,
+                        onTap: onCollectionTap,
+                      ),
+                    ],
+                    if (feed.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      Text('Свіже від автора',
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: AppSpacing.sm),
+                      _RecipeFeed(recipes: feed, onOpen: onOpenRecipe),
+                    ],
+                  ],
+                ),
               ),
             ),
           ];
@@ -313,10 +345,16 @@ class _DesktopHomeContent extends StatelessWidget {
 }
 
 class _FeaturedRecipeHero extends StatelessWidget {
-  const _FeaturedRecipeHero({required this.recipe, required this.onOpen});
+  const _FeaturedRecipeHero({
+    super.key,
+    required this.recipe,
+    required this.onOpen,
+    this.compact = false,
+  });
 
   final Recipe recipe;
   final VoidCallback onOpen;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -328,7 +366,7 @@ class _FeaturedRecipeHero extends StatelessWidget {
       button: true,
       label: 'Відкрити рекомендований рецепт ${recipe.title}',
       child: SizedBox(
-        height: 300,
+        height: compact ? 280 : 300,
         child: ClipRRect(
           borderRadius: AppRadius.xl,
           child: Stack(
@@ -356,7 +394,7 @@ class _FeaturedRecipeHero extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(40),
+                padding: EdgeInsets.all(compact ? AppSpacing.lg : 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -381,6 +419,7 @@ class _FeaturedRecipeHero extends StatelessWidget {
                               fontFamily: context.brandTheme.displayFontFamily,
                               fontWeight: FontWeight.w700,
                               height: 1.05,
+                              fontSize: compact ? 30 : null,
                             ),
                       ),
                     ),
@@ -473,14 +512,12 @@ class _HomeIntro extends StatelessWidget {
     required this.userName,
     required this.onProfileTap,
     required this.onScanTap,
-    required this.onCollectionTap,
   });
 
   final BrandDetails brand;
   final String? userName;
   final VoidCallback onProfileTap;
   final VoidCallback onScanTap;
-  final VoidCallback onCollectionTap;
 
   @override
   Widget build(BuildContext context) => ResponsiveContainer(
@@ -513,18 +550,7 @@ class _HomeIntro extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _ScanBanner(onTap: onScanTap),
-                if (brand.voice.courseName != null &&
-                    brand.courseTag != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  _CollectionPromo(
-                    courseName: brand.voice.courseName!,
-                    onTap: onCollectionTap,
-                  ),
-                ],
                 const SizedBox(height: AppSpacing.lg),
-                Text('Свіже від автора',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: AppSpacing.sm),
               ],
             ),
           ),
@@ -700,7 +726,7 @@ class _HomeSkeleton extends StatelessWidget {
               SizedBox(height: AppSpacing.md),
               AppSkeleton(
                   width: double.infinity,
-                  height: 72,
+                  height: 240,
                   borderRadius: AppRadius.lg),
               SizedBox(height: AppSpacing.md),
               AppSkeleton(

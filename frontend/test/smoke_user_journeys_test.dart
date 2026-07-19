@@ -48,6 +48,8 @@ void main() {
       expect(find.text('Сканувати інгредієнти'), findsOneWidget);
       expect(find.text('Ой, друзі, ну це щось...'), findsOneWidget);
       expect(find.text('Майстерня Олександра'), findsOneWidget);
+      expect(find.byKey(const ValueKey('mobile-featured-recipe-hero')),
+          findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Test Pasta'),
         300,
