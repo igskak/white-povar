@@ -64,8 +64,10 @@ void main() {
 
   testWidgets('desktop settings uses global header and handoff sections',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1280, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
