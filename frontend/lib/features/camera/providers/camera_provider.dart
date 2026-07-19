@@ -1,3 +1,4 @@
+import 'package:camera/camera.dart' show CameraController;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -32,6 +33,8 @@ class CameraNotifier extends StateNotifier<CameraState> {
         _imageProcessingService = imageProcessingService,
         super(const CameraState());
 
+  CameraController? get previewController => _cameraService.controller;
+
   /// Initialize camera and check permissions
   Future<void> initialize() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -45,6 +48,9 @@ class CameraNotifier extends StateNotifier<CameraState> {
 
       // Check permissions
       final permissionState = await _cameraService.cameraPermissionState();
+      if (permissionState == CameraPermissionState.granted) {
+        await _cameraService.initializePreview();
+      }
 
       state = state.copyWith(
         isInitialized: true,
@@ -67,6 +73,9 @@ class CameraNotifier extends StateNotifier<CameraState> {
     try {
       final granted = await _cameraService.requestCameraPermission();
       final permissionState = await _cameraService.cameraPermissionState();
+      if (granted) {
+        await _cameraService.initializePreview();
+      }
 
       state = state.copyWith(
         isLoading: false,
@@ -165,4 +174,8 @@ class CameraNotifier extends StateNotifier<CameraState> {
   void reset() {
     state = const CameraState();
   }
+
+  Future<void> toggleFlash() => _cameraService.toggleFlash();
+
+  Future<void> disposePreview() => _cameraService.disposePreview();
 }

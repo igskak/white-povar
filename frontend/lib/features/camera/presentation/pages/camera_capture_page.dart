@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:camera/camera.dart' as native;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,17 +24,38 @@ class CameraCapturePage extends ConsumerStatefulWidget {
   ConsumerState<CameraCapturePage> createState() => _CameraCapturePageState();
 }
 
-class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
+class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
+    with WidgetsBindingObserver {
   XFile? _capturedImage;
+  late final CameraNotifier _cameraNotifier;
 
   @override
   void initState() {
     super.initState();
+    _cameraNotifier = ref.read(cameraProvider.notifier);
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(cameraProvider.notifier).initialize();
+      _cameraNotifier.initialize();
       ref.read(photoSearchProvider.notifier).clearResults();
       ref.read(ingredientEditProvider.notifier).clear();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _cameraNotifier.initialize();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _cameraNotifier.disposePreview();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraNotifier.disposePreview();
+    super.dispose();
   }
 
   @override
@@ -98,6 +120,8 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage> {
     return _CameraActionView(
       onCapture: _capturePhoto,
       onGallery: _pickFromGallery,
+      controller: ref.read(cameraProvider.notifier).previewController,
+      onFlash: () => ref.read(cameraProvider.notifier).toggleFlash(),
     );
   }
 
@@ -223,16 +247,20 @@ class _CameraActionView extends StatelessWidget {
   const _CameraActionView({
     required this.onCapture,
     required this.onGallery,
+    required this.controller,
+    required this.onFlash,
   });
 
   final VoidCallback onCapture;
   final VoidCallback onGallery;
+  final native.CameraController? controller;
+  final VoidCallback onFlash;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final dropzone = Container(
+    final fallback = Container(
       height: 420,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
@@ -250,6 +278,26 @@ class _CameraActionView extends StatelessWidget {
         ],
       ),
     );
+    final preview = !kIsWeb && controller?.value.isInitialized == true
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                native.CameraPreview(controller!),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: IconButton.filledTonal(
+                    tooltip: 'Спалах',
+                    onPressed: onFlash,
+                    icon: const Icon(Icons.flash_on_outlined),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : fallback;
     final actions = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -280,7 +328,7 @@ class _CameraActionView extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         child: constraints.maxWidth >= 760
             ? Row(children: [
-                Expanded(flex: 6, child: dropzone),
+                Expanded(flex: 6, child: preview),
                 const SizedBox(width: 40),
                 Expanded(flex: 4, child: actions),
               ])
@@ -288,7 +336,7 @@ class _CameraActionView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(height: 220, child: dropzone),
+                  SizedBox(height: 220, child: preview),
                   const SizedBox(height: AppSpacing.lg),
                   actions,
                 ],

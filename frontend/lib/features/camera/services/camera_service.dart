@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:camera/camera.dart' as native;
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -7,6 +9,44 @@ enum CameraPermissionState { granted, denied, permanentlyDenied }
 
 class CameraService {
   final ImagePicker _picker = ImagePicker();
+  native.CameraController? _controller;
+
+  native.CameraController? get controller => _controller;
+
+  Future<void> initializePreview() async {
+    if (kIsWeb || _controller != null) {
+      return;
+    }
+    final cameras = await native.availableCameras();
+    if (cameras.isEmpty) {
+      throw Exception('Camera is not available on this device');
+    }
+    final rear = cameras.where(
+      (item) => item.lensDirection == native.CameraLensDirection.back,
+    );
+    _controller = native.CameraController(
+      rear.isEmpty ? cameras.first : rear.first,
+      native.ResolutionPreset.high,
+      enableAudio: false,
+    );
+    await _controller!.initialize();
+  }
+
+  Future<void> toggleFlash() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    await controller.setFlashMode(
+      controller.value.flashMode == native.FlashMode.off
+          ? native.FlashMode.torch
+          : native.FlashMode.off,
+    );
+  }
+
+  Future<void> disposePreview() async {
+    final controller = _controller;
+    _controller = null;
+    await controller?.dispose();
+  }
 
   /// Check if camera permission is granted
   Future<bool> checkCameraPermission() async {
@@ -70,6 +110,10 @@ class CameraService {
         if (!granted) {
           throw Exception('Доступ до камери не надано');
         }
+      }
+
+      if (!kIsWeb && _controller?.value.isInitialized == true) {
+        return XFile((await _controller!.takePicture()).path);
       }
 
       final image = await _picker.pickImage(
