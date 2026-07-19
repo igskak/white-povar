@@ -114,6 +114,10 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             onExit: _confirmExit,
             onTimer: () => _startTimer(recipe),
             timerLabel: _timerLabel(),
+            onSelectStep: (step) async {
+              setState(() => _step = step);
+              await _saveProgress(recipe);
+            },
             onPrevious: _step == 0 ? null : () => setState(() => _step--),
             onNext: () async {
               if (_step == recipe.instructions.length - 1) {
@@ -191,6 +195,7 @@ class _CookingStep extends StatelessWidget {
       required this.onExit,
       required this.onTimer,
       required this.timerLabel,
+      required this.onSelectStep,
       required this.onPrevious,
       required this.onNext});
   final String title;
@@ -199,6 +204,7 @@ class _CookingStep extends StatelessWidget {
   final VoidCallback onExit;
   final VoidCallback onTimer;
   final String? timerLabel;
+  final ValueChanged<int> onSelectStep;
   final VoidCallback? onPrevious;
   final VoidCallback onNext;
   @override
@@ -216,22 +222,38 @@ class _CookingStep extends StatelessWidget {
       onPrevious: onPrevious,
       onNext: onNext,
     );
+    if (desktop) {
+      return SafeArea(
+        child: Row(children: [
+          SizedBox(
+            width: 320,
+            child: _StepList(
+              active: step,
+              steps: steps,
+              onSelected: onSelectStep,
+            ),
+          ),
+          const VerticalDivider(width: 1, color: Color(0xFF2E2820)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(56, 40, 56, 32),
+              child: content,
+            ),
+          ),
+        ]),
+      );
+    }
     return SafeArea(
-        child: Center(
-            child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 960),
-                child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: desktop
-                        ? Row(children: [
-                            SizedBox(
-                                width: 220,
-                                child: _StepList(
-                                    active: step, total: steps.length)),
-                            const SizedBox(width: AppSpacing.xl),
-                            Expanded(child: content)
-                          ])
-                        : content))));
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: content,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -329,21 +351,47 @@ class _Progress extends StatelessWidget {
 }
 
 class _StepList extends StatelessWidget {
-  const _StepList({required this.active, required this.total});
+  const _StepList(
+      {required this.active, required this.steps, required this.onSelected});
   final int active;
-  final int total;
+  final List<String> steps;
+  final ValueChanged<int> onSelected;
   @override
-  Widget build(BuildContext context) => ListView.builder(
-      shrinkWrap: true,
-      itemCount: total,
-      itemBuilder: (_, index) => ListTile(
-          leading: CircleAvatar(
-              backgroundColor: index == active
-                  ? AppColorsV2.accent
-                  : AppColorsV2.surfaceStrong,
-              child: Text('${index + 1}')),
-          title: Text('Крок ${index + 1}',
-              style: const TextStyle(color: AppColorsV2.onInk))));
+  Widget build(BuildContext context) => Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 18),
+          child: _Progress(step: active, total: steps.length),
+        ),
+        const Divider(height: 1, color: Color(0xFF2E2820)),
+        Expanded(
+          child: ListView.builder(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              itemCount: steps.length,
+              itemBuilder: (_, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: ListTile(
+                      selected: index == active,
+                      shape: const RoundedRectangleBorder(
+                          borderRadius: AppRadius.md),
+                      leading: CircleAvatar(
+                          backgroundColor: index == active
+                              ? AppColorsV2.accent
+                              : index < active
+                                  ? AppColorsV2.success
+                                  : const Color(0xFF2E2820),
+                          child: index < active
+                              ? const Icon(Icons.check,
+                                  color: AppColorsV2.ink, size: 18)
+                              : Text('${index + 1}')),
+                      title: Text(steps[index],
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColorsV2.onInk)),
+                      onTap: () => onSelected(index),
+                    ),
+                  )),
+        ),
+      ]);
 }
 
 class _CookingComplete extends StatelessWidget {

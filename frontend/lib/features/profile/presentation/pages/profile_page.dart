@@ -94,110 +94,130 @@ class _SignedInProfile extends ConsumerWidget {
     final displayName = name.isEmpty ? email.split('@').first : name;
     final theme = Theme.of(context);
     final studioSession = ref.watch(studioSessionProvider);
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 680),
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            Row(children: [
-              UserAvatar(name: displayName, radius: 32),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text(displayName, style: theme.textTheme.titleLarge),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(email, style: theme.textTheme.bodyMedium)
-                  ]))
-            ]),
-            const SizedBox(height: AppSpacing.lg),
-            const _FutureStats(),
-            const SizedBox(height: AppSpacing.lg),
-            studioSession.when(
-              data: (session) => session == null
-                  ? const SizedBox.shrink()
-                  : _StudioAccessCard(role: session.role),
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-            ),
-            Card(
-                child: Column(children: [
-              _ProfileRow(
-                  icon: Icons.bookmark_outline,
-                  title: 'Збережені рецепти',
-                  subtitle: 'Ваші рецепти в одному місці',
-                  onTap: () => context.go('/saved')),
-              const Divider(height: 1),
-              const _ProfileRow(
-                  icon: Icons.history,
-                  title: 'Історія приготування',
-                  subtitle: 'Зʼявиться після запуску історії',
-                  onTap: null),
-              const Divider(height: 1),
-              _ProfileRow(
-                  icon: Icons.workspace_premium_outlined,
-                  title: 'Підписка',
-                  subtitle: 'Переглянути статус і доступ',
-                  onTap: () => context.go('/offers/subscription')),
-              const Divider(height: 1),
-              _ProfileRow(
-                  icon: Icons.tune_outlined,
-                  title: 'Харчові налаштування',
-                  subtitle: 'Раціон, алергени та вподобання',
-                  onTap: () => context.push('/preferences')),
-              const Divider(height: 1),
-              _ProfileRow(
-                  icon: Icons.notifications_outlined,
-                  title: 'Сповіщення',
-                  subtitle: 'Новий контент, нагадування й таймери',
-                  onTap: () => context.push('/notification-preferences')),
-              const Divider(height: 1),
-              _ProfileRow(
-                  icon: Icons.kitchen_outlined,
-                  title: 'Кладова і покупки',
-                  subtitle: 'Продукти вдома та список покупок',
-                  onTap: () => context.push('/pantry')),
-              const Divider(height: 1),
-              _ProfileRow(
-                  icon: Icons.settings_outlined,
-                  title: 'Налаштування',
-                  subtitle: 'Тема, підтримка і правові документи',
-                  onTap: () => context.push('/settings')),
-            ])),
-            const SizedBox(height: AppSpacing.lg),
-            Card(
-              child: Column(children: [
-                _ProfileRow(
-                  icon: Icons.link,
-                  title: 'Спосіб входу',
-                  subtitle: 'Підключити Google до цього акаунта',
-                  onTap: () => ref
-                      .read(authProvider.notifier)
-                      .linkIdentity(OAuthProvider.google),
-                ),
-                const Divider(height: 1),
-                _ProfileRow(
-                  icon: Icons.delete_outline,
-                  title: 'Видалити акаунт',
-                  subtitle: 'Назавжди видалити профіль і приватні дані',
-                  onTap: () => _confirmDeletion(context, ref),
-                ),
-              ]),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AppButton(
-                label: 'Вийти з акаунта',
-                icon: Icons.logout,
-                variant: AppButtonVariant.secondary,
-                expand: true,
-                onPressed: () => ref.read(authProvider.notifier).signOut()),
-          ],
+    final content = ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        Row(children: [
+          UserAvatar(name: displayName, radius: 32),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(displayName, style: theme.textTheme.titleLarge),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(email, style: theme.textTheme.bodyMedium)
+              ]))
+        ]),
+        const SizedBox(height: AppSpacing.lg),
+        const _FutureStats(),
+        const SizedBox(height: AppSpacing.lg),
+        studioSession.when(
+          data: (session) => session == null
+              ? const SizedBox.shrink()
+              : _StudioAccessCard(role: session.role),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
         ),
-      ),
+        Card(
+            child: Column(children: [
+          _ProfileRow(
+              icon: Icons.bookmark_outline,
+              title: 'Збережені рецепти',
+              subtitle: 'Ваші рецепти в одному місці',
+              onTap: () => context.go('/saved')),
+          const Divider(height: 1),
+          const _ProfileRow(
+              icon: Icons.history,
+              title: 'Історія приготування',
+              subtitle: 'Зʼявиться після запуску історії',
+              onTap: null),
+          const Divider(height: 1),
+          _ProfileRow(
+              icon: Icons.workspace_premium_outlined,
+              title: 'Підписка',
+              subtitle: 'Переглянути статус і доступ',
+              onTap: () => context.go('/offers/subscription')),
+          const Divider(height: 1),
+          _ProfileRow(
+              icon: Icons.tune_outlined,
+              title: 'Харчові налаштування',
+              subtitle: 'Раціон, алергени та вподобання',
+              onTap: () => context.push('/preferences')),
+          const Divider(height: 1),
+          _ProfileRow(
+              icon: Icons.notifications_outlined,
+              title: 'Сповіщення',
+              subtitle: 'Новий контент, нагадування й таймери',
+              onTap: () => context.push('/notification-preferences')),
+          const Divider(height: 1),
+          _ProfileRow(
+              icon: Icons.kitchen_outlined,
+              title: 'Кладова і покупки',
+              subtitle: 'Продукти вдома та список покупок',
+              onTap: () => context.push('/pantry')),
+          const Divider(height: 1),
+          _ProfileRow(
+              icon: Icons.settings_outlined,
+              title: 'Налаштування',
+              subtitle: 'Тема, підтримка і правові документи',
+              onTap: () => context.push('/settings')),
+        ])),
+        const SizedBox(height: AppSpacing.lg),
+        Card(
+          child: Column(children: [
+            _ProfileRow(
+              icon: Icons.link,
+              title: 'Спосіб входу',
+              subtitle: 'Підключити Google до цього акаунта',
+              onTap: () => ref
+                  .read(authProvider.notifier)
+                  .linkIdentity(OAuthProvider.google),
+            ),
+            const Divider(height: 1),
+            _ProfileRow(
+              icon: Icons.delete_outline,
+              title: 'Видалити акаунт',
+              subtitle: 'Назавжди видалити профіль і приватні дані',
+              onTap: () => _confirmDeletion(context, ref),
+            ),
+          ]),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppButton(
+            label: 'Вийти з акаунта',
+            icon: Icons.logout,
+            variant: AppButtonVariant.secondary,
+            expand: true,
+            onPressed: () => ref.read(authProvider.notifier).signOut()),
+      ],
     );
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 1024) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680), child: content),
+        );
+      }
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 320,
+                child: _DesktopProfileSidebar(
+                    displayName: displayName, email: email),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: content),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> _confirmDeletion(BuildContext context, WidgetRef ref) async {
@@ -224,6 +244,83 @@ class _SignedInProfile extends ConsumerWidget {
       await ref.read(authProvider.notifier).deleteAccount();
     }
   }
+}
+
+class _DesktopProfileSidebar extends StatelessWidget {
+  const _DesktopProfileSidebar(
+      {required this.displayName, required this.email});
+
+  final String displayName;
+  final String email;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            UserAvatar(name: displayName, radius: 30),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(email,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ]),
+            ),
+          ]),
+          const SizedBox(height: AppSpacing.xl),
+          _SidebarDestination(
+              icon: Icons.person_outline,
+              label: 'Профіль',
+              selected: true,
+              onTap: () {}),
+          _SidebarDestination(
+              icon: Icons.bookmark_outline,
+              label: 'Збережене',
+              onTap: () => context.go('/saved')),
+          _SidebarDestination(
+              icon: Icons.workspace_premium_outlined,
+              label: 'Підписка',
+              onTap: () => context.go('/offers/subscription')),
+          _SidebarDestination(
+              icon: Icons.settings_outlined,
+              label: 'Налаштування',
+              onTap: () => context.push('/settings')),
+        ]),
+      );
+}
+
+class _SidebarDestination extends StatelessWidget {
+  const _SidebarDestination({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: ListTile(
+          selected: selected,
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+          leading: Icon(icon),
+          title: Text(label),
+          onTap: onTap,
+        ),
+      );
 }
 
 class _StudioAccessCard extends StatelessWidget {
