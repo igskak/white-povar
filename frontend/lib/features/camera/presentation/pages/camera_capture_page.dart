@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../models/detected_ingredient.dart';
@@ -231,46 +232,67 @@ class _CameraActionView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    final dropzone = Container(
+      height: 420,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        color: theme.colorScheme.surface,
+        border: Border.all(color: Colors.white.withOpacity(.18), width: 1.5),
+      ),
+      child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              color: theme.colorScheme.surface,
-              border: Border.all(color: Colors.white.withOpacity(.10)),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.camera_alt_outlined, size: 56),
-                SizedBox(height: 12),
-                Text('Наведіть камеру на продукти'),
-                SizedBox(height: 6),
-                Text('Добре освітліть кадр і не перекривайте упаковки'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          AppButton(
-            label: kIsWeb ? 'Зробити фото в браузері' : 'Зробити фото',
-            icon: Icons.camera_alt,
-            onPressed: onCapture,
-            expand: true,
-          ),
-          const SizedBox(height: 10),
-          AppButton(
-            label: kIsWeb ? 'Завантажити фото' : 'Обрати з галереї',
-            icon: Icons.photo_library_outlined,
-            onPressed: onGallery,
-            variant: AppButtonVariant.secondary,
-            expand: true,
-          ),
+          Icon(Icons.add_a_photo_outlined, size: 64),
+          SizedBox(height: 16),
+          Text('Завантажте або зробіть фото продуктів'),
+          SizedBox(height: 8),
+          Text('Добре освітліть кадр і не перекривайте упаковки'),
         ],
+      ),
+    );
+    final actions = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Сканування продуктів', style: theme.textTheme.headlineSmall),
+        const SizedBox(height: AppSpacing.sm),
+        Text('Ми визначимо інгредієнти й підберемо рецепти з каталогу.',
+            style: theme.textTheme.bodyLarge),
+        const SizedBox(height: AppSpacing.xl),
+        AppButton(
+          label: kIsWeb ? 'Зробити фото в браузері' : 'Зробити фото',
+          icon: Icons.camera_alt,
+          onPressed: onCapture,
+          expand: true,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        AppButton(
+          label: kIsWeb ? 'Завантажити фото' : 'Обрати з галереї',
+          icon: Icons.photo_library_outlined,
+          onPressed: onGallery,
+          variant: AppButtonVariant.secondary,
+          expand: true,
+        ),
+      ],
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) => Padding(
+        padding: const EdgeInsets.all(32),
+        child: constraints.maxWidth >= 760
+            ? Row(children: [
+                Expanded(flex: 6, child: dropzone),
+                const SizedBox(width: 40),
+                Expanded(flex: 4, child: actions),
+              ])
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(height: 220, child: dropzone),
+                  const SizedBox(height: AppSpacing.lg),
+                  actions,
+                ],
+              ),
       ),
     );
   }

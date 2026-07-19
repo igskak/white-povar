@@ -59,19 +59,148 @@ class CameraFlowScaffold extends StatelessWidget {
         floatingActionButton: floatingActionButton,
         bottomNavigationBar: bottomNavigationBar,
         body: SafeArea(
-          child: Column(
-            children: [
-              _CameraStepHeader(
-                labels: _labels,
-                currentStep: step.index + 1,
-              ),
-              Expanded(child: child),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 1024) {
+                return Row(
+                  children: [
+                    SizedBox(
+                      width: 280,
+                      child: _DesktopCameraStepRail(
+                        title: title,
+                        labels: _labels,
+                        currentStep: step.index + 1,
+                      ),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 920),
+                          child: child,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  _CameraStepHeader(
+                    labels: _labels,
+                    currentStep: step.index + 1,
+                  ),
+                  Expanded(child: child),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
+}
+
+class _DesktopCameraStepRail extends StatelessWidget {
+  const _DesktopCameraStepRail({
+    required this.title,
+    required this.labels,
+    required this.currentStep,
+  });
+
+  final String title;
+  final List<String> labels;
+  final int currentStep;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent =
+        Theme.of(context).extension<BrandThemeExtension>()?.accentOnDark ??
+            AppColorsV2.premiumGold;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Крок $currentStep з ${labels.length}',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColorsV2.onInk.withOpacity(.62))),
+          const SizedBox(height: AppSpacing.lg),
+          for (var index = 0; index < labels.length; index++)
+            _DesktopStep(
+              label: labels[index],
+              index: index + 1,
+              done: index + 1 < currentStep,
+              current: index + 1 == currentStep,
+              accent: accent,
+            ),
+          const Spacer(),
+          Text('Фото обробляється лише для пошуку рецептів.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: AppColorsV2.onInk.withOpacity(.48))),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopStep extends StatelessWidget {
+  const _DesktopStep({
+    required this.label,
+    required this.index,
+    required this.done,
+    required this.current,
+    required this.accent,
+  });
+
+  final String label;
+  final int index;
+  final bool done;
+  final bool current;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.md,
+            color: current ? const Color(0xFF221D16) : Colors.transparent,
+            border: current ? Border.all(color: const Color(0xFF2E2820)) : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Row(children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: done || current
+                    ? accent
+                    : AppColorsV2.onInk.withOpacity(.14),
+                child: Icon(done ? Icons.check : Icons.circle,
+                    size: done ? 16 : 8,
+                    color: done || current
+                        ? AppColorsV2.ink
+                        : AppColorsV2.onInk.withOpacity(.5)),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: current
+                            ? AppColorsV2.onInk
+                            : AppColorsV2.onInk.withOpacity(.58),
+                        fontWeight: current ? FontWeight.w700 : null)),
+              ),
+            ]),
+          ),
+        ),
+      );
 }
 
 class CameraFlowStatusView extends StatelessWidget {
