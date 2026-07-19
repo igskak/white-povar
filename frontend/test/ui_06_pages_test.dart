@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/profile/presentation/pages/profile_page.dart';
 import 'package:frontend/features/saved/presentation/pages/saved_page.dart';
+import 'package:frontend/features/studio/studio_brand_draft_service.dart';
+import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
 void main() {
   testWidgets('saved guest CTA preserves saved as the login return path',
@@ -54,6 +57,39 @@ void main() {
       expect(find.text('Зробіть кухню своєю'), findsOneWidget);
       expect(tester.takeException(), isNull, reason: 'width: $width');
     }
+  });
+
+  testWidgets('desktop profile relies on global shell header and shows access',
+      (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const user = User(
+      id: 'user-1',
+      email: 'cook@example.com',
+      appMetadata: {},
+      userMetadata: {'full_name': 'Cook'},
+      aud: 'authenticated',
+      createdAt: '2026-07-15T00:00:00Z',
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        currentUserProvider.overrideWithValue(user),
+        isPremiumProvider.overrideWithValue(true),
+        studioSessionProvider.overrideWith((ref) async => null),
+      ],
+      child: MaterialApp(
+        theme: AppThemeV2.light(_brand),
+        home: const ProfilePage(embeddedInDesktopShell: true),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.text('Premium активна'), findsOneWidget);
+    expect(find.text('Premium доступ активний'), findsOneWidget);
   });
 
   testWidgets('profile guest goldens at design breakpoints', (tester) async {

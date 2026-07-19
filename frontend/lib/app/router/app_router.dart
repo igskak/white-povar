@@ -237,7 +237,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: AppRoutePaths.profile,
                 pageBuilder: (_, state) => NoTransitionPage(
                   key: state.pageKey,
-                  child: const ProfilePage(),
+                  child: const ProfilePage(embeddedInDesktopShell: true),
                 ),
               ),
             ],

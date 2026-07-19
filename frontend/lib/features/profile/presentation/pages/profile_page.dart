@@ -7,34 +7,43 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../features/studio/studio_brand_draft_service.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../subscription/providers/subscription_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
-  const ProfilePage({super.key});
+  const ProfilePage({super.key, this.embeddedInDesktopShell = false});
+
+  final bool embeddedInDesktopShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Профіль'),
-        actions: user == null
+    return LayoutBuilder(builder: (context, constraints) {
+      final usesGlobalDesktopHeader =
+          embeddedInDesktopShell && constraints.maxWidth >= 1024;
+      return Scaffold(
+        appBar: usesGlobalDesktopHeader
             ? null
-            : [
-                AppIconButton(
-                  icon: Icons.settings_outlined,
-                  tooltip: 'Налаштування',
-                  onPressed: () => context.push('/settings'),
-                ),
-              ],
-      ),
-      body: SafeArea(
-        child: user == null
-            ? const _GuestProfile()
-            : _SignedInProfile(
-                email: user.email ?? 'Email не вказано',
-                name: _displayName(user.userMetadata ?? const {})),
-      ),
-    );
+            : AppBar(
+                title: const Text('Профіль'),
+                actions: user == null
+                    ? null
+                    : [
+                        AppIconButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Налаштування',
+                          onPressed: () => context.push('/settings'),
+                        ),
+                      ],
+              ),
+        body: SafeArea(
+          child: user == null
+              ? const _GuestProfile()
+              : _SignedInProfile(
+                  email: user.email ?? 'Email не вказано',
+                  name: _displayName(user.userMetadata ?? const {})),
+        ),
+      );
+    });
   }
 
   String _displayName(Map<String, dynamic> metadata) =>
@@ -94,6 +103,7 @@ class _SignedInProfile extends ConsumerWidget {
     final displayName = name.isEmpty ? email.split('@').first : name;
     final theme = Theme.of(context);
     final studioSession = ref.watch(studioSessionProvider);
+    final isPremium = ref.watch(isPremiumProvider);
     final content = ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
@@ -104,7 +114,20 @@ class _SignedInProfile extends ConsumerWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text(displayName, style: theme.textTheme.titleLarge),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(displayName, style: theme.textTheme.titleLarge),
+                    AppBadge(
+                      label: isPremium ? 'Premium активна' : 'Free',
+                      icon: isPremium
+                          ? Icons.workspace_premium
+                          : Icons.person_outline,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(email, style: theme.textTheme.bodyMedium)
               ]))
@@ -136,7 +159,8 @@ class _SignedInProfile extends ConsumerWidget {
           _ProfileRow(
               icon: Icons.workspace_premium_outlined,
               title: 'Підписка',
-              subtitle: 'Переглянути статус і доступ',
+              subtitle:
+                  isPremium ? 'Premium доступ активний' : 'Безкоштовний доступ',
               onTap: () => context.go('/offers/subscription')),
           const Divider(height: 1),
           _ProfileRow(
