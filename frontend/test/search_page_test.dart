@@ -202,6 +202,22 @@ void main() {
       expect(find.text('Обраний рецепт'), findsNothing);
     });
 
+    testWidgets('desktop breakpoint survives navigation-shell constraints',
+        (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1;
+
+      await tester.pumpWidget(
+        _testApp(repository: _SearchRepository(), contentWidth: 920),
+      );
+
+      expect(
+          find.byKey(const ValueKey('desktop-search-layout')), findsOneWidget);
+      expect(find.text('Пошук'), findsNothing);
+    });
+
     test('debounce and cancellation never publish stale results', () async {
       final repository = _DeferredSearchRepository();
       final container = ProviderContainer(overrides: [
@@ -233,6 +249,7 @@ Widget _testApp({
   SearchRouteLocation? initialRoute,
   SpeechRecognitionService? speechRecognitionService,
   RecipeGenerationService? recipeGenerationService,
+  double? contentWidth,
 }) =>
     ProviderScope(
       overrides: [
@@ -247,7 +264,14 @@ Widget _testApp({
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),
-        home: SearchPage(initialRoute: initialRoute),
+        home: contentWidth == null
+            ? SearchPage(initialRoute: initialRoute)
+            : Center(
+                child: SizedBox(
+                  width: contentWidth,
+                  child: SearchPage(initialRoute: initialRoute),
+                ),
+              ),
       ),
     );
 

@@ -201,7 +201,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isDesktop = constraints.maxWidth >= 1024;
+            // The navigation shell consumes rail width before this page is
+            // laid out, so the viewport—not the nested content constraint—
+            // decides whether the desktop handoff applies.
+            final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
             final content = Column(
               children: [
                 ResponsiveContainer(
