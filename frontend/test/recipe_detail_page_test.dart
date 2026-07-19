@@ -50,6 +50,32 @@ void main() {
         expect(tester.takeException(), isNull, reason: 'width: $width');
       }
     });
+
+    testWidgets('desktop has fixed hero, two-column content and sticky actions',
+        (tester) async {
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_app(
+        recipe: _recipe(isPremium: false),
+        hasPremiumAccess: true,
+      ));
+      await tester.pump();
+
+      expect(
+          tester
+              .getSize(find.byKey(const ValueKey('desktop-recipe-hero-pane')))
+              .width,
+          520);
+      expect(find.byKey(const ValueKey('recipe-sections-two-column')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('desktop-recipe-action-bar')),
+          findsOneWidget);
+      expect(find.byTooltip('Поділитися'), findsOneWidget);
+      expect(find.text('Почати готувати'), findsOneWidget);
+    });
   });
 }
 

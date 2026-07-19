@@ -18,13 +18,46 @@ class ContentDetailSections extends StatelessWidget {
   final Widget? leading;
 
   @override
+  Widget build(BuildContext context) {
+    final ingredientsSection = _IngredientsSection(ingredients: ingredients);
+    final stepsSection = _StepsSection(steps: steps);
+    final useColumns = MediaQuery.sizeOf(context).width >= 1024;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (leading != null) ...[
+          leading!,
+          const SizedBox(height: AppSpacing.xl),
+        ],
+        if (useColumns)
+          Row(
+            key: const ValueKey('recipe-sections-two-column'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: ingredientsSection),
+              const SizedBox(width: AppSpacing.xl),
+              Expanded(child: stepsSection),
+            ],
+          )
+        else ...[
+          ingredientsSection,
+          const SizedBox(height: AppSpacing.xl),
+          stepsSection,
+        ],
+      ],
+    );
+  }
+}
+
+class _IngredientsSection extends StatelessWidget {
+  const _IngredientsSection({required this.ingredients});
+
+  final List<Ingredient> ingredients;
+
+  @override
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (leading != null) ...[
-            leading!,
-            const SizedBox(height: AppSpacing.xl)
-          ],
           _SectionTitle(
             title: 'Інгредієнти',
             trailing:
@@ -36,7 +69,19 @@ class ContentDetailSections extends StatelessWidget {
           else
             ...ingredients
                 .map((ingredient) => _IngredientRow(ingredient: ingredient)),
-          const SizedBox(height: AppSpacing.xl),
+        ],
+      );
+}
+
+class _StepsSection extends StatelessWidget {
+  const _StepsSection({required this.steps});
+
+  final List<String> steps;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           const _SectionTitle(title: 'Приготування'),
           const SizedBox(height: AppSpacing.md),
           if (steps.isEmpty)

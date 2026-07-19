@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -180,7 +181,11 @@ class _RecipeDetailContent extends StatelessWidget {
             return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(width: 520, child: hero),
+                  SizedBox(
+                    key: const ValueKey('desktop-recipe-hero-pane'),
+                    width: 520,
+                    child: hero,
+                  ),
                   Expanded(child: body)
                 ]);
           }
@@ -220,12 +225,13 @@ class _RecipeHero extends StatelessWidget {
                 top: AppSpacing.md,
                 right: 56,
                 child: PremiumBadge(size: 24, showLabel: true)),
-          Positioned(
-            top: AppSpacing.xs,
-            right: AppSpacing.xs,
-            child:
-                FavoriteButton(recipeId: recipe.id, color: AppColorsV2.onInk),
-          ),
+          if (!expand)
+            Positioned(
+              top: AppSpacing.xs,
+              right: AppSpacing.xs,
+              child:
+                  FavoriteButton(recipeId: recipe.id, color: AppColorsV2.onInk),
+            ),
           Positioned(
               left: AppSpacing.lg,
               right: AppSpacing.lg,
@@ -261,74 +267,187 @@ class _RecipeBody extends StatelessWidget {
   final Future<void> Function()? onAddToPlan;
 
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-            desktop ? AppSpacing.xxl : AppSpacing.md,
-            desktop ? AppSpacing.xl : AppSpacing.lg,
-            desktop ? AppSpacing.xxl : AppSpacing.md,
-            desktop ? AppSpacing.xl : 108),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 900),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(recipe.description,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge
-                      ?.copyWith(color: AppColorsV2.textSecondary)),
-              const SizedBox(height: AppSpacing.lg),
-              _StatsRow(recipe: recipe),
-              if (desktop && onPrimaryAction != null) ...[
-                const SizedBox(height: AppSpacing.lg),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ElevatedButton.icon(
-                    onPressed: onPrimaryAction,
-                    icon: Icon(primaryActionIcon),
-                    label: Text(primaryActionLabel),
-                  ),
+  Widget build(BuildContext context) {
+    final content = SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+          desktop ? AppSpacing.xxl : AppSpacing.md,
+          desktop ? AppSpacing.xl : AppSpacing.lg,
+          desktop ? AppSpacing.xxl : AppSpacing.md,
+          desktop ? AppSpacing.xl : 108),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(recipe.description,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: AppColorsV2.textSecondary)),
+            const SizedBox(height: AppSpacing.lg),
+            _StatsRow(recipe: recipe),
+            if (!desktop && !locked) ...[
+              const SizedBox(height: AppSpacing.sm),
+              _SecondaryRecipeActions(
+                onAddToShopping: onAddToShopping,
+                onAddToPlan: onAddToPlan,
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xl),
+            if (locked)
+              _PremiumGate(onUnlock: onUnlock)
+            else
+              ContentDetailSections(
+                ingredients: recipe.ingredients,
+                steps: recipe.instructions,
+                leading: recipe.videoUrl != null || recipe.videoFilePath != null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                            Text('Відео рецепта',
+                                style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: AppSpacing.sm),
+                            RecipeVideoWidget(
+                                videoUrl: recipe.videoUrl,
+                                videoFilePath: recipe.videoFilePath,
+                                height: 220,
+                                borderRadius: AppRadius.lg),
+                          ])
+                    : null,
+              ),
+          ]),
+        ),
+      ),
+    );
+    if (!desktop) return content;
+    return Column(
+      children: [
+        Expanded(child: content),
+        _DesktopRecipeActionBar(
+          recipeId: recipe.id,
+          primaryActionLabel: primaryActionLabel,
+          primaryActionIcon: primaryActionIcon,
+          onPrimaryAction: onPrimaryAction,
+          onAddToShopping: locked ? null : onAddToShopping,
+          onAddToPlan: locked ? null : onAddToPlan,
+        ),
+      ],
+    );
+  }
+}
+
+enum _RecipeSecondaryAction { shopping, plan }
+
+class _SecondaryRecipeActions extends StatelessWidget {
+  const _SecondaryRecipeActions({
+    this.onAddToShopping,
+    this.onAddToPlan,
+  });
+
+  final Future<void> Function()? onAddToShopping;
+  final Future<void> Function()? onAddToPlan;
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.centerLeft,
+        child: PopupMenuButton<_RecipeSecondaryAction>(
+          tooltip: 'Інші дії',
+          enabled: onAddToShopping != null || onAddToPlan != null,
+          onSelected: (action) {
+            switch (action) {
+              case _RecipeSecondaryAction.shopping:
+                onAddToShopping?.call();
+                break;
+              case _RecipeSecondaryAction.plan:
+                onAddToPlan?.call();
+                break;
+            }
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: _RecipeSecondaryAction.shopping,
+              enabled: onAddToShopping != null,
+              child: const ListTile(
+                leading: Icon(Icons.add_shopping_cart_outlined),
+                title: Text('Додати до покупок'),
+              ),
+            ),
+            PopupMenuItem(
+              value: _RecipeSecondaryAction.plan,
+              enabled: onAddToPlan != null,
+              child: const ListTile(
+                leading: Icon(Icons.calendar_month_outlined),
+                title: Text('Запланувати'),
+              ),
+            ),
+          ],
+          child: const Chip(
+            avatar: Icon(Icons.more_horiz, size: 18),
+            label: Text('Покупки та план'),
+          ),
+        ),
+      );
+}
+
+class _DesktopRecipeActionBar extends StatelessWidget {
+  const _DesktopRecipeActionBar({
+    required this.recipeId,
+    required this.primaryActionLabel,
+    required this.primaryActionIcon,
+    required this.onPrimaryAction,
+    this.onAddToShopping,
+    this.onAddToPlan,
+  });
+
+  final String recipeId;
+  final String primaryActionLabel;
+  final IconData primaryActionIcon;
+  final VoidCallback? onPrimaryAction;
+  final Future<void> Function()? onAddToShopping;
+  final Future<void> Function()? onAddToPlan;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        elevation: 8,
+        color: Theme.of(context).colorScheme.surface,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              key: const ValueKey('desktop-recipe-action-bar'),
+              children: [
+                FavoriteButton(recipeId: recipeId),
+                IconButton(
+                  tooltip: 'Поділитися',
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: '/recipes/$recipeId'),
+                    );
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Посилання на рецепт скопійовано'),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.share_outlined),
+                ),
+                _SecondaryRecipeActions(
+                  onAddToShopping: onAddToShopping,
+                  onAddToPlan: onAddToPlan,
+                ),
+                const Spacer(),
+                AppButton(
+                  label: primaryActionLabel,
+                  icon: primaryActionIcon,
+                  onPressed: onPrimaryAction,
                 ),
               ],
-              if (!locked) ...[
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                    label: 'Додати відсутнє до покупок',
-                    icon: Icons.add_shopping_cart_outlined,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: onAddToShopping),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                    label: 'Запланувати на тиждень',
-                    icon: Icons.calendar_month_outlined,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: onAddToPlan),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              if (locked)
-                _PremiumGate(onUnlock: onUnlock)
-              else
-                ContentDetailSections(
-                  ingredients: recipe.ingredients,
-                  steps: recipe.instructions,
-                  leading: recipe.videoUrl != null ||
-                          recipe.videoFilePath != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                              Text('Відео рецепта',
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: AppSpacing.sm),
-                              RecipeVideoWidget(
-                                  videoUrl: recipe.videoUrl,
-                                  videoFilePath: recipe.videoFilePath,
-                                  height: 220,
-                                  borderRadius: AppRadius.lg),
-                            ])
-                      : null,
-                ),
-            ]),
+            ),
           ),
         ),
       );
@@ -461,23 +580,48 @@ class _Stat extends StatelessWidget {
 class _RecipeDetailSkeleton extends StatelessWidget {
   const _RecipeDetailSkeleton();
   @override
-  Widget build(BuildContext context) => const SingleChildScrollView(
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        SizedBox(
-            height: 320, child: ColoredBox(color: AppColorsV2.surfaceStrong)),
-        Padding(
-            padding: EdgeInsets.all(AppSpacing.md),
-            child: Column(children: [
-              SizedBox(
-                  height: 20,
-                  width: double.infinity,
-                  child: ColoredBox(color: AppColorsV2.surfaceStrong)),
-              SizedBox(height: AppSpacing.md),
-              SizedBox(
-                  height: 120,
-                  width: double.infinity,
-                  child: ColoredBox(color: AppColorsV2.surfaceStrong))
-            ]))
-      ]));
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          const detail = Padding(
+            padding: EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppSkeleton(width: 260, height: 28),
+                SizedBox(height: AppSpacing.lg),
+                AppSkeleton(height: 92),
+                SizedBox(height: AppSpacing.xl),
+                AppSkeleton(height: 260),
+              ],
+            ),
+          );
+          if (constraints.maxWidth >= 1024) {
+            return const Row(
+              key: ValueKey('desktop-recipe-skeleton'),
+              children: [
+                SizedBox(
+                  width: 520,
+                  child: AppSkeleton(
+                    height: double.infinity,
+                    borderRadius: BorderRadius.zero,
+                  ),
+                ),
+                Expanded(child: detail),
+              ],
+            );
+          }
+          return const SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppSkeleton(
+                  height: 320,
+                  borderRadius: BorderRadius.zero,
+                ),
+                detail,
+              ],
+            ),
+          );
+        },
+      );
 }
