@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/features/camera/models/detected_ingredient.dart';
 import 'package:frontend/features/camera/presentation/pages/camera_capture_page.dart';
+import 'package:frontend/features/camera/presentation/pages/photo_search_results_page.dart';
 import 'package:frontend/features/camera/providers/camera_provider.dart';
 import 'package:frontend/features/camera/providers/photo_search_provider.dart';
 import 'package:frontend/features/camera/services/camera_service.dart';
 import 'package:frontend/features/camera/services/image_processing_service.dart';
 import 'package:frontend/features/camera/services/photo_search_service.dart';
 import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/features/auth/providers/auth_provider.dart';
 
 void main() {
   test('low-confidence detections are not confirmed automatically', () {
@@ -101,6 +103,37 @@ void main() {
     ingredients.toggleConfirmation('weak');
     expect(ingredients.getConfirmedIngredientNames(), ['невідомий продукт']);
   });
+
+  testWidgets('camera results use responsive 1/2/3 column grids',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.devicePixelRatio = 1;
+
+    for (final entry in {390.0: 1, 768.0: 2, 1280.0: 3}.entries) {
+      tester.view.physicalSize = Size(entry.key, 1000);
+      final notifier = _ResultsPhotoSearchNotifier()
+        ..seed(const PhotoSearchState(
+          suggestedRecipes: [
+            {'id': 'unavailable'},
+          ],
+        ));
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          photoSearchProvider.overrideWith((_) => notifier),
+          authProvider.overrideWith((_) => AuthNotifier.testing()),
+        ],
+        child: const MaterialApp(home: PhotoSearchResultsPage()),
+      ));
+      await tester.pump();
+
+      expect(
+        find.byKey(ValueKey('camera-results-grid-${entry.value}')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
 }
 
 Widget _cameraApp() => ProviderScope(
@@ -128,6 +161,21 @@ PhotoSearchNotifier _photoSearchNotifier() => PhotoSearchNotifier(
         ),
       ),
     );
+
+class _ResultsPhotoSearchNotifier extends PhotoSearchNotifier {
+  _ResultsPhotoSearchNotifier() : super(photoSearchService: _service());
+
+  void seed(PhotoSearchState value) => state = value;
+
+  static PhotoSearchService _service() => PhotoSearchService(
+        apiClient: ApiClient(
+          baseUrl: 'https://example.com',
+          tokenProvider: () async => null,
+          tenantSlug: 'ohorodnik-oleksandr',
+          locale: 'uk',
+        ),
+      );
+}
 
 class _FakeCameraService extends CameraService {
   _FakeCameraService(this._permissionState);

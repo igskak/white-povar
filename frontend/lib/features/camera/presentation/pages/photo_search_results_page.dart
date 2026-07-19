@@ -96,12 +96,18 @@ class PhotoSearchResultsPage extends ConsumerWidget {
         ),
         Expanded(
           child: LayoutBuilder(builder: (context, constraints) {
-            final columns = constraints.maxWidth >= 760 ? 3 : 2;
+            final viewportWidth = MediaQuery.sizeOf(context).width;
+            final columns = viewportWidth >= 1024
+                ? 3
+                : viewportWidth >= 600
+                    ? 2
+                    : 1;
             return GridView.builder(
+              key: ValueKey('camera-results-grid-$columns'),
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                childAspectRatio: columns == 3 ? .78 : .76,
+                childAspectRatio: .72,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
