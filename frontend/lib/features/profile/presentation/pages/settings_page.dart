@@ -21,7 +21,7 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(appThemeModeProvider);
     return LayoutBuilder(builder: (context, pageConstraints) {
       final usesGlobalDesktopHeader =
-          embeddedInDesktopShell && pageConstraints.maxWidth >= 1024;
+          embeddedInDesktopShell && MediaQuery.sizeOf(context).width >= 1024;
       return Scaffold(
         appBar: usesGlobalDesktopHeader
             ? null

@@ -19,7 +19,7 @@ class SavedPage extends ConsumerWidget {
     final isSignedIn = ref.watch(currentUserProvider) != null;
     return LayoutBuilder(builder: (context, constraints) {
       final usesGlobalDesktopHeader =
-          embeddedInDesktopShell && constraints.maxWidth >= 1024;
+          embeddedInDesktopShell && MediaQuery.sizeOf(context).width >= 1024;
       return Scaffold(
         appBar: usesGlobalDesktopHeader
             ? null

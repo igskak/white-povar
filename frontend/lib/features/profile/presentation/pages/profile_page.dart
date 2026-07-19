@@ -19,7 +19,7 @@ class ProfilePage extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     return LayoutBuilder(builder: (context, constraints) {
       final usesGlobalDesktopHeader =
-          embeddedInDesktopShell && constraints.maxWidth >= 1024;
+          embeddedInDesktopShell && MediaQuery.sizeOf(context).width >= 1024;
       return Scaffold(
         appBar: usesGlobalDesktopHeader
             ? null
