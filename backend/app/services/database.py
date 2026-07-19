@@ -64,10 +64,11 @@ class SupabaseService:
                 return result
 
             elif operation == "delete":
+                query = query.delete()
                 if filters:
                     for key, value in filters.items():
                         query = query.eq(key, value)
-                result = query.delete().execute()
+                result = query.execute()
                 logger.debug(f"Delete executed successfully: {table}")
                 return result
 
