@@ -32,7 +32,6 @@ class AuthService {
       if (_supabase.auth.currentSession != null) {
         _completeInitialSession();
       }
-      _authStateController.add(currentUser);
       return;
     }
 
