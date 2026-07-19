@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
@@ -87,6 +88,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop close returns to profile without router history',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    final router = GoRouter(
+      initialLocation: '/offers/subscription',
+      routes: [
+        GoRoute(
+          path: '/offers/subscription',
+          builder: (_, __) => const SubscriptionScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (_, __) => const Scaffold(body: Text('Профіль відкрито')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(_routerApp(FakePurchaseAdapter(), router));
+    await tester.pump();
+
+    expect(find.byTooltip('Закрити'), findsOneWidget);
+    await tester.tap(find.byTooltip('Закрити'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Профіль відкрито'), findsOneWidget);
+  });
+
   testWidgets('paywall goldens at design breakpoints', (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -169,6 +199,18 @@ Widget _app(PurchaseAdapter adapter, {TextScaler? textScaler}) => ProviderScope(
                 child: child!,
               ),
         home: const SubscriptionScreen(),
+      ),
+    );
+
+Widget _routerApp(PurchaseAdapter adapter, GoRouter router) => ProviderScope(
+      overrides: [
+        tenantBootstrapProvider.overrideWithValue(_bootstrap),
+        purchaseAdapterProvider.overrideWithValue(adapter),
+        authProvider.overrideWith((_) => AuthNotifier.testing()),
+      ],
+      child: MaterialApp.router(
+        theme: AppThemeV2.light(_brandConfig),
+        routerConfig: router,
       ),
     );
 

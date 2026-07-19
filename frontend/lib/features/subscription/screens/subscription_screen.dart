@@ -13,7 +13,9 @@ import '../purchase_adapter.dart';
 import '../paywall_provider.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
-  const SubscriptionScreen({super.key});
+  const SubscriptionScreen({super.key, this.returnTo});
+
+  final String? returnTo;
 
   @override
   ConsumerState<SubscriptionScreen> createState() => _SubscriptionScreenState();
@@ -32,10 +34,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isDesktop = width >= 1024;
     final isDialog = width >= 600;
-    final child = _PaywallCard(snapshot: snapshot);
+    final child = _PaywallCard(snapshot: snapshot, onClose: _close);
     if (isDesktop) {
       return _DesktopPaywall(
         brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
+        onClose: _close,
         child: child,
       );
     }
@@ -57,13 +60,20 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
   }
+
+  void _close() => context.go(widget.returnTo ?? '/profile');
 }
 
 class _DesktopPaywall extends StatelessWidget {
-  const _DesktopPaywall({required this.brand, required this.child});
+  const _DesktopPaywall({
+    required this.brand,
+    required this.child,
+    required this.onClose,
+  });
 
   final BrandDetails brand;
   final Widget child;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -92,7 +102,7 @@ class _DesktopPaywall extends StatelessWidget {
                       icon: Icons.close,
                       tooltip: 'Закрити',
                       filled: true,
-                      onPressed: () => Navigator.maybePop(context),
+                      onPressed: onClose,
                     ),
                   ),
                   Center(
@@ -183,13 +193,15 @@ class _DesktopBenefit extends StatelessWidget {
 }
 
 class _PaywallCard extends ConsumerWidget {
-  const _PaywallCard({required this.snapshot});
+  const _PaywallCard({required this.snapshot, required this.onClose});
 
   final PaywallSnapshot snapshot;
+  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final brand = ref.watch(tenantBootstrapProvider).brandConfig.brand;
+    final isDesktop = MediaQuery.sizeOf(context).width >= 1024;
     final purchasing = snapshot.phase == PaywallPhase.purchasing;
     final active = _isEntitled(snapshot.phase);
     final unavailable = snapshot.phase == PaywallPhase.productsUnavailable ||
@@ -209,18 +221,19 @@ class _PaywallCard extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 24),
         children: [
-          Row(children: [
-            AppIconButton(
-              icon: Icons.close,
-              tooltip: 'Закрити',
-              onPressed: purchasing ? null : () => Navigator.maybePop(context),
-            ),
-            const Spacer(),
-            Text('ПІДПИСКА',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: context.brandTheme.accentOnDark,
-                    letterSpacing: 1.4)),
-          ]),
+          if (!isDesktop)
+            Row(children: [
+              AppIconButton(
+                icon: Icons.close,
+                tooltip: 'Закрити',
+                onPressed: purchasing ? null : onClose,
+              ),
+              const Spacer(),
+              Text('ПІДПИСКА',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: context.brandTheme.accentOnDark,
+                      letterSpacing: 1.4)),
+            ]),
           const SizedBox(height: 10),
           SizedBox(
               height: 130,

@@ -124,6 +124,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutePaths.offer,
         builder: (_, state) => SubscriptionScreen(
           key: state.pageKey,
+          returnTo: OfferRouteLocation.fromUri(state.uri).returnTo,
         ),
       ),
       GoRoute(
