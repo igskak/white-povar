@@ -178,9 +178,7 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
   @override
   Future<PaywallSnapshot> load() async {
     try {
-      final response = await _apiClient.get<Map<String, dynamic>>(
-        '/api/v1/commerce/catalogue',
-      );
+      final response = await _loadCatalogueWithWakeRetry();
       final data = response.data ?? const <String, dynamic>{};
       _demoPurchaseAvailable = data['commerceMode'] == 'demo' &&
           data['demoPurchaseAvailable'] == true;
@@ -214,6 +212,28 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
         phase: PaywallPhase.productsUnavailable,
         message: 'Не вдалося завантажити пропозиції. Спробуйте ще раз.',
       );
+    }
+  }
+
+  /// Render's free instances can return a short 502/503 while waking. Retry
+  /// only transport failures so a signed-in, allowlisted buyer does not see a
+  /// false unavailable state during the normal cold-start window. Auth and
+  /// access errors remain fail-closed and are never retried.
+  Future<Response<Map<String, dynamic>>> _loadCatalogueWithWakeRetry() async {
+    const delays = [Duration(seconds: 1), Duration(seconds: 2)];
+    for (var attempt = 0;; attempt++) {
+      try {
+        return await _apiClient.get<Map<String, dynamic>>(
+          '/api/v1/commerce/catalogue',
+        );
+      } on ApiError catch (error) {
+        final retryable = error.type == ApiErrorType.network ||
+            error.type == ApiErrorType.timeout ||
+            (error.type == ApiErrorType.server &&
+                (error.statusCode == 502 || error.statusCode == 503));
+        if (!retryable || attempt >= delays.length) rethrow;
+        await Future<void>.delayed(delays[attempt]);
+      }
     }
   }
 
