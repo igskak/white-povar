@@ -60,10 +60,21 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
           }
           final locked =
               recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
+          final canCook = (recipe.contentKind == ContentKind.recipe ||
+                  recipe.contentKind == ContentKind.process) &&
+              recipe.instructions.isNotEmpty;
           return _RecipeDetailContent(
             recipe: recipe,
             locked: locked,
             onUnlock: () => _openGate(context, auth.isAuthenticated),
+            primaryActionLabel: locked ? 'Відкрити Premium' : 'Почати готувати',
+            primaryActionIcon:
+                locked ? Icons.workspace_premium : Icons.soup_kitchen_outlined,
+            onPrimaryAction: locked
+                ? () => _openGate(context, auth.isAuthenticated)
+                : canCook
+                    ? () => context.push('/recipes/${widget.recipeId}/cook')
+                    : null,
             onAddToShopping: locked || !auth.isAuthenticated
                 ? null
                 : () async {
@@ -94,6 +105,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
       ),
       bottomNavigationBar: recipeAsync.maybeWhen(
         data: (recipe) {
+          if (MediaQuery.sizeOf(context).width >= 1024) return null;
           final locked =
               recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
           final canCook = (recipe.contentKind == ContentKind.recipe ||
@@ -135,11 +147,17 @@ class _RecipeDetailContent extends StatelessWidget {
       {required this.recipe,
       required this.locked,
       required this.onUnlock,
+      required this.primaryActionLabel,
+      required this.primaryActionIcon,
+      this.onPrimaryAction,
       this.onAddToShopping,
       this.onAddToPlan});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
+  final String primaryActionLabel;
+  final IconData primaryActionIcon;
+  final VoidCallback? onPrimaryAction;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
@@ -147,18 +165,24 @@ class _RecipeDetailContent extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= 1024;
-          final hero = _RecipeHero(recipe: recipe);
+          final hero = _RecipeHero(recipe: recipe, expand: desktop);
           final body = _RecipeBody(
               recipe: recipe,
               locked: locked,
               onUnlock: onUnlock,
+              desktop: desktop,
+              primaryActionLabel: primaryActionLabel,
+              primaryActionIcon: primaryActionIcon,
+              onPrimaryAction: onPrimaryAction,
               onAddToShopping: onAddToShopping,
               onAddToPlan: onAddToPlan);
           if (desktop) {
-            return Row(children: [
-              SizedBox(width: 520, child: hero),
-              Expanded(child: body)
-            ]);
+            return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(width: 520, child: hero),
+                  Expanded(child: body)
+                ]);
           }
           return CustomScrollView(slivers: [
             SliverToBoxAdapter(child: hero),
@@ -169,11 +193,12 @@ class _RecipeDetailContent extends StatelessWidget {
 }
 
 class _RecipeHero extends StatelessWidget {
-  const _RecipeHero({required this.recipe});
+  const _RecipeHero({required this.recipe, this.expand = false});
   final Recipe recipe;
+  final bool expand;
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 320,
+        height: expand ? null : 320,
         child: Stack(fit: StackFit.expand, children: [
           _RecipeHeroImage(recipe: recipe),
           const DecoratedBox(
@@ -219,18 +244,29 @@ class _RecipeBody extends StatelessWidget {
       {required this.recipe,
       required this.locked,
       required this.onUnlock,
+      required this.desktop,
+      required this.primaryActionLabel,
+      required this.primaryActionIcon,
+      this.onPrimaryAction,
       this.onAddToShopping,
       this.onAddToPlan});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
+  final bool desktop;
+  final String primaryActionLabel;
+  final IconData primaryActionIcon;
+  final VoidCallback? onPrimaryAction;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.lg, AppSpacing.md, 108),
+        padding: EdgeInsets.fromLTRB(
+            desktop ? AppSpacing.xxl : AppSpacing.md,
+            desktop ? AppSpacing.xl : AppSpacing.lg,
+            desktop ? AppSpacing.xxl : AppSpacing.md,
+            desktop ? AppSpacing.xl : 108),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 900),
@@ -243,6 +279,17 @@ class _RecipeBody extends StatelessWidget {
                       ?.copyWith(color: AppColorsV2.textSecondary)),
               const SizedBox(height: AppSpacing.lg),
               _StatsRow(recipe: recipe),
+              if (desktop && onPrimaryAction != null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ElevatedButton.icon(
+                    onPressed: onPrimaryAction,
+                    icon: Icon(primaryActionIcon),
+                    label: Text(primaryActionLabel),
+                  ),
+                ),
+              ],
               if (!locked) ...[
                 const SizedBox(height: AppSpacing.sm),
                 AppButton(
