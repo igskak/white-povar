@@ -1,7 +1,7 @@
 from supabase import create_client, Client
 from typing import Optional, List, Dict, Any
 import asyncio
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from functools import wraps
 import logging
 
@@ -381,12 +381,16 @@ class SupabaseService:
         values = {**data, 'user_id': user_id, 'chef_id': chef_id,
                   'title': recipe['title'], 'is_premium': recipe.get('is_premium', False),
                   'image_url': recipe.get('image_url')}
+        if isinstance(values.get('planned_for'), date):
+            values['planned_for'] = values['planned_for'].isoformat()
         result = self.get_client(use_service_key=True).table('menu_plan_slots').insert(values).execute()
         return result.data[0]
 
     async def update_menu_plan_slot(self, slot_id: str, user_id: str, chef_id: str, data: Dict[str, Any], recipe: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         values = {**data, 'title': recipe['title'], 'is_premium': recipe.get('is_premium', False),
                   'image_url': recipe.get('image_url')}
+        if isinstance(values.get('planned_for'), date):
+            values['planned_for'] = values['planned_for'].isoformat()
         result = (self.get_client(use_service_key=True).table('menu_plan_slots').update(values)
                   .eq('id', slot_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
         return (result.data or [None])[0]
