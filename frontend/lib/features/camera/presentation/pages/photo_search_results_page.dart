@@ -86,12 +86,14 @@ class PhotoSearchResultsPage extends ConsumerWidget {
 
     return Column(
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Text(
-            'Знайдено рецептів: ${state.suggestedRecipes.length}. Продуктів у пошуку: ${confirmedIngredients.length}.',
-            style: Theme.of(context).textTheme.titleMedium,
+        Builder(
+          builder: (themedContext) => Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Text(
+              'Знайдено рецептів: ${state.suggestedRecipes.length}. Продуктів у пошуку: ${confirmedIngredients.length}.',
+              style: Theme.of(themedContext).textTheme.titleMedium,
+            ),
           ),
         ),
         Expanded(
@@ -107,7 +109,7 @@ class PhotoSearchResultsPage extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                childAspectRatio: .72,
+                childAspectRatio: columns == 3 ? .60 : .72,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),

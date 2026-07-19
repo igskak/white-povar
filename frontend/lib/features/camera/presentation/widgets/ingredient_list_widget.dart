@@ -51,6 +51,57 @@ class IngredientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final confirmation = Checkbox(
+      value: ingredient.isConfirmed,
+      onChanged: (_) => onToggle(),
+      activeColor: AppColorsV2.accent,
+    );
+    final ingredientInfo = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          ingredient.name,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: ingredient.isConfirmed
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+                color: ingredient.isConfirmed
+                    ? null
+                    : Theme.of(context).colorScheme.onSurface.withOpacity(.52),
+              ),
+        ),
+        if (ingredient.notes?.isNotEmpty == true) ...[
+          const SizedBox(height: 4),
+          Text(
+            ingredient.notes!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(.62),
+                ),
+          ),
+        ],
+        if (ingredient.confidence > 0) ...[
+          const SizedBox(height: 4),
+          _buildConfidenceIndicator(context),
+        ],
+      ],
+    );
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: onTap,
+          icon: const Icon(Icons.edit, size: 20),
+          tooltip: 'Редагувати продукт',
+        ),
+        IconButton(
+          onPressed: onDelete,
+          icon: const Icon(Icons.delete, size: 20),
+          tooltip: 'Видалити продукт',
+          color: AppColorsV2.error,
+        ),
+      ],
+    );
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: ingredient.isConfirmed ? 2 : 1,
@@ -64,73 +115,27 @@ class IngredientCard extends StatelessWidget {
         borderRadius: AppRadius.lg,
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Confirmation checkbox
-              Checkbox(
-                value: ingredient.isConfirmed,
-                onChanged: (_) => onToggle(),
-                activeColor: AppColorsV2.accent,
-              ),
-              const SizedBox(width: 8),
-
-              // Ingredient info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 340) {
+                return Column(
                   children: [
-                    Text(
-                      ingredient.name,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: ingredient.isConfirmed
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: ingredient.isConfirmed
-                                ? null
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(.52),
-                          ),
-                    ),
-                    if (ingredient.notes?.isNotEmpty == true) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        ingredient.notes!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(.62),
-                            ),
-                      ),
-                    ],
-                    if (ingredient.confidence > 0) ...[
-                      const SizedBox(height: 4),
-                      _buildConfidenceIndicator(context),
-                    ],
+                    Row(children: [
+                      confirmation,
+                      const SizedBox(width: 8),
+                      Expanded(child: ingredientInfo),
+                    ]),
+                    Align(alignment: Alignment.centerRight, child: actions),
                   ],
-                ),
-              ),
-
-              // Action buttons
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.edit, size: 20),
-                    tooltip: 'Редагувати продукт',
-                  ),
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete, size: 20),
-                    tooltip: 'Видалити продукт',
-                    color: AppColorsV2.error,
-                  ),
-                ],
-              ),
-            ],
+                );
+              }
+              return Row(children: [
+                confirmation,
+                const SizedBox(width: 8),
+                Expanded(child: ingredientInfo),
+                actions,
+              ]);
+            },
           ),
         ),
       ),

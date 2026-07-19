@@ -275,12 +275,24 @@ class _IngredientsPanel extends StatelessWidget {
               ]),
             ),
           ),
-        Row(children: [
-          Text('Знайдені продукти',
-              style: Theme.of(context).textTheme.titleMedium),
-          const Spacer(),
-          Text('Підтверджено: $confirmedCount'),
-        ]),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final title = Text('Знайдені продукти',
+                style: Theme.of(context).textTheme.titleMedium);
+            final count = Text('Підтверджено: $confirmedCount');
+            if (constraints.maxWidth < 520) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  title,
+                  const SizedBox(height: 4),
+                  count,
+                ],
+              );
+            }
+            return Row(children: [title, const Spacer(), count]);
+          },
+        ),
         const SizedBox(height: 8),
         Expanded(
           child: ingredients.isEmpty

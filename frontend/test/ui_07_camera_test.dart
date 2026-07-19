@@ -134,6 +134,30 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets('camera preview is disposed when capture page leaves the tree',
+      (tester) async {
+    final service = _TrackingCameraService();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          cameraProvider.overrideWith(
+            (_) => CameraNotifier(
+              cameraService: service,
+              imageProcessingService: ImageProcessingService(),
+            ),
+          ),
+          photoSearchProvider.overrideWith((_) => _photoSearchNotifier()),
+        ],
+        child: const MaterialApp(home: CameraCapturePage()),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    await tester.pump();
+
+    expect(service.disposeCalls, greaterThan(0));
+  });
 }
 
 Widget _cameraApp() => ProviderScope(
@@ -192,4 +216,18 @@ class _FakeCameraService extends CameraService {
   @override
   Future<bool> requestCameraPermission() async =>
       _permissionState == CameraPermissionState.granted;
+}
+
+class _TrackingCameraService extends _FakeCameraService {
+  _TrackingCameraService() : super(CameraPermissionState.granted);
+
+  int disposeCalls = 0;
+
+  @override
+  Future<void> initializePreview() async {}
+
+  @override
+  Future<void> disposePreview() async {
+    disposeCalls++;
+  }
 }

@@ -66,6 +66,12 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     return CameraFlowScaffold(
       title: 'Сканування продуктів',
       step: CameraFlowStep.capture,
+      immersive: cameraState.hasPermission &&
+          !cameraState.isLoading &&
+          !photoSearchState.isLoading &&
+          cameraState.error == null &&
+          photoSearchState.error == null &&
+          _capturedImage == null,
       child: _buildContent(cameraState, photoSearchState),
     );
   }
@@ -259,6 +265,14 @@ class _CameraActionView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (!kIsWeb && MediaQuery.sizeOf(context).width < 600) {
+      return _NativeCaptureView(
+        controller: controller,
+        onCapture: onCapture,
+        onGallery: onGallery,
+        onFlash: onFlash,
+      );
+    }
 
     final fallback = Container(
       height: 420,
@@ -342,6 +356,141 @@ class _CameraActionView extends StatelessWidget {
                 ],
               ),
       ),
+    );
+  }
+}
+
+class _NativeCaptureView extends StatelessWidget {
+  const _NativeCaptureView({
+    required this.controller,
+    required this.onCapture,
+    required this.onGallery,
+    required this.onFlash,
+  });
+
+  final native.CameraController? controller;
+  final VoidCallback onCapture;
+  final VoidCallback onGallery;
+  final VoidCallback onFlash;
+
+  @override
+  Widget build(BuildContext context) {
+    final initialized = controller?.value.isInitialized == true;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (initialized)
+          native.CameraPreview(controller!)
+        else
+          const ColoredBox(
+            color: Color(0xFF17130F),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.photo_camera_outlined,
+                      size: 72, color: Colors.white38),
+                  SizedBox(height: AppSpacing.sm),
+                  Text('Готуємо видошукач',
+                      style: TextStyle(color: Colors.white70)),
+                ],
+              ),
+            ),
+          ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0x99000000),
+                Colors.transparent,
+                Color(0xCC000000),
+              ],
+              stops: [0, .5, 1],
+            ),
+          ),
+        ),
+        Positioned(
+          left: AppSpacing.md,
+          right: AppSpacing.md,
+          top: AppSpacing.md,
+          child: Row(
+            children: [
+              AppIconButton(
+                icon: Icons.close,
+                tooltip: 'Закрити камеру',
+                filled: true,
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              const Spacer(),
+              const Chip(
+                avatar: Icon(Icons.auto_awesome, size: 18),
+                label: Text('AI-сканування'),
+              ),
+              const Spacer(),
+              AppIconButton(
+                icon: Icons.flash_on_outlined,
+                tooltip: 'Спалах',
+                filled: true,
+                onPressed: onFlash,
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          bottom: AppSpacing.lg,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Наведіть камеру на продукти',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColorsV2.onInk,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 88,
+                    child: IconButton(
+                      tooltip: 'Обрати з галереї',
+                      onPressed: onGallery,
+                      icon: const Icon(Icons.photo_library_outlined),
+                      color: AppColorsV2.onInk,
+                      iconSize: 30,
+                    ),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: 'Зробити фото',
+                    child: SizedBox.square(
+                      dimension: 80,
+                      child: IconButton.filled(
+                        onPressed: onCapture,
+                        icon: const Icon(Icons.camera_alt, size: 34),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColorsV2.onInk,
+                          foregroundColor: AppColorsV2.ink,
+                          side:
+                              const BorderSide(color: Colors.white54, width: 4),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 88),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

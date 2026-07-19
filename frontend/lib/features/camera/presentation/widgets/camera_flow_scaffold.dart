@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
@@ -18,6 +19,7 @@ class CameraFlowScaffold extends StatelessWidget {
     required this.child,
     this.floatingActionButton,
     this.bottomNavigationBar,
+    this.immersive = false,
   });
 
   final String title;
@@ -25,12 +27,17 @@ class CameraFlowScaffold extends StatelessWidget {
   final Widget child;
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
+  final bool immersive;
 
   static const _labels = ['Зйомка', 'Перевірка', 'Результати'];
 
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
+    final immersiveCapture = immersive &&
+        step == CameraFlowStep.capture &&
+        !kIsWeb &&
+        MediaQuery.sizeOf(context).width < 600;
     final brand = base.extension<BrandThemeExtension>();
     final darkScheme = base.colorScheme.copyWith(
       brightness: Brightness.dark,
@@ -51,50 +58,55 @@ class CameraFlowScaffold extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: AppColorsV2.ink,
-        appBar: AppBar(
-          title: Text(title),
-          backgroundColor: AppColorsV2.ink,
-          foregroundColor: AppColorsV2.onInk,
-        ),
+        appBar: immersiveCapture
+            ? null
+            : AppBar(
+                title: Text(title),
+                backgroundColor: AppColorsV2.ink,
+                foregroundColor: AppColorsV2.onInk,
+              ),
         floatingActionButton: floatingActionButton,
         bottomNavigationBar: bottomNavigationBar,
         body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth >= 1024) {
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: 280,
-                      child: _DesktopCameraStepRail(
-                        title: title,
-                        labels: _labels,
-                        currentStep: step.index + 1,
-                      ),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 920),
-                          child: child,
+          child: immersiveCapture
+              ? child
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 1024) {
+                      return Row(
+                        children: [
+                          SizedBox(
+                            width: 280,
+                            child: _DesktopCameraStepRail(
+                              title: title,
+                              labels: _labels,
+                              currentStep: step.index + 1,
+                            ),
+                          ),
+                          const VerticalDivider(width: 1),
+                          Expanded(
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 920),
+                                child: child,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        _CameraStepHeader(
+                          labels: _labels,
+                          currentStep: step.index + 1,
                         ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-              return Column(
-                children: [
-                  _CameraStepHeader(
-                    labels: _labels,
-                    currentStep: step.index + 1,
-                  ),
-                  Expanded(child: child),
-                ],
-              );
-            },
-          ),
+                        Expanded(child: child),
+                      ],
+                    );
+                  },
+                ),
         ),
       ),
     );
