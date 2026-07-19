@@ -281,6 +281,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       recipes: searchState.results,
       selectedRecipeId: _selectedRecipeId,
       onSelected: (recipe) => setState(() => _selectedRecipeId = recipe.id),
+      filters: _filters,
+      activeFilter: _activeTag,
+      onFilterSelected: _applySuggestion,
       confirmationRequired: searchState.confirmationRequired,
       recommendations: searchState.recommendations,
     );
@@ -771,6 +774,9 @@ class _SearchResults extends StatelessWidget {
     required this.recipes,
     required this.selectedRecipeId,
     required this.onSelected,
+    required this.filters,
+    required this.activeFilter,
+    required this.onFilterSelected,
     this.confirmationRequired = const [],
     this.recommendations = const [],
   });
@@ -778,6 +784,9 @@ class _SearchResults extends StatelessWidget {
   final List<Recipe> recipes;
   final String? selectedRecipeId;
   final ValueChanged<Recipe> onSelected;
+  final List<_DiscoveryFilter> filters;
+  final String? activeFilter;
+  final ValueChanged<String> onFilterSelected;
   final List<String> confirmationRequired;
   final List<VoiceRecommendation> recommendations;
 
@@ -795,7 +804,16 @@ class _SearchResults extends StatelessWidget {
             return Row(
               children: [
                 SizedBox(
-                  width: 420,
+                  width: 224,
+                  child: _DesktopFilterRail(
+                    filters: filters,
+                    activeFilter: activeFilter,
+                    onSelected: onFilterSelected,
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+                SizedBox(
+                  width: 360,
                   child: _RecipeList(
                     recipes: recipes,
                     selectedRecipeId: selected.id,
@@ -859,6 +877,46 @@ class _SearchResults extends StatelessWidget {
             },
           );
         },
+      );
+}
+
+class _DesktopFilterRail extends StatelessWidget {
+  const _DesktopFilterRail({
+    required this.filters,
+    required this.activeFilter,
+    required this.onSelected,
+  });
+
+  final List<_DiscoveryFilter> filters;
+  final String? activeFilter;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        children: [
+          Text('Фільтри', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: AppSpacing.md),
+          Text('Швидкі добірки', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.xs),
+          for (final filter in filters)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+                selected: activeFilter == filter.label,
+                leading: Icon(filter.icon),
+                title: Text(filter.label),
+                onTap: () => onSelected(filter.label),
+              ),
+            ),
+          const Divider(height: AppSpacing.xl),
+          Text('Порада', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Оберіть рецепт у списку, щоб переглянути деталі без переходу.',
+              style: Theme.of(context).textTheme.bodySmall),
+        ],
       );
 }
 
