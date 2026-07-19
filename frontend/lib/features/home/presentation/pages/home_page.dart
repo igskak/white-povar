@@ -317,7 +317,7 @@ class _DesktopHomeContent extends StatelessWidget {
                         crossAxisCount: 4,
                         crossAxisSpacing: AppSpacing.md,
                         mainAxisSpacing: AppSpacing.md,
-                        childAspectRatio: .68,
+                        childAspectRatio: .60,
                       ),
                       itemCount: recipes.length,
                       itemBuilder: (context, index) => RecipeCard(
@@ -366,7 +366,7 @@ class _FeaturedRecipeHero extends StatelessWidget {
       button: true,
       label: 'Відкрити рекомендований рецепт ${recipe.title}',
       child: SizedBox(
-        height: compact ? 280 : 300,
+        height: compact ? 320 : 340,
         child: ClipRRect(
           borderRadius: AppRadius.xl,
           child: Stack(
@@ -495,7 +495,7 @@ class _DesktopHomeSkeleton extends StatelessWidget {
               children: [
                 SizedBox(
                   width: double.infinity,
-                  child: AppSkeleton(height: 300, borderRadius: AppRadius.xl),
+                  child: AppSkeleton(height: 340, borderRadius: AppRadius.xl),
                 ),
                 SizedBox(height: 28),
                 AppSkeleton(width: 180, height: 32, borderRadius: AppRadius.md),
@@ -726,7 +726,7 @@ class _HomeSkeleton extends StatelessWidget {
               SizedBox(height: AppSpacing.md),
               AppSkeleton(
                   width: double.infinity,
-                  height: 240,
+                  height: 320,
                   borderRadius: AppRadius.lg),
               SizedBox(height: AppSpacing.md),
               AppSkeleton(
