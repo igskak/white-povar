@@ -41,8 +41,10 @@ void main() {
   testWidgets('uses desktop composition at 1280 pixels', (tester) async {
     await pumpShell(tester, const Size(1280, 900));
 
-    final rail = tester.widget<NavigationRail>(find.byType(NavigationRail));
-    expect(rail.extended, isTrue);
+    expect(find.byType(NavigationRail), findsNothing);
+    expect(find.text('WHITE POVAR'), findsOneWidget);
+    expect(find.text('Сканувати'), findsOneWidget);
+    expect(find.byTooltip('Налаштування'), findsOneWidget);
     expect(find.byType(ConstrainedBox), findsWidgets);
     expect(find.text('Збережений стан вкладки'), findsOneWidget);
   });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../theme/brand_theme.dart';
 import '../../features/auth/presentation/pages/auth_callback_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -268,27 +269,25 @@ class AdaptiveNavigationShell extends StatelessWidget {
       builder: (context, constraints) {
         if (constraints.maxWidth >= 600) {
           final isDesktop = constraints.maxWidth >= 1024;
+          if (isDesktop) {
+            return _DesktopNavigationShell(
+              selectedIndex: selectedIndex,
+              onDestinationSelected: onDestinationSelected,
+              child: child,
+            );
+          }
           return Scaffold(
             body: Row(
               children: [
                 NavigationRail(
-                  extended: isDesktop,
+                  extended: false,
                   selectedIndex: selectedIndex,
-                  labelType: isDesktop ? null : NavigationRailLabelType.all,
+                  labelType: NavigationRailLabelType.all,
                   onDestinationSelected: onDestinationSelected,
                   destinations: _navigationRailDestinations,
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(
-                  child: isDesktop
-                      ? Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1280),
-                            child: child,
-                          ),
-                        )
-                      : child,
-                ),
+                Expanded(child: child),
               ],
             ),
           );
@@ -305,6 +304,223 @@ class AdaptiveNavigationShell extends StatelessWidget {
       },
     );
   }
+}
+
+/// Desktop navigation follows the product handoff rather than stretching the
+/// Material rail: a compact branded rail owns navigation while the top bar
+/// owns global search and the camera entry point.
+class _DesktopNavigationShell extends StatelessWidget {
+  const _DesktopNavigationShell({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+    required this.child,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+  final Widget child;
+
+  static const _items = <({String label, IconData icon, IconData selected})>[
+    (label: 'Головна', icon: Icons.home_outlined, selected: Icons.home_rounded),
+    (label: 'Пошук', icon: Icons.search_outlined, selected: Icons.search),
+    (
+      label: 'Збережене',
+      icon: Icons.bookmark_border_rounded,
+      selected: Icons.bookmark_rounded,
+    ),
+    (
+      label: 'Профіль',
+      icon: Icons.person_outline,
+      selected: Icons.person_rounded,
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final dark = theme.brightness == Brightness.dark;
+    final railColor = dark ? const Color(0xFF221D16) : scheme.surface;
+    final dividerColor = dark ? const Color(0xFF2E2820) : scheme.outlineVariant;
+
+    return Scaffold(
+      body: Row(
+        children: [
+          SizedBox(
+            width: 92,
+            child: ColoredBox(
+              color: railColor,
+              child: Column(
+                children: [
+                  const SizedBox(height: 24),
+                  Semantics(
+                    label: 'White Povar',
+                    image: true,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.extension<BrandThemeExtension>()?.accent ??
+                            scheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.restaurant_rounded),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  for (var index = 0; index < _items.length; index++)
+                    _DesktopRailDestination(
+                      label: _items[index].label,
+                      icon: _items[index].icon,
+                      selectedIcon: _items[index].selected,
+                      selected: selectedIndex == index,
+                      onPressed: () => onDestinationSelected(index),
+                    ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Налаштування',
+                    onPressed: () => context.push(AppRoutePaths.settings),
+                    icon: const Icon(Icons.settings_outlined),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+          VerticalDivider(width: 1, color: dividerColor),
+          Expanded(
+            child: Column(
+              children: [
+                _DesktopTopBar(dividerColor: dividerColor),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1280),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopRailDestination extends StatelessWidget {
+  const _DesktopRailDestination({
+    required this.label,
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = theme.extension<BrandThemeExtension>()?.accent ??
+        theme.colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        label: label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 60,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: selected
+                  ? theme.colorScheme.surfaceContainerHighest
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(selected ? selectedIcon : icon,
+                    color: selected ? accent : null),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: selected ? accent : null,
+                    fontWeight: selected ? FontWeight.w700 : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopTopBar extends StatelessWidget {
+  const _DesktopTopBar({required this.dividerColor});
+
+  final Color dividerColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: dividerColor)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'WHITE POVAR',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      letterSpacing: 1.8,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ),
+            SizedBox(
+              width: 320,
+              child: OutlinedButton.icon(
+                onPressed: () => context.go(AppRoutePaths.search),
+                icon: const Icon(Icons.search),
+                label: const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Назва, інгредієнт або кухня'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutePaths.camera),
+              icon: const Icon(Icons.photo_camera_outlined),
+              label: const Text('Сканувати'),
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              tooltip: 'Профіль',
+              onPressed: () => context.go(AppRoutePaths.profile),
+              icon: const Icon(Icons.account_circle_outlined, size: 32),
+            ),
+          ],
+        ),
+      );
 }
 
 const _navigationRailDestinations = <NavigationRailDestination>[
