@@ -18,7 +18,12 @@ class ApiClient {
     Duration connectTimeout = const Duration(seconds: 20),
     Duration receiveTimeout = const Duration(seconds: 20),
     Duration sendTimeout = const Duration(seconds: 20),
-  }) : _dio = dio ??
+    List<Duration> getRetryDelays = const [
+      Duration(milliseconds: 500),
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+    ],
+  })  : _dio = dio ??
             Dio(
               BaseOptions(
                 baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
@@ -30,7 +35,8 @@ class ApiClient {
                   'Accept-Language': locale,
                 },
               ),
-            ) {
+            ),
+        _getRetryDelays = getRetryDelays {
     _dio.interceptors.add(
       RequestContextInterceptor(
         tokenProvider: tokenProvider,
@@ -51,6 +57,7 @@ class ApiClient {
   }
 
   final Dio _dio;
+  final List<Duration> _getRetryDelays;
 
   Dio get dio => _dio;
 
@@ -59,14 +66,34 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
     CancelToken? cancelToken,
+    bool retryTransient = true,
   }) async {
-    return _guard(() => _dio.get<T>(
-          path,
-          queryParameters: queryParameters,
-          options: options,
-          cancelToken: cancelToken,
-        ));
+    for (var attempt = 0;; attempt++) {
+      try {
+        return await _guard(() => _dio.get<T>(
+              path,
+              queryParameters: queryParameters,
+              options: options,
+              cancelToken: cancelToken,
+            ));
+      } on ApiError catch (error) {
+        if (!retryTransient ||
+            !_isTransientGetFailure(error) ||
+            attempt >= _getRetryDelays.length) {
+          rethrow;
+        }
+        await Future<void>.delayed(_getRetryDelays[attempt]);
+      }
+    }
   }
+
+  bool _isTransientGetFailure(ApiError error) =>
+      error.type == ApiErrorType.network ||
+      error.type == ApiErrorType.timeout ||
+      (error.type == ApiErrorType.server &&
+          (error.statusCode == 502 ||
+              error.statusCode == 503 ||
+              error.statusCode == 504));
 
   Future<Response<T>> post<T>(
     String path, {

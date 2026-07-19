@@ -235,6 +235,8 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
       try {
         return await _apiClient.get<Map<String, dynamic>>(
           '/api/v1/commerce/catalogue',
+          // This flow has its own longer cold-start retry schedule below.
+          retryTransient: false,
         );
       } on ApiError catch (error) {
         final retryable = error.type == ApiErrorType.network ||

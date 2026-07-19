@@ -53,23 +53,56 @@ void main() {
           .having((error) => error.type, 'type', ApiErrorType.network)),
     );
   });
+
+  test('retries transient GET failures and returns the warmed response',
+      () async {
+    final adapter = _RecordingAdapter(statusCodes: [503, 200]);
+    final client = _client(adapter, token: null, retryDelays: [Duration.zero]);
+
+    final response = await client.get<Map<String, dynamic>>('/recipes');
+
+    expect(response.statusCode, 200);
+    expect(adapter.calls, 2);
+  });
+
+  test('does not retry non-transient GET failures', () async {
+    final adapter = _RecordingAdapter(statusCode: 401);
+    final client = _client(adapter, token: null);
+
+    await expectLater(
+      client.get<Map<String, dynamic>>('/recipes'),
+      throwsA(isA<ApiError>()),
+    );
+    expect(adapter.calls, 1);
+  });
 }
 
-ApiClient _client(_RecordingAdapter adapter, {required String? token}) {
+ApiClient _client(
+  _RecordingAdapter adapter, {
+  required String? token,
+  List<Duration> retryDelays = const [],
+}) {
   return ApiClient(
     dio: Dio(BaseOptions(baseUrl: 'https://example.test'))
       ..httpClientAdapter = adapter,
     tokenProvider: () async => token,
     tenantSlug: 'ohorodnik-oleksandr',
     locale: 'uk',
+    getRetryDelays: retryDelays,
   );
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
-  _RecordingAdapter({this.statusCode = 200, this.networkError = false});
+  _RecordingAdapter({
+    this.statusCode = 200,
+    this.statusCodes,
+    this.networkError = false,
+  });
 
   final int statusCode;
+  final List<int>? statusCodes;
   final bool networkError;
+  int calls = 0;
   late RequestOptions request;
 
   @override
@@ -82,6 +115,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     request = options;
+    calls++;
     if (networkError) {
       throw DioException.connectionError(
         requestOptions: options,
@@ -90,7 +124,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     }
     return ResponseBody.fromString(
       jsonEncode({'detail': 'failure'}),
-      statusCode,
+      statusCodes?[calls - 1] ?? statusCode,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
