@@ -8,87 +8,114 @@ import '../../../../core/config/product_config.dart';
 import '../../../../core/services/analytics_service.dart';
 
 class SettingsPage extends ConsumerWidget {
-  const SettingsPage({super.key, this.productConfig = ProductConfig.pilot});
+  const SettingsPage({
+    super.key,
+    this.productConfig = ProductConfig.pilot,
+    this.embeddedInDesktopShell = false,
+  });
   final ProductConfig productConfig;
+  final bool embeddedInDesktopShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appThemeModeProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Налаштування')),
-      body: SafeArea(child: LayoutBuilder(builder: (context, constraints) {
-        final content = Align(
-            alignment: Alignment.topCenter,
+    return LayoutBuilder(builder: (context, pageConstraints) {
+      final usesGlobalDesktopHeader =
+          embeddedInDesktopShell && pageConstraints.maxWidth >= 1024;
+      return Scaffold(
+        appBar: usesGlobalDesktopHeader
+            ? null
+            : AppBar(title: const Text('Налаштування')),
+        body: SafeArea(child: LayoutBuilder(builder: (context, constraints) {
+          final content = Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 680),
+                  child: ListView(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      children: [
+                        Text('Оформлення',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: AppSpacing.sm),
+                        Card(
+                            child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.xs),
+                                child: _ThemeModeOptions(
+                                    selected: themeMode,
+                                    onChanged: (mode) => ref
+                                        .read(appThemeModeProvider.notifier)
+                                        .setMode(mode)))),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Сповіщення',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: AppSpacing.sm),
+                        Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.notifications_outlined),
+                            title: const Text('Налаштування сповіщень'),
+                            subtitle: const Text(
+                                'Новий контент, нагадування й таймери'),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () =>
+                                context.push('/notification-preferences'),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Мова та підтримка',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: AppSpacing.sm),
+                        Card(
+                            child: Column(children: [
+                          const ListTile(
+                              leading: Icon(Icons.language_outlined),
+                              title: Text('Мова'),
+                              trailing: Text('Українська')),
+                          const Divider(height: 1),
+                          _ConfigRow(
+                              icon: Icons.help_outline,
+                              title: 'Допомога та підтримка',
+                              value: productConfig.supportEmail,
+                              unavailable: 'Контакт підтримки налаштовується.'),
+                          const Divider(height: 1),
+                          _NoticeRow(
+                              icon: Icons.description_outlined,
+                              title: 'Конфіденційність у демо',
+                              notice: productConfig.demoPrivacyNotice),
+                          const Divider(height: 1),
+                          _NoticeRow(
+                              icon: Icons.info_outline,
+                              title: 'Умови демо-доступу',
+                              notice: productConfig.demoUseNotice),
+                        ])),
+                        const SizedBox(height: AppSpacing.lg),
+                        Text('Конфіденційність',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: AppSpacing.sm),
+                        const Card(child: _AnalyticsConsentTile()),
+                        const SizedBox(height: AppSpacing.xl),
+                        Center(
+                            child: Text(
+                                '${productConfig.appName} · ${productConfig.versionLabel}',
+                                style:
+                                    Theme.of(context).textTheme.labelMedium)),
+                      ])));
+          if (constraints.maxWidth < 1024) return content;
+          return Center(
             child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 680),
-                child: ListView(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    children: [
-                      Text('Оформлення',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      Card(
-                          child: Padding(
-                              padding: const EdgeInsets.all(AppSpacing.xs),
-                              child: _ThemeModeOptions(
-                                  selected: themeMode,
-                                  onChanged: (mode) => ref
-                                      .read(appThemeModeProvider.notifier)
-                                      .setMode(mode)))),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text('Конфіденційність',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Card(child: _AnalyticsConsentTile()),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text('Інше',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      Card(
-                          child: Column(children: [
-                        const ListTile(
-                            leading: Icon(Icons.language_outlined),
-                            title: Text('Мова'),
-                            trailing: Text('Українська')),
-                        const Divider(height: 1),
-                        _ConfigRow(
-                            icon: Icons.help_outline,
-                            title: 'Допомога та підтримка',
-                            value: productConfig.supportEmail,
-                            unavailable: 'Контакт підтримки налаштовується.'),
-                        const Divider(height: 1),
-                        _NoticeRow(
-                            icon: Icons.description_outlined,
-                            title: 'Конфіденційність у демо',
-                            notice: productConfig.demoPrivacyNotice),
-                        const Divider(height: 1),
-                        _NoticeRow(
-                            icon: Icons.info_outline,
-                            title: 'Умови демо-доступу',
-                            notice: productConfig.demoUseNotice),
-                      ])),
-                      const SizedBox(height: AppSpacing.xl),
-                      Center(
-                          child: Text(
-                              '${productConfig.appName} · ${productConfig.versionLabel}',
-                              style: Theme.of(context).textTheme.labelMedium)),
-                    ])));
-        if (constraints.maxWidth < 1024) return content;
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1120),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(width: 320, child: _DesktopSettingsSidebar()),
-                const VerticalDivider(width: 1),
-                Expanded(child: content),
-              ],
+              constraints: const BoxConstraints(maxWidth: 1120),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(width: 320, child: _DesktopSettingsSidebar()),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: content),
+                ],
+              ),
             ),
-          ),
-        );
-      })),
-    );
+          );
+        })),
+      );
+    });
   }
 }
 

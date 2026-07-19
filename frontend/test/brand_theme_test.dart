@@ -62,6 +62,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop settings uses global header and handoff sections',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        appThemeModeProvider.overrideWith(
+          (ref) => ThemeModeController(_MemoryThemeStorage(null)),
+        ),
+      ],
+      child: MaterialApp(
+        theme: AppThemeV2.light(_config('#5D7183', 'grotesque')),
+        home: const SettingsPage(embeddedInDesktopShell: true),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.text('Оформлення'), findsOneWidget);
+    expect(find.text('Налаштування сповіщень'), findsOneWidget);
+    expect(find.text('Мова та підтримка'), findsOneWidget);
+    expect(find.text('Конфіденційність'), findsOneWidget);
+  });
+
   testWidgets('pending and missing brand assets use visual fallbacks',
       (tester) async {
     final config = _config('#5D7183', 'grotesque');

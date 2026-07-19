@@ -104,10 +104,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         redirect: (_, __) => OfferRouteLocation.subscription().location,
       ),
       GoRoute(
-        path: AppRoutePaths.settings,
-        builder: (_, __) => const SettingsPage(),
-      ),
-      GoRoute(
         path: AppRoutePaths.preferences,
         builder: (_, __) => const PreferencesPage(),
       ),
@@ -238,6 +234,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (_, state) => NoTransitionPage(
                   key: state.pageKey,
                   child: const ProfilePage(embeddedInDesktopShell: true),
+                ),
+              ),
+              GoRoute(
+                path: AppRoutePaths.settings,
+                pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey,
+                  child: const SettingsPage(embeddedInDesktopShell: true),
                 ),
               ),
             ],
