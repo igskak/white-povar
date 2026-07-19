@@ -220,7 +220,17 @@ class WebDemoPurchaseAdapter implements PurchaseAdapter {
   /// false unavailable state during the normal cold-start window. Auth and
   /// access errors remain fail-closed and are never retried.
   Future<Response<Map<String, dynamic>>> _loadCatalogueWithWakeRetry() async {
-    const delays = [Duration(seconds: 1), Duration(seconds: 2)];
+    // A Render free instance may need close to a minute to wake. Keep the
+    // screen in its normal loading state through that bounded window instead
+    // of requiring an eligible buyer to discover and press Retry.
+    const delays = [
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+      Duration(seconds: 8),
+      Duration(seconds: 16),
+      Duration(seconds: 20),
+    ];
     for (var attempt = 0;; attempt++) {
       try {
         return await _apiClient.get<Map<String, dynamic>>(

@@ -154,7 +154,8 @@ class _PaywallCard extends ConsumerWidget {
                           // The collection page may already be in the router
                           // cache with its pre-purchase locked projection.
                           // Re-read the server decision before returning to it.
-                          ref.invalidate(collectionDetailProvider(collectionId));
+                          ref.invalidate(
+                              collectionDetailProvider(collectionId));
                           context.go(
                             '/collections/$collectionId',
                           );
@@ -173,7 +174,7 @@ class _PaywallCard extends ConsumerWidget {
                 snapshot: snapshot,
                 onRetry: snapshot.phase == PaywallPhase.error ||
                         snapshot.phase == PaywallPhase.billingRetry
-                    ? () => ref.read(paywallProvider.notifier).load
+                    ? () => ref.read(paywallProvider.notifier).load()
                     : null),
           ],
           const SizedBox(height: 12),

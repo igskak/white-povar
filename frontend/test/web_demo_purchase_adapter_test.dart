@@ -7,7 +7,7 @@ import 'package:frontend/features/subscription/purchase_adapter.dart';
 
 void main() {
   test('retries a transient wake failure before hiding demo offers', () async {
-    final adapter = _CatalogueAdapter([503, 200]);
+    final adapter = _CatalogueAdapter([503, 503, 503, 200]);
     final client = ApiClient(
       dio: Dio(BaseOptions(baseUrl: 'https://example.test'))
         ..httpClientAdapter = adapter,
@@ -18,7 +18,7 @@ void main() {
 
     final snapshot = await WebDemoPurchaseAdapter(client).load();
 
-    expect(adapter.calls, 2);
+    expect(adapter.calls, 4);
     expect(snapshot.phase, PaywallPhase.idle);
     expect(snapshot.products, hasLength(1));
     expect(snapshot.products.single.id, 'demo-monthly');
