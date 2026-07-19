@@ -14,10 +14,14 @@ SPEC.loader.exec_module(migrate)
 def test_manifest_files_checksums_and_dependencies_are_valid():
     manifest = migrate.load_manifest()
     managed = [item for item in manifest if item.get("managed", True)]
-    assert len(managed) == 22
+    assert len(managed) == 23
     assert all(len(migrate.checksum(item)) == 64 for item in manifest)
     assert manifest[0]["id"] == "legacy_subscription_schema"
     assert any(item["id"] == "2026_07_15_commerce_access" for item in manifest)
+    studio_fix = next(item for item in manifest if item["id"] == "2026_07_19_fix_studio_brand_config_version_ambiguity")
+    assert studio_fix["requires"] == ["2026_07_15_studio_releases"]
+    sql = (migrate.MIGRATIONS_DIR / studio_fix["filename"]).read_text(encoding="utf-8")
+    assert "MAX(b.version)" in sql
 
 
 def test_status_reports_pending_applied_and_checksum_mismatch():
