@@ -332,45 +332,70 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     String label(StudioRelease? release, String fallback) =>
         release == null ? fallback : release.status;
     return _section('Публікація та реліз', [
+      const Text('Після зміни фото або тексту'),
+      const Text('1. Натисніть «Зберегти чернетку» вгорі сторінки.\n'
+          '2. Натисніть «Опублікувати зміни» нижче.\n'
+          'Для нових фото, текстів і кольорів цього достатньо.'),
+      const Divider(),
       Text(
-          'Runtime config: ${status?.configVersion == null ? 'не опубліковано' : 'опубліковано v${status!.configVersion}'}'),
-      Text('Web assets: ${label(status?.web, 'не запитано')}'),
-      Text('Mobile build: ${label(status?.mobile, 'не запитано')}'),
-      Text('Store release: ${status?.store?.storeStatus ?? 'не подано'}'),
+          'Зміни для користувачів: ${status?.configVersion == null ? 'ще не опубліковані' : 'опубліковані · версія ${status!.configVersion}'}'),
+      Text('Оновлення сайту: ${label(status?.web, 'не запитано')}'),
+      Text(
+          'Оновлення мобільних застосунків: ${label(status?.mobile, 'не запитано')}'),
+      Text(
+          'Відправлення у магазини: ${status?.store?.storeStatus ?? 'не подано'}'),
       const Text(
-          'Запит на реліз не означає завершений deploy або публікацію в store.'),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        OutlinedButton(
-            onPressed: _releasing
-                ? null
-                : () => _release((s) async {
-                      await s.publish();
-                    }),
-            child: const Text('Опублікувати config')),
-        OutlinedButton(
-            onPressed: _releasing
-                ? null
-                : () => _release((s) async {
-                      await s.requestRelease(kind: 'web_deploy');
-                    }),
-            child: const Text('Запросити web deploy')),
-        OutlinedButton(
-            onPressed: _releasing
-                ? null
-                : () => _release((s) async {
-                      await s.requestRelease(
-                          kind: 'mobile_build', platform: 'android');
-                    }),
-            child: const Text('Запросити Android build')),
-        OutlinedButton(
-            onPressed: _releasing
-                ? null
-                : () => _release((s) async {
-                      await s.requestRelease(
-                          kind: 'mobile_build', platform: 'ios');
-                    }),
-            child: const Text('Запросити iOS build')),
-      ]),
+          'Запит на оновлення лише ставить завдання команді; він не означає, що сайт або застосунок уже оновлено.'),
+      const Divider(),
+      _releaseAction(
+        icon: Icons.publish_outlined,
+        title: 'Застосувати зміни для користувачів',
+        description:
+            'Публікує збережені фото, тексти, кольори та інші налаштування бренду. Це наступний крок після «Зберегти чернетку».',
+        buttonLabel: 'Опублікувати зміни',
+        onPressed: _releasing
+            ? null
+            : () => _release((s) async {
+                  await s.publish();
+                }),
+      ),
+      _releaseAction(
+        icon: Icons.language_outlined,
+        title: 'Оновити сайт',
+        description:
+            'Потрібно лише коли команда змінила сам сайт або його файли. Для зміни фото й текстів зазвичай не потрібно.',
+        buttonLabel: 'Запросити оновлення сайту',
+        onPressed: _releasing
+            ? null
+            : () => _release((s) async {
+                  await s.requestRelease(kind: 'web_deploy');
+                }),
+      ),
+      _releaseAction(
+        icon: Icons.phone_android_outlined,
+        title: 'Зібрати Android-застосунок',
+        description:
+            'Потрібно, якщо команда змінила функції або вбудовані елементи Android-застосунку. Не потрібно для фото й текстів.',
+        buttonLabel: 'Запросити Android-збірку',
+        onPressed: _releasing
+            ? null
+            : () => _release((s) async {
+                  await s.requestRelease(
+                      kind: 'mobile_build', platform: 'android');
+                }),
+      ),
+      _releaseAction(
+        icon: Icons.phone_iphone_outlined,
+        title: 'Зібрати iPhone-застосунок',
+        description:
+            'Потрібно, якщо команда змінила функції або вбудовані елементи iPhone-застосунку. Не потрібно для фото й текстів.',
+        buttonLabel: 'Запросити iPhone-збірку',
+        onPressed: _releasing
+            ? null
+            : () => _release((s) async {
+                  await s.requestRelease(kind: 'mobile_build', platform: 'ios');
+                }),
+      ),
       Row(children: [
         SizedBox(
             width: 140,
@@ -395,6 +420,31 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             '${job.kind} · v${job.configVersion} · ${job.status}${job.storeStatus == 'not_submitted' ? '' : ' · store ${job.storeStatus}'}')),
     ]);
   }
+
+  Widget _releaseAction({
+    required IconData icon,
+    required String title,
+    required String description,
+    required String buttonLabel,
+    required VoidCallback? onPressed,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(top: 2), child: Icon(icon)),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(description),
+                const SizedBox(height: 8),
+                OutlinedButton(onPressed: onPressed, child: Text(buttonLabel)),
+              ])),
+        ]),
+      );
 
   Widget _section(String title, List<Widget> children) => Card(
       child: Padding(
