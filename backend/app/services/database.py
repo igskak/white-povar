@@ -302,13 +302,18 @@ class SupabaseService:
         return result.data or []
 
     async def create_pantry_item(self, user_id: str, chef_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        # ``confirmed`` is an API-only acknowledgement required for camera
+        # detections. The durable pantry schema deliberately stores the source
+        # and confidence, not a second confirmation column.
+        values = {key: value for key, value in data.items() if key != 'confirmed'}
         result = self.get_client(use_service_key=True).table('pantry_items').insert(
-            {'user_id': user_id, 'chef_id': chef_id, **data}
+            {'user_id': user_id, 'chef_id': chef_id, **values}
         ).execute()
         return result.data[0]
 
     async def update_pantry_item(self, item_id: str, user_id: str, chef_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        result = (self.get_client(use_service_key=True).table('pantry_items').update(data)
+        values = {key: value for key, value in data.items() if key != 'confirmed'}
+        result = (self.get_client(use_service_key=True).table('pantry_items').update(values)
                   .eq('id', item_id).eq('user_id', user_id).eq('chef_id', chef_id).execute())
         return (result.data or [None])[0]
 
