@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme/brand_theme.dart';
 import '../../../app/theme/tokens/app_tokens.dart';
 import '../../../core/branding/brand_assets.dart';
+import '../../../core/branding/brand_config.dart';
 import '../../../core/branding/brand_providers.dart';
 import '../../../core/widgets/design_system.dart';
 import '../../collections/providers/collection_provider.dart';
@@ -28,8 +29,16 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     final snapshot = ref.watch(paywallProvider);
-    final isDialog = MediaQuery.sizeOf(context).width >= 600;
+    final width = MediaQuery.sizeOf(context).width;
+    final isDesktop = width >= 1024;
+    final isDialog = width >= 600;
     final child = _PaywallCard(snapshot: snapshot);
+    if (isDesktop) {
+      return _DesktopPaywall(
+        brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
+        child: child,
+      );
+    }
     return Scaffold(
       backgroundColor:
           isDialog ? Colors.black45 : Theme.of(context).scaffoldBackgroundColor,
@@ -48,6 +57,129 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       ),
     );
   }
+}
+
+class _DesktopPaywall extends StatelessWidget {
+  const _DesktopPaywall({required this.brand, required this.child});
+
+  final BrandDetails brand;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: AppColorsV2.ink,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(
+                opacity: .35, child: BrandHero(brand: brand, role: 'paywall')),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xB316130F), Color(0xF616130F)],
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: AppSpacing.lg,
+                    left: AppSpacing.lg,
+                    child: AppIconButton(
+                      icon: Icons.close,
+                      tooltip: 'Закрити',
+                      filled: true,
+                      onPressed: () => Navigator.maybePop(context),
+                    ),
+                  ),
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1040),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 56),
+                        child: Row(
+                          children: [
+                            Expanded(child: _DesktopPremiumPitch(brand: brand)),
+                            const SizedBox(width: 64),
+                            SizedBox(width: 400, child: child),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _DesktopPremiumPitch extends StatelessWidget {
+  const _DesktopPremiumPitch({required this.brand});
+
+  final BrandDetails brand;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.workspace_premium_rounded,
+              color: AppColorsV2.premiumGold, size: 40),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${brand.name} Premium',
+            style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                  color: AppColorsV2.onInk,
+                  fontFamily: context.brandTheme.displayFontFamily,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Повний доступ до рецептів від шефа, AI-асистента та інструментів приготування.',
+            style: Theme.of(context)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: const Color(0xFFD6C9B4)),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const _DesktopBenefit(
+              icon: Icons.restaurant_menu_rounded,
+              text: 'Усі рецепти від шефа без обмежень'),
+          const _DesktopBenefit(
+              icon: Icons.auto_awesome_rounded,
+              text: 'AI-асистент та розпізнавання продуктів'),
+          const _DesktopBenefit(icon: Icons.block_rounded, text: 'Без реклами'),
+        ],
+      );
+}
+
+class _DesktopBenefit extends StatelessWidget {
+  const _DesktopBenefit({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Row(children: [
+          Icon(icon, color: AppColorsV2.premiumGold),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(text,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: AppColorsV2.onInk)),
+          ),
+        ]),
+      );
 }
 
 class _PaywallCard extends ConsumerWidget {
