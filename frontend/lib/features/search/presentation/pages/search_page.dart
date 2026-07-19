@@ -30,7 +30,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _showFilters = false;
   String? _activeTag;
-  String? _selectedRecipeId;
   final List<String> _recentSearches = [];
 
   static const _suggestions = [
@@ -186,7 +185,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _clearSearch() {
     setState(() {
       _activeTag = null;
-      _selectedRecipeId = null;
       _searchController.clear();
     });
     _updateLocation();
@@ -201,45 +199,72 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            ResponsiveContainer(
-              maxWidth: 1280,
-              child: Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.md),
-                child: _SearchHeader(
-                  controller: _searchController,
-                  isLoading: searchState.isLoading,
-                  showFilters: _showFilters,
-                  activeTag: _activeTag,
-                  filters: _filters,
-                  onToggleFilters: () =>
-                      setState(() => _showFilters = !_showFilters),
-                  onClear: _clearSearch,
-                  onChanged: _onTextChanged,
-                  onSubmitted: (value) {
-                    _rememberSearch(value);
-                    if (searchState.confirmationRequired.isNotEmpty) {
-                      ref
-                          .read(simpleTextSearchProvider.notifier)
-                          .searchVoiceIntent(value);
-                    } else {
-                      _performSearch(value);
-                    }
-                  },
-                  onFilterSelected: _applySuggestion,
-                  voiceState: voiceState,
-                  confirmationRequired: searchState.confirmationRequired,
-                  onStartVoice: _requestVoiceConsent,
-                  onStopVoice: () =>
-                      ref.read(voiceInputProvider.notifier).stopListening(),
-                  onCancelVoice: () =>
-                      ref.read(voiceInputProvider.notifier).cancelListening(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isDesktop = constraints.maxWidth >= 1024;
+            final content = Column(
+              children: [
+                ResponsiveContainer(
+                  maxWidth: 1280,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: isDesktop ? AppSpacing.sm : AppSpacing.md,
+                    ),
+                    child: _SearchHeader(
+                      controller: _searchController,
+                      isLoading: searchState.isLoading,
+                      showFilters: _showFilters,
+                      showPageHeading: !isDesktop,
+                      showFilterButton: !isDesktop,
+                      activeTag: _activeTag,
+                      filters: _filters,
+                      onToggleFilters: () =>
+                          setState(() => _showFilters = !_showFilters),
+                      onClear: _clearSearch,
+                      onChanged: _onTextChanged,
+                      onSubmitted: (value) {
+                        _rememberSearch(value);
+                        if (searchState.confirmationRequired.isNotEmpty) {
+                          ref
+                              .read(simpleTextSearchProvider.notifier)
+                              .searchVoiceIntent(value);
+                        } else {
+                          _performSearch(value);
+                        }
+                      },
+                      onFilterSelected: _applySuggestion,
+                      voiceState: voiceState,
+                      confirmationRequired: searchState.confirmationRequired,
+                      onStartVoice: _requestVoiceConsent,
+                      onStopVoice: () =>
+                          ref.read(voiceInputProvider.notifier).stopListening(),
+                      onCancelVoice: () => ref
+                          .read(voiceInputProvider.notifier)
+                          .cancelListening(),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Expanded(child: _buildBody(searchState)),
-          ],
+                Expanded(child: _buildBody(searchState)),
+              ],
+            );
+
+            if (!isDesktop) return content;
+            return Row(
+              key: const ValueKey('desktop-search-layout'),
+              children: [
+                SizedBox(
+                  width: 260,
+                  child: _DesktopFilterRail(
+                    filters: _filters,
+                    activeFilter: _activeTag,
+                    onSelected: _applySuggestion,
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: content),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -279,11 +304,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     return _SearchResults(
       recipes: searchState.results,
-      selectedRecipeId: _selectedRecipeId,
-      onSelected: (recipe) => setState(() => _selectedRecipeId = recipe.id),
-      filters: _filters,
-      activeFilter: _activeTag,
-      onFilterSelected: _applySuggestion,
       confirmationRequired: searchState.confirmationRequired,
       recommendations: searchState.recommendations,
     );
@@ -507,6 +527,8 @@ class _SearchHeader extends StatelessWidget {
       {required this.controller,
       required this.isLoading,
       required this.showFilters,
+      required this.showPageHeading,
+      required this.showFilterButton,
       required this.activeTag,
       required this.filters,
       required this.onToggleFilters,
@@ -522,6 +544,8 @@ class _SearchHeader extends StatelessWidget {
   final TextEditingController controller;
   final bool isLoading;
   final bool showFilters;
+  final bool showPageHeading;
+  final bool showFilterButton;
   final String? activeTag;
   final List<_DiscoveryFilter> filters;
   final VoidCallback onToggleFilters;
@@ -537,14 +561,16 @@ class _SearchHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Пошук', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: AppSpacing.xs),
-        Text('Рецепти, інгредієнти та добірки Олександра.',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: AppColorsV2.textSecondary)),
-        const SizedBox(height: AppSpacing.md),
+        if (showPageHeading) ...[
+          Text('Пошук', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Рецепти, інгредієнти та добірки Олександра.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColorsV2.textSecondary)),
+          const SizedBox(height: AppSpacing.md),
+        ],
         AppTextField(
             controller: controller,
             hint: 'Наприклад: томати, паста, вечеря',
@@ -591,35 +617,38 @@ class _SearchHeader extends StatelessWidget {
           ),
         const SizedBox(height: AppSpacing.xs),
         Row(children: [
-          AppButton(
-              label: showFilters ? 'Сховати фільтри' : 'Фільтри',
-              icon: Icons.tune_outlined,
-              variant: AppButtonVariant.text,
-              onPressed: onToggleFilters),
+          if (showFilterButton)
+            AppButton(
+                label: showFilters ? 'Сховати фільтри' : 'Фільтри',
+                icon: Icons.tune_outlined,
+                variant: AppButtonVariant.text,
+                onPressed: onToggleFilters),
           if (activeTag != null)
             Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.xs),
+                padding:
+                    EdgeInsets.only(left: showFilterButton ? AppSpacing.xs : 0),
                 child: AppChip(
                     label: 'Тег: $activeTag',
                     selected: true,
                     onSelected: (_) => onClear()))
         ]),
-        AnimatedSize(
-            duration: AppMotion.medium,
-            child: showFilters
-                ? Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs),
-                    child: Wrap(
-                        spacing: AppSpacing.xs,
-                        runSpacing: AppSpacing.xs,
-                        children: filters
-                            .map((filter) => AppChip(
-                                label: filter.label,
-                                avatar: Icon(filter.icon, size: 16),
-                                onSelected: (_) =>
-                                    onFilterSelected(filter.label)))
-                            .toList()))
-                : const SizedBox.shrink()),
+        if (showFilterButton)
+          AnimatedSize(
+              duration: AppMotion.medium,
+              child: showFilters
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
+                          children: filters
+                              .map((filter) => AppChip(
+                                  label: filter.label,
+                                  avatar: Icon(filter.icon, size: 16),
+                                  onSelected: (_) =>
+                                      onFilterSelected(filter.label)))
+                              .toList()))
+                  : const SizedBox.shrink()),
         const SizedBox(height: AppSpacing.sm),
       ]);
 }
@@ -772,21 +801,11 @@ class _NoResults extends StatelessWidget {
 class _SearchResults extends StatelessWidget {
   const _SearchResults({
     required this.recipes,
-    required this.selectedRecipeId,
-    required this.onSelected,
-    required this.filters,
-    required this.activeFilter,
-    required this.onFilterSelected,
     this.confirmationRequired = const [],
     this.recommendations = const [],
   });
 
   final List<Recipe> recipes;
-  final String? selectedRecipeId;
-  final ValueChanged<Recipe> onSelected;
-  final List<_DiscoveryFilter> filters;
-  final String? activeFilter;
-  final ValueChanged<String> onFilterSelected;
   final List<String> confirmationRequired;
   final List<VoiceRecommendation> recommendations;
 
@@ -796,53 +815,15 @@ class _SearchResults extends StatelessWidget {
           final recommendationById = {
             for (final item in recommendations) item.recipe.id: item,
           };
-          if (constraints.maxWidth >= 1024) {
-            final selected = recipes
-                    .where((recipe) => recipe.id == selectedRecipeId)
-                    .firstOrNull ??
-                recipes.first;
-            return Row(
-              children: [
-                SizedBox(
-                  width: 224,
-                  child: _DesktopFilterRail(
-                    filters: filters,
-                    activeFilter: activeFilter,
-                    onSelected: onFilterSelected,
-                  ),
-                ),
-                const VerticalDivider(width: 1),
-                SizedBox(
-                  width: 360,
-                  child: _RecipeList(
-                    recipes: recipes,
-                    selectedRecipeId: selected.id,
-                    onSelected: onSelected,
-                    recommendations: recommendationById,
-                  ),
-                ),
-                const VerticalDivider(width: 1),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.lg),
-                    child: _DiscoveryPreview(
-                      recipe: selected,
-                      onOpen: () => context.push('/recipes/${selected.id}'),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          }
           final columns = constraints.maxWidth >= 600 ? 3 : 1;
           return GridView.builder(
+            key: const ValueKey('search-results-grid'),
             padding: const EdgeInsets.all(AppSpacing.md),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
               mainAxisSpacing: AppSpacing.md,
               crossAxisSpacing: AppSpacing.md,
-              // RecipeCard keeps all metadata visible at large text scales.
-              childAspectRatio: columns == 1 ? .75 : .55,
+              childAspectRatio: columns == 1 ? .75 : .68,
             ),
             itemCount: recipes.length,
             itemBuilder: (context, index) {
@@ -927,66 +908,6 @@ String _recommendationDetails(VoiceRecommendation recommendation) {
         'Потрібно докупити: ${recommendation.missingIngredients.join(', ')}');
   }
   return parts.isEmpty ? 'Частковий збіг запиту' : parts.join('. ');
-}
-
-class _RecipeList extends StatelessWidget {
-  const _RecipeList(
-      {required this.recipes,
-      required this.selectedRecipeId,
-      required this.onSelected,
-      required this.recommendations});
-  final List<Recipe> recipes;
-  final String selectedRecipeId;
-  final ValueChanged<Recipe> onSelected;
-  final Map<String, VoiceRecommendation> recommendations;
-  @override
-  Widget build(BuildContext context) => ListView.separated(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: recipes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-      itemBuilder: (context, index) {
-        final recipe = recipes[index];
-        final recommendation = recommendations[recipe.id];
-        return ListTile(
-            selected: recipe.id == selectedRecipeId,
-            shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
-            leading: recipe.isPremium
-                ? const Icon(Icons.lock_outline)
-                : const Icon(Icons.restaurant_menu_outlined),
-            title: Text(recipe.title,
-                maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text(
-                recommendation == null
-                    ? '${recipe.totalTimeMinutes} хв · ${recipe.cuisine}'
-                    : _recommendationDetails(recommendation),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            onTap: () => onSelected(recipe));
-      });
-}
-
-class _DiscoveryPreview extends StatelessWidget {
-  const _DiscoveryPreview({required this.recipe, required this.onOpen});
-  final Recipe recipe;
-  final VoidCallback onOpen;
-  @override
-  Widget build(BuildContext context) => Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Обраний рецепт',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(child: RecipeCard(recipe: recipe, onTap: onOpen)),
-            const SizedBox(height: AppSpacing.md),
-            AppButton(
-                label: 'Відкрити рецепт',
-                icon: Icons.arrow_forward,
-                expand: true,
-                onPressed: onOpen)
-          ])));
 }
 
 class _DiscoveryFilter {

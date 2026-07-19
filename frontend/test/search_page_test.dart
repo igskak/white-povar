@@ -174,6 +174,34 @@ void main() {
       }
     });
 
+    testWidgets('desktop keeps a filter rail and three-column result grid',
+        (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.physicalSize = const Size(1280, 1000);
+      tester.view.devicePixelRatio = 1;
+
+      await tester.pumpWidget(_testApp(repository: _SearchRepository()));
+
+      expect(
+          find.byKey(const ValueKey('desktop-search-layout')), findsOneWidget);
+      expect(find.text('Швидкі добірки'), findsOneWidget);
+      expect(find.text('Пошук'), findsNothing);
+      expect(find.text('Фільтри'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'паста');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      final grid = tester.widget<GridView>(
+        find.byKey(const ValueKey('search-results-grid')),
+      );
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 3);
+      expect(find.text('Обраний рецепт'), findsNothing);
+    });
+
     test('debounce and cancellation never publish stale results', () async {
       final repository = _DeferredSearchRepository();
       final container = ProviderContainer(overrides: [
