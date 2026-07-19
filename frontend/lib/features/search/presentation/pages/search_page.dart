@@ -823,7 +823,7 @@ class _SearchResults extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: AppSpacing.md,
               crossAxisSpacing: AppSpacing.md,
-              childAspectRatio: columns == 1 ? .75 : .68,
+              childAspectRatio: columns == 1 ? .75 : .60,
             ),
             itemCount: recipes.length,
             itemBuilder: (context, index) {
