@@ -376,29 +376,28 @@ class _DesktopCookingShortcuts extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Focus(
-        autofocus: true,
-        child: Shortcuts(
-          shortcuts: const {
-            SingleActivator(LogicalKeyboardKey.arrowLeft):
-                _PreviousStepIntent(),
-            SingleActivator(LogicalKeyboardKey.arrowRight): _NextStepIntent(),
+  Widget build(BuildContext context) => Shortcuts(
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.arrowLeft): _PreviousStepIntent(),
+          SingleActivator(LogicalKeyboardKey.arrowRight): _NextStepIntent(),
+        },
+        child: Actions(
+          actions: {
+            _PreviousStepIntent: CallbackAction<_PreviousStepIntent>(
+              onInvoke: (_) {
+                onPrevious?.call();
+                return null;
+              },
+            ),
+            _NextStepIntent: CallbackAction<_NextStepIntent>(
+              onInvoke: (_) {
+                onNext();
+                return null;
+              },
+            ),
           },
-          child: Actions(
-            actions: {
-              _PreviousStepIntent: CallbackAction<_PreviousStepIntent>(
-                onInvoke: (_) {
-                  onPrevious?.call();
-                  return null;
-                },
-              ),
-              _NextStepIntent: CallbackAction<_NextStepIntent>(
-                onInvoke: (_) {
-                  onNext();
-                  return null;
-                },
-              ),
-            },
+          child: Focus(
+            autofocus: true,
             child: child,
           ),
         ),
