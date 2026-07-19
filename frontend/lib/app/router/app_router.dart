@@ -128,15 +128,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: AppRoutePaths.collections,
-        builder: (_, __) => const CollectionListPage(),
-      ),
-      GoRoute(
-        path: AppRoutePaths.collectionDetail,
-        builder: (_, state) =>
-            CollectionDetailPage(collectionId: state.pathParameters['id']!),
-      ),
-      GoRoute(
         path: AppRoutePaths.recipeDetail,
         builder: (_, state) => _recipeDetail(state),
       ),
@@ -196,6 +187,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (_, state) => NoTransitionPage(
                   key: state.pageKey,
                   child: const HomePage(),
+                ),
+              ),
+              GoRoute(
+                path: AppRoutePaths.collections,
+                pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey,
+                  child: const CollectionListPage(),
+                ),
+              ),
+              GoRoute(
+                path: AppRoutePaths.collectionDetail,
+                pageBuilder: (_, state) => NoTransitionPage(
+                  key: state.pageKey,
+                  child: CollectionDetailPage(
+                    collectionId: state.pathParameters['id']!,
+                  ),
                 ),
               ),
             ],

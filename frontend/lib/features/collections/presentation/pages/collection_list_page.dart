@@ -14,53 +14,104 @@ class CollectionListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-        appBar: AppBar(title: const Text('Колекції')),
-        body: ref.watch(collectionListProvider).when(
-              loading: () => const _CollectionListSkeleton(),
-              error: (_, __) => StateView.error(
-                title: 'Не вдалося завантажити колекції',
-                subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
-                onRetry: () => ref.invalidate(collectionListProvider),
+        body: SafeArea(
+          child: Column(
+            children: [
+              const ResponsiveContainer(
+                maxWidth: 1180,
+                child: _CollectionPageIntro(),
               ),
-              data: (collections) => collections.isEmpty
-                  ? const StateView.empty(
-                      title: 'Колекції готуються',
-                      subtitle: 'Нові матеріали автора з’являться тут згодом.',
-                      icon: Icons.collections_bookmark_outlined,
-                    )
-                  : ResponsiveContainer(
-                      maxWidth: 1180,
-                      child: GridView.builder(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                              MediaQuery.sizeOf(context).width >= 1120
-                                  ? 3
-                                  : MediaQuery.sizeOf(context).width >= 700
-                                      ? 2
-                                      : 1,
-                          mainAxisExtent:
-                              MediaQuery.sizeOf(context).width >= 1024
-                                  ? 220
-                                  : 190,
-                          crossAxisSpacing: AppSpacing.md,
-                          mainAxisSpacing: AppSpacing.md,
-                        ),
-                        itemCount: collections.length,
-                        itemBuilder: (_, index) => _CollectionCard(
-                          collection: collections[index],
-                          onTap: () => context
-                              .push('/collections/${collections[index].id}'),
-                        ),
+              Expanded(
+                child: ref.watch(collectionListProvider).when(
+                      loading: () => const _CollectionListSkeleton(),
+                      error: (_, __) => StateView.error(
+                        title: 'Не вдалося завантажити колекції',
+                        subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
+                        onRetry: () => ref.invalidate(collectionListProvider),
                       ),
+                      data: (collections) => collections.isEmpty
+                          ? const StateView.empty(
+                              title: 'Колекції готуються',
+                              subtitle:
+                                  'Нові матеріали автора з’являться тут згодом.',
+                              icon: Icons.collections_bookmark_outlined,
+                            )
+                          : ResponsiveContainer(
+                              maxWidth: 1180,
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final columns = constraints.maxWidth >= 1024
+                                      ? 3
+                                      : constraints.maxWidth >= 600
+                                          ? 2
+                                          : 1;
+                                  return GridView.builder(
+                                    key: const ValueKey(
+                                        'collections-responsive-grid'),
+                                    padding:
+                                        const EdgeInsets.all(AppSpacing.md),
+                                    gridDelegate:
+                                        SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: columns,
+                                      mainAxisExtent: columns == 1 ? 190 : 320,
+                                      crossAxisSpacing: AppSpacing.md,
+                                      mainAxisSpacing: AppSpacing.md,
+                                    ),
+                                    itemCount: collections.length,
+                                    itemBuilder: (_, index) => _CollectionCard(
+                                      collection: collections[index],
+                                      vertical: columns > 1,
+                                      onTap: () => context.push(
+                                          '/collections/${collections[index].id}'),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
                     ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _CollectionPageIntro extends StatelessWidget {
+  const _CollectionPageIntro();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.lg,
+          AppSpacing.md,
+          AppSpacing.sm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Колекції', style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Авторські добірки рецептів, технік і процесів.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColorsV2.textSecondary),
             ),
+          ],
+        ),
       );
 }
 
 class _CollectionCard extends StatelessWidget {
-  const _CollectionCard({required this.collection, required this.onTap});
+  const _CollectionCard({
+    required this.collection,
+    required this.vertical,
+    required this.onTap,
+  });
   final ContentCollection collection;
+  final bool vertical;
   final VoidCallback onTap;
 
   @override
@@ -68,37 +119,59 @@ class _CollectionCard extends StatelessWidget {
         onTap: onTap,
         padding: EdgeInsets.zero,
         semanticLabel: 'Відкрити колекцію ${collection.title}',
-        child: Row(children: [
-          SizedBox(
-              width: MediaQuery.sizeOf(context).width >= 1024 ? 148 : 132,
-              height: double.infinity,
-              child: _Cover(url: collection.coverUrl)),
-          Expanded(
-              child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Wrap(spacing: AppSpacing.xs, children: [
-                if (collection.isPremium)
-                  const AppBadge(
-                      label: 'Premium', icon: Icons.workspace_premium),
-                if (collection.isLocked)
-                  const AppBadge(label: 'Закрито', icon: Icons.lock_outline),
+        child: vertical
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _Cover(url: collection.coverUrl)),
+                  SizedBox(
+                    height: 142,
+                    child: _CollectionCardBody(collection: collection),
+                  ),
+                ],
+              )
+            : Row(children: [
+                SizedBox(
+                  width: 132,
+                  height: double.infinity,
+                  child: _Cover(url: collection.coverUrl),
+                ),
+                Expanded(child: _CollectionCardBody(collection: collection)),
               ]),
-              const SizedBox(height: AppSpacing.sm),
-              Text(collection.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Expanded(
-                  child: Text(collection.description,
-                      maxLines: 2, overflow: TextOverflow.ellipsis)),
-              Text('${collection.itemCount} матеріалів',
-                  style: Theme.of(context).textTheme.labelMedium),
+      );
+}
+
+class _CollectionCardBody extends StatelessWidget {
+  const _CollectionCardBody({required this.collection});
+
+  final ContentCollection collection;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(spacing: AppSpacing.xs, children: [
+              if (collection.isPremium)
+                const AppBadge(label: 'Premium', icon: Icons.workspace_premium),
+              if (collection.isLocked)
+                const AppBadge(label: 'Закрито', icon: Icons.lock_outline),
             ]),
-          )),
-        ]),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              collection.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const Spacer(),
+            Text(
+              '${collection.itemCount} матеріалів',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ),
       );
 }
 

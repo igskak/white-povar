@@ -70,9 +70,22 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
             ],
             Text('Матеріали', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
-            ...collection.items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: _CollectionItemCard(
+            LayoutBuilder(builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 760 ? 2 : 1;
+              return GridView.builder(
+                key: const ValueKey('collection-items-grid'),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisExtent: columns == 1 ? 142 : 168,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisSpacing: AppSpacing.md,
+                ),
+                itemCount: collection.items.length,
+                itemBuilder: (context, index) {
+                  final item = collection.items[index];
+                  return _CollectionItemCard(
                     item: item,
                     isResume: item.id == _resumeItemId,
                     onTap: item.isLocked
@@ -86,15 +99,17 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
                                 recipeId: item.content.id,
                                 collectionId: collection.id,
                                 servings: item.content.servings);
-                            if (mounted) {
+                            if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content: Text(
                                           'Матеріал заплановано на сьогодні')));
                             }
                           },
-                  ),
-                )),
+                  );
+                },
+              );
+            }),
           ]),
         ),
       )),
