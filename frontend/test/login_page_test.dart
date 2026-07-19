@@ -27,6 +27,18 @@ void main() {
       expect(find.text('Готуйте з Олександром'), findsOneWidget);
       expect(find.text('Продовжити з Google'), findsNothing);
       expect(find.text('Продовжити як гість'), findsOneWidget);
+      if (width >= 1024) {
+        expect(
+            find.byKey(const ValueKey('desktop-login-split')), findsOneWidget);
+        expect(
+            find.byKey(const ValueKey('desktop-login-hero')), findsOneWidget);
+        expect(
+            find.byKey(const ValueKey('desktop-login-form')), findsOneWidget);
+        expect(find.byKey(const ValueKey('mobile-login-hero')), findsNothing);
+      } else {
+        expect(find.byKey(const ValueKey('desktop-login-split')), findsNothing);
+        expect(find.byKey(const ValueKey('mobile-login-hero')), findsOneWidget);
+      }
       final exception = tester.takeException();
       expect(exception, isNull, reason: 'width: $width');
     }

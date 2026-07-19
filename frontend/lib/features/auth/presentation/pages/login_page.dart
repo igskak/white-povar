@@ -123,14 +123,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       body: SafeArea(
         child: width >= 1024
             ? Row(
+                key: const ValueKey('desktop-login-split'),
                 children: [
                   Expanded(
                     flex: 46,
-                    child: _LoginHero(brand: brand, compact: false),
+                    child: KeyedSubtree(
+                      key: const ValueKey('desktop-login-hero'),
+                      child: _LoginHero(brand: brand, compact: false),
+                    ),
                   ),
                   Expanded(
                     flex: 54,
                     child: Center(
+                      key: const ValueKey('desktop-login-form'),
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(32),
                         child: ConstrainedBox(
@@ -150,7 +155,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _LoginHero(brand: brand, compact: true),
+                        KeyedSubtree(
+                          key: const ValueKey('mobile-login-hero'),
+                          child: _LoginHero(brand: brand, compact: true),
+                        ),
                         const SizedBox(height: 16),
                         form,
                       ],
