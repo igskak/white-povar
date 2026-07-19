@@ -10,17 +10,25 @@ import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 
 class SavedPage extends ConsumerWidget {
-  const SavedPage({super.key});
+  const SavedPage({super.key, this.embeddedInDesktopShell = false});
+
+  final bool embeddedInDesktopShell;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isSignedIn = ref.watch(currentUserProvider) != null;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Збережене')),
-      body: SafeArea(
-        child: isSignedIn ? const _SavedRecipesBody() : const _GuestState(),
-      ),
-    );
+    return LayoutBuilder(builder: (context, constraints) {
+      final usesGlobalDesktopHeader =
+          embeddedInDesktopShell && constraints.maxWidth >= 1024;
+      return Scaffold(
+        appBar: usesGlobalDesktopHeader
+            ? null
+            : AppBar(title: const Text('Збережене')),
+        body: SafeArea(
+          child: isSignedIn ? const _SavedRecipesBody() : const _GuestState(),
+        ),
+      );
+    });
   }
 }
 
@@ -31,10 +39,7 @@ class _SavedRecipesBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final favorites = ref.watch(favoriteRecipesProvider);
     return favorites.when(
-      loading: () => const StateView.loading(
-        title: 'Відкриваємо колекцію',
-        subtitle: 'Завантажуємо збережені рецепти.',
-      ),
+      loading: () => const _SavedSkeleton(),
       error: (error, _) => StateView.error(
         title: 'Не вдалося завантажити збережене',
         subtitle: error.toString(),
@@ -85,13 +90,12 @@ class _SavedRecipesBody extends ConsumerWidget {
                   sliver: SliverLayoutBuilder(
                     builder: (context, constraints) {
                       final columns = constraints.crossAxisExtent >= 1080
-                          ? 4
-                          : constraints.crossAxisExtent >= 720
-                              ? 3
-                              : constraints.crossAxisExtent >= 600
-                                  ? 2
-                                  : 1;
+                          ? 3
+                          : constraints.crossAxisExtent >= 600
+                              ? 2
+                              : 1;
                       return SliverGrid(
+                        key: const ValueKey('saved-recipes-grid'),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
                           childAspectRatio: columns == 1 ? .92 : .72,
@@ -117,6 +121,71 @@ class _SavedRecipesBody extends ConsumerWidget {
       },
     );
   }
+}
+
+class _SavedSkeleton extends StatelessWidget {
+  const _SavedSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ResponsiveContainer(
+        maxWidth: 1180,
+        child: CustomScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          slivers: [
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.lg,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: AppSkeleton(width: 210, height: 32),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final columns = constraints.crossAxisExtent >= 1080
+                      ? 3
+                      : constraints.crossAxisExtent >= 600
+                          ? 2
+                          : 1;
+                  return SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      childAspectRatio: columns == 1 ? .92 : .72,
+                      crossAxisSpacing: AppSpacing.md,
+                      mainAxisSpacing: AppSpacing.md,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (_, __) => const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.md),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: AppSkeleton(height: double.infinity),
+                              ),
+                              SizedBox(height: AppSpacing.md),
+                              AppSkeleton(width: 180, height: 22),
+                              SizedBox(height: AppSpacing.xs),
+                              AppSkeleton(width: 120),
+                            ],
+                          ),
+                        ),
+                      ),
+                      childCount: 6,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _GuestState extends StatelessWidget {
