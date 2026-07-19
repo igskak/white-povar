@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../core/api/api_error.dart';
@@ -224,19 +225,32 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       canPop: !_dirty,
       onPopInvokedWithResult: (_, __) {},
       child: Scaffold(
-        appBar: AppBar(title: const Text('Creator Studio · Бренд'), actions: [
-          if (_dirty)
-            const Padding(
-                padding: EdgeInsets.only(right: 8),
-                child: Center(child: Text('Незбережені зміни'))),
-          Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: AppButton(
-                  label: 'Зберегти чернетку',
-                  icon: Icons.save_outlined,
-                  isLoading: _saving,
-                  onPressed: _saving ? null : _save)),
-        ]),
+        appBar: AppBar(
+            leading: AppIconButton(
+              icon: Icons.arrow_back,
+              tooltip: 'Повернутися до застосунку',
+              onPressed: () => context.go('/profile'),
+            ),
+            title: const Text('Creator Studio · Бренд'),
+            actions: [
+              AppButton(
+                label: 'Контент',
+                icon: Icons.menu_book_outlined,
+                variant: AppButtonVariant.text,
+                onPressed: () => context.go('/studio/content'),
+              ),
+              if (_dirty)
+                const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Center(child: Text('Незбережені зміни'))),
+              Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: AppButton(
+                      label: 'Зберегти чернетку',
+                      icon: Icons.save_outlined,
+                      isLoading: _saving,
+                      onPressed: _saving ? null : _save)),
+            ]),
         body: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
                   padding: const EdgeInsets.all(20),

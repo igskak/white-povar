@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/design_system.dart';
 import '../../studio_brand_draft_service.dart';
-import 'studio_brand_page.dart';
 
 /// Internal inventory intentionally reuses the same card primitive used by
 /// consumer surfaces.  It is not a screenshot and makes publication state
@@ -61,7 +61,22 @@ class _StudioContentPageState extends ConsumerState<StudioContentPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Creator Studio · Контент')),
+        appBar: AppBar(
+          leading: AppIconButton(
+            icon: Icons.arrow_back,
+            tooltip: 'Повернутися до застосунку',
+            onPressed: () => context.go('/profile'),
+          ),
+          title: const Text('Creator Studio · Контент'),
+          actions: [
+            AppButton(
+              label: 'Бренд',
+              icon: Icons.palette_outlined,
+              variant: AppButtonVariant.text,
+              onPressed: () => context.go('/studio/brand'),
+            ),
+          ],
+        ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
