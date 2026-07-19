@@ -13,6 +13,7 @@ import '../../../auth/providers/auth_provider.dart';
 import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
+import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/presentation/widgets/favorite_button.dart';
 
 /// The public, tenant-branded recipe feed.
@@ -27,8 +28,6 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  Recipe? _selectedRecipe;
-
   @override
   void initState() {
     super.initState();
@@ -49,87 +48,37 @@ class _HomePageState extends ConsumerState<HomePage> {
         .map((collection) => collection.id)
         .firstOrNull;
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(recipeListProvider.notifier).loadRecipes(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: _HomeIntro(
-                brand: brand,
-                userName: user?.email,
-                onProfileTap: () => context.go('/profile'),
-                onScanTap: () => context.go('/camera'),
-                onCollectionTap: () => _openCollection(
-                  context,
-                  courseTag: brand.courseTag,
-                  collectionId: featuredCollectionId,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) => constraints.maxWidth >= 1024
+          ? _DesktopHome(
+              brand: brand,
+              recipes: recipes,
+              onRefresh: () =>
+                  ref.read(recipeListProvider.notifier).loadRecipes(),
+              onOpenRecipe: _openRecipe,
+              onCollectionTap: () => _openCollection(
+                context,
+                courseTag: brand.courseTag,
+                collectionId: featuredCollectionId,
+              ),
+            )
+          : _MobileHome(
+              brand: brand,
+              recipes: recipes,
+              userName: user?.email,
+              onRefresh: () =>
+                  ref.read(recipeListProvider.notifier).loadRecipes(),
+              onOpenRecipe: _openRecipe,
+              onProfileTap: () => context.go('/profile'),
+              onScanTap: () => context.go('/camera'),
+              onCollectionTap: () => _openCollection(
+                context,
+                courseTag: brand.courseTag,
+                collectionId: featuredCollectionId,
               ),
             ),
-            ..._recipeSlivers(recipes),
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
-          ],
-        ),
-      ),
     );
   }
-
-  List<Widget> _recipeSlivers(AsyncValue<List<Recipe>> state) => state.when(
-        data: (recipes) {
-          if (recipes.isEmpty) {
-            return const [
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: StateView.empty(
-                  title: 'На кухні поки тихо',
-                  subtitle:
-                      'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
-                  icon: Icons.menu_book_outlined,
-                ),
-              ),
-            ];
-          }
-          _selectedRecipe ??= recipes.first;
-          return [
-            SliverToBoxAdapter(
-              child: ResponsiveContainer(
-                maxWidth: 1180,
-                child: LayoutBuilder(
-                  builder: (context, constraints) =>
-                      constraints.maxWidth >= 1024
-                          ? _DesktopRecipes(
-                              recipes: recipes,
-                              selected: _selectedRecipe!,
-                              onSelect: (recipe) =>
-                                  setState(() => _selectedRecipe = recipe),
-                              onOpen: _openRecipe,
-                            )
-                          : ResponsiveContainer(
-                              maxWidth: 480,
-                              padding: EdgeInsets.zero,
-                              child: _RecipeFeed(
-                                  recipes: recipes, onOpen: _openRecipe),
-                            ),
-                ),
-              ),
-            ),
-          ];
-        },
-        loading: () => const [SliverToBoxAdapter(child: _HomeSkeleton())],
-        error: (error, _) => [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: StateView.error(
-              title: 'Не вдалося завантажити рецепти',
-              subtitle: 'Перевірте зʼєднання та спробуйте ще раз.',
-              onRetry: () =>
-                  ref.read(recipeListProvider.notifier).loadRecipes(),
-            ),
-          ),
-        ],
-      );
 
   void _openRecipe(Recipe recipe) => context.push('/recipes/${recipe.id}');
 
@@ -144,6 +93,378 @@ class _HomePageState extends ConsumerState<HomePage> {
     context.push(
         collectionId == null ? '/collections' : '/collections/$collectionId');
   }
+}
+
+class _MobileHome extends StatelessWidget {
+  const _MobileHome({
+    required this.brand,
+    required this.recipes,
+    required this.userName,
+    required this.onRefresh,
+    required this.onOpenRecipe,
+    required this.onProfileTap,
+    required this.onScanTap,
+    required this.onCollectionTap,
+  });
+
+  final BrandDetails brand;
+  final AsyncValue<List<Recipe>> recipes;
+  final String? userName;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<Recipe> onOpenRecipe;
+  final VoidCallback onProfileTap;
+  final VoidCallback onScanTap;
+  final VoidCallback onCollectionTap;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: RefreshIndicator(
+          onRefresh: onRefresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: _HomeIntro(
+                  brand: brand,
+                  userName: userName,
+                  onProfileTap: onProfileTap,
+                  onScanTap: onScanTap,
+                  onCollectionTap: onCollectionTap,
+                ),
+              ),
+              ..._recipeSlivers(recipes, onOpenRecipe),
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+            ],
+          ),
+        ),
+      );
+
+  List<Widget> _recipeSlivers(
+          AsyncValue<List<Recipe>> state, ValueChanged<Recipe> onOpenRecipe) =>
+      state.when(
+        data: (recipes) {
+          if (recipes.isEmpty) {
+            return const [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: StateView.empty(
+                  title: 'На кухні поки тихо',
+                  subtitle:
+                      'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
+                  icon: Icons.menu_book_outlined,
+                ),
+              ),
+            ];
+          }
+          return [
+            SliverToBoxAdapter(
+              child: ResponsiveContainer(
+                maxWidth: 480,
+                padding: EdgeInsets.zero,
+                child: _RecipeFeed(recipes: recipes, onOpen: onOpenRecipe),
+              ),
+            ),
+          ];
+        },
+        loading: () => const [SliverToBoxAdapter(child: _HomeSkeleton())],
+        error: (error, _) => [
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: StateView.error(
+              title: 'Не вдалося завантажити рецепти',
+              subtitle: 'Перевірте зʼєднання та спробуйте ще раз.',
+              onRetry: onRefresh,
+            ),
+          ),
+        ],
+      );
+}
+
+class _DesktopHome extends StatelessWidget {
+  const _DesktopHome({
+    required this.brand,
+    required this.recipes,
+    required this.onRefresh,
+    required this.onOpenRecipe,
+    required this.onCollectionTap,
+  });
+
+  final BrandDetails brand;
+  final AsyncValue<List<Recipe>> recipes;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<Recipe> onOpenRecipe;
+  final VoidCallback onCollectionTap;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: RefreshIndicator(
+          onRefresh: onRefresh,
+          child: recipes.when(
+            loading: () => const _DesktopHomeSkeleton(),
+            error: (_, __) => StateView.error(
+              title: 'Не вдалося завантажити рецепти',
+              subtitle: 'Перевірте зʼєднання та спробуйте ще раз.',
+              onRetry: onRefresh,
+            ),
+            data: (items) {
+              if (items.isEmpty) {
+                return const StateView.empty(
+                  title: 'На кухні поки тихо',
+                  subtitle:
+                      'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
+                  icon: Icons.menu_book_outlined,
+                );
+              }
+              return _DesktopHomeContent(
+                brand: brand,
+                recipes: items,
+                onOpenRecipe: onOpenRecipe,
+                onCollectionTap: onCollectionTap,
+              );
+            },
+          ),
+        ),
+      );
+}
+
+class _DesktopHomeContent extends StatelessWidget {
+  const _DesktopHomeContent({
+    required this.brand,
+    required this.recipes,
+    required this.onOpenRecipe,
+    required this.onCollectionTap,
+  });
+
+  final BrandDetails brand;
+  final List<Recipe> recipes;
+  final ValueChanged<Recipe> onOpenRecipe;
+  final VoidCallback onCollectionTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = recipes.firstWhere(
+      (recipe) => recipe.isFeatured,
+      orElse: () => recipes.first,
+    );
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(40, 32, 40, 48),
+          sliver: SliverToBoxAdapter(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1180),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FeaturedRecipeHero(
+                      recipe: featured,
+                      onOpen: () => onOpenRecipe(featured),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Від шефа',
+                              style: Theme.of(context).textTheme.headlineSmall),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => context.go('/search'),
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          label: const Text('Усі рецепти'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        crossAxisSpacing: AppSpacing.md,
+                        mainAxisSpacing: AppSpacing.md,
+                        childAspectRatio: .68,
+                      ),
+                      itemCount: recipes.length,
+                      itemBuilder: (context, index) => RecipeCard(
+                        recipe: recipes[index],
+                        onTap: () => onOpenRecipe(recipes[index]),
+                      ),
+                    ),
+                    if (brand.voice.courseName != null &&
+                        brand.courseTag != null) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      _DesktopCollectionPromo(
+                        courseName: brand.voice.courseName!,
+                        onTap: onCollectionTap,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeaturedRecipeHero extends StatelessWidget {
+  const _FeaturedRecipeHero({required this.recipe, required this.onOpen});
+
+  final Recipe recipe;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = ColoredBox(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(child: Icon(Icons.restaurant_menu_rounded, size: 56)),
+    );
+    return Semantics(
+      button: true,
+      label: 'Відкрити рекомендований рецепт ${recipe.title}',
+      child: SizedBox(
+        height: 300,
+        child: ClipRRect(
+          borderRadius: AppRadius.xl,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              recipe.images.isEmpty
+                  ? fallback
+                  : CachedNetworkImage(
+                      imageUrl: recipe.images.first,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => fallback,
+                      errorWidget: (_, __, ___) => fallback,
+                    ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Color(0xE616130F),
+                      Color(0x5C16130F),
+                      Colors.transparent
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const AppBadge(
+                      label: 'Рекомендоване',
+                      icon: Icons.local_fire_department_outlined,
+                      color: AppColorsV2.premiumGold,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Text(
+                        recipe.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineLarge
+                            ?.copyWith(
+                              color: AppColorsV2.onInk,
+                              fontFamily: context.brandTheme.displayFontFamily,
+                              fontWeight: FontWeight.w700,
+                              height: 1.05,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}  ·  Рівень ${recipe.difficulty}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.copyWith(color: AppColorsV2.onInk),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    ElevatedButton.icon(
+                      onPressed: onOpen,
+                      icon: const Icon(Icons.restaurant_menu_rounded),
+                      label: const Text('Почати готувати'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopCollectionPromo extends StatelessWidget {
+  const _DesktopCollectionPromo(
+      {required this.courseName, required this.onTap});
+
+  final String courseName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ContentCard(
+        onTap: onTap,
+        semanticLabel: 'Відкрити колекцію $courseName',
+        child: Row(
+          children: [
+            const Icon(Icons.workspace_premium_rounded,
+                color: AppColorsV2.premiumGold, size: 32),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Преміум-колекція',
+                      style: Theme.of(context).textTheme.labelLarge),
+                  Text(courseName,
+                      style: Theme.of(context).textTheme.titleLarge),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded),
+          ],
+        ),
+      );
+}
+
+class _DesktopHomeSkeleton extends StatelessWidget {
+  const _DesktopHomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) => const Center(
+        child: SizedBox(
+          width: 1180,
+          child: Padding(
+            padding: EdgeInsets.all(40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: AppSkeleton(height: 300, borderRadius: AppRadius.xl),
+                ),
+                SizedBox(height: 28),
+                AppSkeleton(width: 180, height: 32, borderRadius: AppRadius.md),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _HomeIntro extends StatelessWidget {
@@ -291,50 +612,10 @@ class _RecipeFeed extends StatelessWidget {
       );
 }
 
-class _DesktopRecipes extends StatelessWidget {
-  const _DesktopRecipes({
-    required this.recipes,
-    required this.selected,
-    required this.onSelect,
-    required this.onOpen,
-  });
-  final List<Recipe> recipes;
-  final Recipe selected;
-  final ValueChanged<Recipe> onSelect;
-  final ValueChanged<Recipe> onOpen;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 420,
-            child: Column(
-              children: [
-                for (final recipe in recipes) ...[
-                  _RecipeTile(
-                      recipe: recipe,
-                      selected: recipe == selected,
-                      onTap: () => onSelect(recipe)),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Expanded(
-              child: _RecipePreview(
-                  recipe: selected, onTap: () => onOpen(selected))),
-        ],
-      );
-}
-
 class _RecipeTile extends StatelessWidget {
-  const _RecipeTile(
-      {required this.recipe, required this.onTap, this.selected = false});
+  const _RecipeTile({required this.recipe, required this.onTap});
   final Recipe recipe;
   final VoidCallback onTap;
-  final bool selected;
 
   @override
   Widget build(BuildContext context) => ContentCard(
@@ -365,44 +646,6 @@ class _RecipeTile extends StatelessWidget {
               const Icon(Icons.workspace_premium_rounded,
                   color: AppColorsV2.premiumGold),
             FavoriteButton(recipeId: recipe.id),
-          ],
-        ),
-      );
-}
-
-class _RecipePreview extends StatelessWidget {
-  const _RecipePreview({required this.recipe, required this.onTap});
-  final Recipe recipe;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Відкрити рецепт ${recipe.title}',
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _RecipeImage(recipe: recipe, width: double.infinity, height: 300),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(recipe.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(recipe.description,
-                        maxLines: 3, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: AppSpacing.md),
-                    AppButton(
-                        label: 'Відкрити рецепт',
-                        onPressed: onTap,
-                        icon: Icons.arrow_forward_rounded),
-                  ]),
-            ),
           ],
         ),
       );
