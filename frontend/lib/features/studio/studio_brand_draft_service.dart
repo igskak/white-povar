@@ -1,7 +1,29 @@
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error.dart';
 import '../../core/branding/brand_config.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final studioBrandDraftServiceProvider = Provider<StudioBrandDraftService>(
+  (ref) => StudioBrandDraftService(ref.watch(apiClientProvider)),
+);
+
+final studioSessionProvider = FutureProvider.autoDispose<StudioSession?>(
+  (ref) async {
+    try {
+      return ref.read(studioBrandDraftServiceProvider).session();
+    } on ApiError catch (error) {
+      // Studio membership is intentionally private: a non-member simply does
+      // not see its entry point in the consumer profile.
+      if (error.type == ApiErrorType.forbidden ||
+          error.type == ApiErrorType.unauthorized) {
+        return null;
+      }
+      rethrow;
+    }
+  },
+);
 
 class StudioBrandDraft {
   const StudioBrandDraft({required this.config, required this.version});
@@ -20,6 +42,12 @@ class StudioBrandDraft {
 class StudioBrandDraftService {
   StudioBrandDraftService(this._client);
   final ApiClient _client;
+
+  Future<StudioSession> session() async {
+    final response =
+        await _client.get<Map<String, dynamic>>('/api/v1/studio/session');
+    return StudioSession.fromJson(response.data!);
+  }
 
   Future<StudioBrandDraft> load() async {
     final response =
@@ -114,6 +142,18 @@ class StudioBrandDraftService {
             Map<String, dynamic>.from(value as Map)))
         .toList();
   }
+}
+
+class StudioSession {
+  const StudioSession({required this.role, required this.tenantSlug});
+
+  final String role;
+  final String tenantSlug;
+
+  factory StudioSession.fromJson(Map<String, dynamic> json) => StudioSession(
+        role: json['role']?.toString() ?? 'editor',
+        tenantSlug: json['tenantSlug']?.toString() ?? '',
+      );
 }
 
 class StudioContentItem {

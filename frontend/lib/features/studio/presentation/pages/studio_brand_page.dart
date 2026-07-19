@@ -3,15 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../../../../app/theme/app_theme.dart';
-import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_error.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../studio_brand_draft_service.dart';
-
-final studioBrandDraftServiceProvider = Provider<StudioBrandDraftService>(
-    (ref) => StudioBrandDraftService(ref.watch(apiClientProvider)));
 
 class StudioBrandPage extends ConsumerStatefulWidget {
   const StudioBrandPage({super.key});

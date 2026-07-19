@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../features/studio/studio_brand_draft_service.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
 
@@ -92,6 +93,7 @@ class _SignedInProfile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = name.isEmpty ? email.split('@').first : name;
     final theme = Theme.of(context);
+    final studioSession = ref.watch(studioSessionProvider);
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -114,6 +116,13 @@ class _SignedInProfile extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             const _FutureStats(),
             const SizedBox(height: AppSpacing.lg),
+            studioSession.when(
+              data: (session) => session == null
+                  ? const SizedBox.shrink()
+                  : _StudioAccessCard(role: session.role),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
             Card(
                 child: Column(children: [
               _ProfileRow(
@@ -215,6 +224,47 @@ class _SignedInProfile extends ConsumerWidget {
       await ref.read(authProvider.notifier).deleteAccount();
     }
   }
+}
+
+class _StudioAccessCard extends StatelessWidget {
+  const _StudioAccessCard({required this.role});
+
+  final String role;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.dashboard_customize_outlined),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text('Creator Studio',
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                  Text(role == 'admin' ? 'Адміністратор' : 'Редактор',
+                      style: Theme.of(context).textTheme.labelSmall),
+                ]),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Оформлення бренду, контент і колекції.',
+                    style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: 'Відкрити Studio',
+                  icon: Icons.arrow_forward,
+                  expand: true,
+                  onPressed: () => context.go('/studio/brand'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _FutureStats extends StatelessWidget {
