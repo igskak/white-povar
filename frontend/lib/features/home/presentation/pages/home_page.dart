@@ -13,6 +13,8 @@ import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
+import '../../../../core/widgets/premium.dart';
+import '../../../subscription/providers/subscription_provider.dart';
 
 /// The public, tenant-branded recipe feed.
 ///
@@ -41,6 +43,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     final recipes = ref.watch(recipeListProvider);
     final user = ref.watch(currentUserProvider);
     final collections = ref.watch(collectionListProvider);
+    // 13g: the course card is locked for guests and free users, active for
+    // premium, and hidden entirely when the brand publishes no course.
+    final courseLocked = !ref.watch(isPremiumProvider);
     final featuredCollectionId = collections.valueOrNull
         ?.where((collection) => collection.slug == brand.courseTag)
         .map((collection) => collection.id)
@@ -59,6 +64,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 courseTag: brand.courseTag,
                 collectionId: featuredCollectionId,
               ),
+              onUnlockCourse: () => context.push('/subscription'),
+              courseLocked: courseLocked,
             )
           : _MobileHome(
               brand: brand,
@@ -69,11 +76,14 @@ class _HomePageState extends ConsumerState<HomePage> {
               onOpenRecipe: _openRecipe,
               onProfileTap: () => context.go('/profile'),
               onScanTap: () => context.go('/camera'),
+              onTypeTap: () => context.go('/search'),
               onCollectionTap: () => _openCollection(
                 context,
                 courseTag: brand.courseTag,
                 collectionId: featuredCollectionId,
               ),
+              onUnlockCourse: () => context.push('/subscription'),
+              courseLocked: courseLocked,
             ),
     );
   }
@@ -102,7 +112,10 @@ class _MobileHome extends StatelessWidget {
     required this.onOpenRecipe,
     required this.onProfileTap,
     required this.onScanTap,
+    required this.onTypeTap,
     required this.onCollectionTap,
+    required this.onUnlockCourse,
+    required this.courseLocked,
   });
 
   final BrandDetails brand;
@@ -112,7 +125,10 @@ class _MobileHome extends StatelessWidget {
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onProfileTap;
   final VoidCallback onScanTap;
+  final VoidCallback onTypeTap;
   final VoidCallback onCollectionTap;
+  final VoidCallback onUnlockCourse;
+  final bool courseLocked;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -127,6 +143,7 @@ class _MobileHome extends StatelessWidget {
                   userName: userName,
                   onProfileTap: onProfileTap,
                   onScanTap: onScanTap,
+                  onTypeTap: onTypeTap,
                 ),
               ),
               ..._recipeSlivers(recipes, onOpenRecipe, context),
@@ -178,9 +195,11 @@ class _MobileHome extends StatelessWidget {
                     if (brand.voice.courseName != null &&
                         brand.courseTag != null) ...[
                       const SizedBox(height: AppSpacing.md),
-                      _CollectionPromo(
+                      _CourseCard(
                         courseName: brand.voice.courseName!,
-                        onTap: onCollectionTap,
+                        locked: courseLocked,
+                        onOpen: onCollectionTap,
+                        onUnlock: onUnlockCourse,
                       ),
                     ],
                     if (feed.isNotEmpty) ...[
@@ -217,6 +236,8 @@ class _DesktopHome extends StatelessWidget {
     required this.onRefresh,
     required this.onOpenRecipe,
     required this.onCollectionTap,
+    required this.onUnlockCourse,
+    required this.courseLocked,
   });
 
   final BrandDetails brand;
@@ -224,6 +245,8 @@ class _DesktopHome extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onCollectionTap;
+  final VoidCallback onUnlockCourse;
+  final bool courseLocked;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -250,6 +273,8 @@ class _DesktopHome extends StatelessWidget {
                 recipes: items,
                 onOpenRecipe: onOpenRecipe,
                 onCollectionTap: onCollectionTap,
+                onUnlockCourse: onUnlockCourse,
+                courseLocked: courseLocked,
               );
             },
           ),
@@ -263,12 +288,16 @@ class _DesktopHomeContent extends StatelessWidget {
     required this.recipes,
     required this.onOpenRecipe,
     required this.onCollectionTap,
+    required this.onUnlockCourse,
+    required this.courseLocked,
   });
 
   final BrandDetails brand;
   final List<Recipe> recipes;
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onCollectionTap;
+  final VoidCallback onUnlockCourse;
+  final bool courseLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -326,9 +355,11 @@ class _DesktopHomeContent extends StatelessWidget {
                     if (brand.voice.courseName != null &&
                         brand.courseTag != null) ...[
                       const SizedBox(height: AppSpacing.xl),
-                      _DesktopCollectionPromo(
+                      _CourseCard(
                         courseName: brand.voice.courseName!,
-                        onTap: onCollectionTap,
+                        locked: courseLocked,
+                        onOpen: onCollectionTap,
+                        onUnlock: onUnlockCourse,
                       ),
                     ],
                   ],
@@ -340,39 +371,6 @@ class _DesktopHomeContent extends StatelessWidget {
       ],
     );
   }
-}
-
-class _DesktopCollectionPromo extends StatelessWidget {
-  const _DesktopCollectionPromo(
-      {required this.courseName, required this.onTap});
-
-  final String courseName;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Відкрити колекцію $courseName',
-        child: Row(
-          children: [
-            const Icon(Icons.workspace_premium_rounded,
-                color: AppColorsV2.premiumGold, size: 32),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Преміум-колекція',
-                      style: Theme.of(context).textTheme.labelLarge),
-                  Text(courseName,
-                      style: Theme.of(context).textTheme.titleLarge),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_rounded),
-          ],
-        ),
-      );
 }
 
 class _DesktopHomeSkeleton extends StatelessWidget {
@@ -406,12 +404,14 @@ class _HomeIntro extends StatelessWidget {
     required this.userName,
     required this.onProfileTap,
     required this.onScanTap,
+    required this.onTypeTap,
   });
 
   final BrandDetails brand;
   final String? userName;
   final VoidCallback onProfileTap;
   final VoidCallback onScanTap;
+  final VoidCallback onTypeTap;
 
   @override
   Widget build(BuildContext context) => ResponsiveContainer(
@@ -444,6 +444,17 @@ class _HomeIntro extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _ScanBanner(onTap: onScanTap),
+                const SizedBox(height: AppSpacing.xs),
+                // Secondary path for anyone who would rather type than shoot.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppButton(
+                    label: 'Ввести вручну',
+                    icon: Icons.keyboard_alt_outlined,
+                    variant: AppButtonVariant.text,
+                    onPressed: onTypeTap,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
               ],
             ),
@@ -483,37 +494,57 @@ class _ScanBanner extends StatelessWidget {
       );
 }
 
-class _CollectionPromo extends StatelessWidget {
-  const _CollectionPromo({required this.courseName, required this.onTap});
+/// Brand course card (13g). Hidden when the brand publishes no course;
+/// locked for guests and free users; active for premium.
+class _CourseCard extends StatelessWidget {
+  const _CourseCard({
+    required this.courseName,
+    required this.locked,
+    required this.onOpen,
+    required this.onUnlock,
+  });
+
   final String courseName;
-  final VoidCallback onTap;
+  final bool locked;
+  final VoidCallback onOpen;
+  final VoidCallback onUnlock;
 
   @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Відкрити колекцію $courseName',
-        child: Row(
-          children: [
-            const Icon(Icons.workspace_premium_rounded,
-                color: AppColorsV2.premiumGold),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Преміум-колекція',
-                      style: Theme.of(context).textTheme.labelLarge),
-                  Text(courseName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_rounded),
-          ],
-        ),
+  Widget build(BuildContext context) {
+    if (locked) {
+      return PremiumGateCard(
+        title: courseName,
+        message: 'Авторський курс від шефа доступний у Premium.',
+        ctaLabel: 'Відкрити Premium',
+        onUnlock: onUnlock,
       );
+    }
+    return ContentCard(
+      onTap: onOpen,
+      semanticLabel: 'Відкрити колекцію $courseName',
+      child: Row(
+        children: [
+          const Icon(Icons.workspace_premium_rounded,
+              color: AppColorsV2.premiumGold),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Преміум-колекція',
+                    style: Theme.of(context).textTheme.labelLarge),
+                Text(courseName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleLarge),
+              ],
+            ),
+          ),
+          const Icon(Icons.arrow_forward_rounded),
+        ],
+      ),
+    );
+  }
 }
 
 class _RecipeFeed extends StatelessWidget {

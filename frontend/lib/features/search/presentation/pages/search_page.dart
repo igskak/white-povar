@@ -11,6 +11,7 @@ import '../../../../core/widgets/state_views.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/repositories/recipe_repository.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
+import '../../../recipes/providers/recipe_provider.dart';
 import '../../providers/search_provider.dart';
 import '../../../voice/providers/voice_input_provider.dart';
 import '../widgets/voice_input_status.dart';
@@ -182,6 +183,37 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
   }
 
+  Future<void> _openFilterSheet() async {
+    final current = ref.read(simpleTextSearchProvider).filters;
+    // Facet options come from the loaded catalogue so the sheet can never
+    // offer a cuisine or category the tenant does not actually publish.
+    final catalogue = ref.read(recipeListProvider).valueOrNull ?? const [];
+    final applied = await showAppSheet<SearchFilters>(
+      context: context,
+      builder: (sheetContext) => _FilterSheet(
+        initial: current,
+        cuisines: _distinct(catalogue.map((recipe) => recipe.cuisine)),
+        categories: _distinct(catalogue.map((recipe) => recipe.category)),
+      ),
+    );
+    if (applied == null || !mounted) return;
+    await ref.read(simpleTextSearchProvider.notifier).applyFilters(applied);
+  }
+
+  static List<String> _distinct(Iterable<String> values) {
+    final seen = <String>{};
+    for (final value in values) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty) seen.add(trimmed);
+    }
+    final sorted = seen.toList()..sort();
+    return sorted;
+  }
+
+  void _removeFilter(SearchFilters filters) {
+    ref.read(simpleTextSearchProvider.notifier).applyFilters(filters);
+  }
+
   void _clearSearch() {
     setState(() {
       _activeTag = null;
@@ -223,6 +255,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       filters: _filters,
                       onToggleFilters: () =>
                           setState(() => _showFilters = !_showFilters),
+                      onOpenFilterSheet: _openFilterSheet,
+                      activeFilterCount: searchState.filters.activeCount,
                       onClear: _clearSearch,
                       onChanged: _onTextChanged,
                       onSubmitted: (value) {
@@ -247,6 +281,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     ),
                   ),
                 ),
+                if (searchState.filters.isActive)
+                  ResponsiveContainer(
+                    maxWidth: 1280,
+                    child: _ActiveFilterChips(
+                      filters: searchState.filters,
+                      onChanged: _removeFilter,
+                      onReset: _resetAll,
+                    ),
+                  ),
                 Expanded(child: _buildBody(searchState)),
               ],
             );
@@ -261,6 +304,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     filters: _filters,
                     activeFilter: _activeTag,
                     onSelected: _applySuggestion,
+                    onOpenFilterSheet: _openFilterSheet,
+                    activeFilterCount: searchState.filters.activeCount,
                   ),
                 ),
                 const VerticalDivider(width: 1),
@@ -282,7 +327,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       );
     }
 
-    if (_searchController.text.trim().isEmpty) {
+    if (_searchController.text.trim().isEmpty &&
+        !searchState.filters.isActive) {
       return _DiscoveryStart(
         recentSearches: _recentSearches,
         suggestions: _suggestions,
@@ -298,7 +344,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (searchState.results.isEmpty) {
       return _NoResults(
         suggestions: _suggestions,
-        onClear: _clearSearch,
+        onClear: _resetAll,
         onSelected: _applySuggestion,
         showAiGeneration: searchState.isVoiceIntentSearch,
         onAiGeneration: _showAiGenerationConsent,
@@ -310,6 +356,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       confirmationRequired: searchState.confirmationRequired,
       recommendations: searchState.recommendations,
     );
+  }
+
+  /// Reset returns the full catalogue: clears both the query and the facets.
+  void _resetAll() {
+    ref
+        .read(simpleTextSearchProvider.notifier)
+        .applyFilters(SearchFilters.empty);
+    _clearSearch();
   }
 
   Future<void> _showAiGenerationConsent() async {
@@ -535,6 +589,8 @@ class _SearchHeader extends StatelessWidget {
       required this.activeTag,
       required this.filters,
       required this.onToggleFilters,
+      required this.onOpenFilterSheet,
+      required this.activeFilterCount,
       required this.onClear,
       required this.onChanged,
       required this.onSubmitted,
@@ -552,6 +608,8 @@ class _SearchHeader extends StatelessWidget {
   final String? activeTag;
   final List<_DiscoveryFilter> filters;
   final VoidCallback onToggleFilters;
+  final VoidCallback onOpenFilterSheet;
+  final int activeFilterCount;
   final VoidCallback onClear;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
@@ -626,8 +684,16 @@ class _SearchHeader extends StatelessWidget {
             children: [
               if (showFilterButton)
                 AppButton(
-                    label: showFilters ? 'Сховати фільтри' : 'Фільтри',
+                    label: activeFilterCount == 0
+                        ? 'Усі фільтри'
+                        : 'Усі фільтри · $activeFilterCount',
                     icon: Icons.tune_outlined,
+                    variant: AppButtonVariant.text,
+                    onPressed: onOpenFilterSheet),
+              if (showFilterButton)
+                AppButton(
+                    label: showFilters ? 'Сховати підказки' : 'Підказки',
+                    icon: Icons.bolt_outlined,
                     variant: AppButtonVariant.text,
                     onPressed: onToggleFilters),
               if (activeTag != null)
@@ -872,17 +938,31 @@ class _DesktopFilterRail extends StatelessWidget {
     required this.filters,
     required this.activeFilter,
     required this.onSelected,
+    required this.onOpenFilterSheet,
+    required this.activeFilterCount,
   });
 
   final List<_DiscoveryFilter> filters;
   final String? activeFilter;
   final ValueChanged<String> onSelected;
+  final VoidCallback onOpenFilterSheet;
+  final int activeFilterCount;
 
   @override
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
         children: [
           Text('Фільтри', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: AppSpacing.xs),
+          AppButton(
+            label: activeFilterCount == 0
+                ? 'Усі фільтри'
+                : 'Усі фільтри · $activeFilterCount',
+            icon: Icons.tune_outlined,
+            variant: AppButtonVariant.secondary,
+            expand: true,
+            onPressed: onOpenFilterSheet,
+          ),
           const SizedBox(height: AppSpacing.md),
           Text('Швидкі добірки', style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: AppSpacing.xs),
@@ -920,4 +1000,202 @@ class _DiscoveryFilter {
   const _DiscoveryFilter(this.label, this.icon);
   final String label;
   final IconData icon;
+}
+
+/// Active facets shown above the results, each removable, plus a full reset
+/// back to the whole catalogue.
+class _ActiveFilterChips extends StatelessWidget {
+  const _ActiveFilterChips({
+    required this.filters,
+    required this.onChanged,
+    required this.onReset,
+  });
+
+  final SearchFilters filters;
+  final ValueChanged<SearchFilters> onChanged;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <Widget>[
+      if (filters.cuisine != null)
+        _chip('Кухня: ${filters.cuisine}',
+            () => onChanged(filters.copyWith(cuisine: null))),
+      if (filters.category != null)
+        _chip('Категорія: ${filters.category}',
+            () => onChanged(filters.copyWith(category: null))),
+      if (filters.difficulty != null)
+        _chip('Рівень ${filters.difficulty}',
+            () => onChanged(filters.copyWith(difficulty: null))),
+      if (filters.maxTime != null)
+        _chip('До ${filters.maxTime} хв',
+            () => onChanged(filters.copyWith(maxTime: null))),
+      if (filters.isFeatured == true)
+        _chip(
+            'Вибір шефа', () => onChanged(filters.copyWith(isFeatured: null))),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ...chips,
+          AppButton(
+            label: 'Скинути',
+            variant: AppButtonVariant.text,
+            onPressed: onReset,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, VoidCallback onRemove) => AppChip(
+        label: label,
+        selected: true,
+        onSelected: (_) => onRemove(),
+      );
+}
+
+/// Progressive-disclosure facet sheet. Only exposes cuisine, category,
+/// difficulty, time and isFeatured — the fields `getRecipes` already accepts.
+class _FilterSheet extends StatefulWidget {
+  const _FilterSheet({
+    required this.initial,
+    required this.cuisines,
+    required this.categories,
+  });
+
+  final SearchFilters initial;
+  final List<String> cuisines;
+  final List<String> categories;
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  late SearchFilters _draft = widget.initial;
+
+  static const _times = [15, 30, 45, 60];
+  static const _levels = [1, 2, 3, 4, 5];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Фільтри', style: theme.textTheme.titleLarge),
+            const SizedBox(height: AppSpacing.md),
+            if (widget.cuisines.isNotEmpty) ...[
+              _section(context, 'Кухня'),
+              _options(
+                widget.cuisines,
+                selected: _draft.cuisine,
+                onSelected: (value) =>
+                    setState(() => _draft = _draft.copyWith(cuisine: value)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            if (widget.categories.isNotEmpty) ...[
+              _section(context, 'Категорія'),
+              _options(
+                widget.categories,
+                selected: _draft.category,
+                onSelected: (value) =>
+                    setState(() => _draft = _draft.copyWith(category: value)),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            _section(context, 'Час приготування'),
+            _options(
+              _times.map((time) => 'До \$time хв').toList(),
+              selected:
+                  _draft.maxTime == null ? null : 'До \${_draft.maxTime} хв',
+              onSelected: (value) => setState(() => _draft = _draft.copyWith(
+                  maxTime: value == null
+                      ? null
+                      : _times[_times
+                          .map((time) => 'До \$time хв')
+                          .toList()
+                          .indexOf(value)])),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _section(context, 'Складність'),
+            _options(
+              _levels.map((level) => 'Рівень \$level').toList(),
+              selected: _draft.difficulty == null
+                  ? null
+                  : 'Рівень \${_draft.difficulty}',
+              onSelected: (value) => setState(() => _draft = _draft.copyWith(
+                  difficulty:
+                      value == null ? null : int.parse(value.split(' ').last))),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _section(context, 'Добірка'),
+            _options(
+              const ['Вибір шефа'],
+              selected: _draft.isFeatured == true ? 'Вибір шефа' : null,
+              onSelected: (value) => setState(() => _draft =
+                  _draft.copyWith(isFeatured: value == null ? null : true)),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: 'Скинути',
+                    variant: AppButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () =>
+                        Navigator.pop(context, SearchFilters.empty),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: AppButton(
+                    label: 'Застосувати',
+                    expand: true,
+                    onPressed: () => Navigator.pop(context, _draft),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _section(BuildContext context, String label) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+      );
+
+  /// Single-select: tapping the active option clears the facet.
+  Widget _options(
+    List<String> values, {
+    required String? selected,
+    required ValueChanged<String?> onSelected,
+  }) =>
+      Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          for (final value in values)
+            AppChip(
+              label: value,
+              selected: value == selected,
+              onSelected: (_) => onSelected(value == selected ? null : value),
+            ),
+        ],
+      );
 }

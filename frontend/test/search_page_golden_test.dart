@@ -29,7 +29,9 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
 
         if (state == _SearchFixtureState.filter && width < 1024) {
-          final filterButton = find.text('Фільтри');
+          // The structured facets now live behind "Усі фільтри"; this toggle
+          // reveals the quick-suggestion chips.
+          final filterButton = find.text('Підказки');
           expect(filterButton, findsOneWidget);
           await tester.tap(filterButton);
           await tester.pumpAndSettle();
