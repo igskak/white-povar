@@ -13,6 +13,7 @@ import '../../../core/widgets/design_system.dart';
 import '../../collections/providers/collection_provider.dart';
 import '../purchase_adapter.dart';
 import '../paywall_provider.dart';
+import '../widgets/paywall_scene.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key, this.returnTo});
@@ -250,37 +251,12 @@ class _PaywallCard extends ConsumerWidget {
                         letterSpacing: 1.4)),
               ]),
             const SizedBox(height: 10),
-            SizedBox(
-                height: 130,
-                child: ClipRRect(
-                    borderRadius: AppRadius.md,
-                    child: BrandHero(brand: brand, role: 'paywall'))),
-            const SizedBox(height: 18),
-            if (active)
-              _ActivePanel(snapshot: snapshot)
-            else ...[
-              Text(brand.voice.paywallTitle,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: context.semantic.textPrimary,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text('— ${brand.creatorName}, ${brand.name}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: context.brandTheme.accentOnDark,
-                      fontStyle: FontStyle.italic)),
-              const SizedBox(height: 16),
-              const _Benefit(
-                  icon: Icons.check_circle,
-                  text: 'Premium-колекції та рецепти'),
-              const _Benefit(
-                  icon: Icons.check_circle,
-                  text: 'AI-поради й пошук за фото без лімітів'),
-              const _Benefit(
-                  icon: Icons.check_circle,
-                  text: 'Збереження, планування меню та список покупок'),
-              const _Benefit(
-                  icon: Icons.check_circle,
-                  text: 'Нові авторські колекції без реклами'),
+            if (active) ...[
+              PaywallHeroImage(brand: brand),
+              const SizedBox(height: 18),
+              _ActivePanel(snapshot: snapshot),
+            ] else ...[
+              PaywallPitch(brand: brand),
               const SizedBox(height: 14),
               if (snapshot.phase == PaywallPhase.productsLoading)
                 const _ProductsLoading()
@@ -290,29 +266,24 @@ class _PaywallCard extends ConsumerWidget {
                   message: snapshot.message,
                   onRetry: () => ref.read(paywallProvider.notifier).load(),
                 )
-              else ...[
-                for (final product in snapshot.products)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _ProductOption(
-                      product: product,
-                      selected: product.id == selectedId,
-                      enabled: !purchasing,
-                      onTap: () => ref
-                          .read(selectedPurchaseProductProvider.notifier)
-                          .state = product.id,
-                    ),
-                  ),
-                const SizedBox(height: 4),
-                AppButton(
-                  label: kIsWeb
+              else
+                PaywallPlans(
+                  products: snapshot.products,
+                  selectedId: selectedId,
+                  onSelect: (id) => ref
+                      .read(selectedPurchaseProductProvider.notifier)
+                      .state = id,
+                  busy: purchasing,
+                  ctaLabel: kIsWeb
                       ? 'Активувати демо-доступ'
                       : selectedProduct?.trial != null
                           ? 'Спробувати ${selectedProduct!.trial}'
                           : 'Продовжити',
-                  expand: true,
-                  isLoading: purchasing,
-                  onPressed: purchasing || selectedProduct == null
+                  footnote: kIsWeb
+                      ? 'Кошти не списуються'
+                      : selectedProduct?.detail ??
+                          'Скасувати можна в налаштуваннях магазину.',
+                  onPurchase: purchasing || selectedProduct == null
                       ? null
                       : () async {
                           await ref
@@ -337,15 +308,6 @@ class _PaywallCard extends ConsumerWidget {
                           }
                         },
                 ),
-                const SizedBox(height: 8),
-                Text(
-                    kIsWeb
-                        ? 'Кошти не списуються'
-                        : selectedProduct?.detail ??
-                            'Скасувати можна в налаштуваннях магазину.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: context.semantic.textSecondary)),
-              ],
             ],
             if (_needsMessage(snapshot.phase)) ...[
               const SizedBox(height: 14),
@@ -496,9 +458,10 @@ class _ActivePanel extends StatelessWidget {
             icon: Icons.workspace_premium,
             message: _entitlementLabel(snapshot)),
         const SizedBox(height: 16),
-        const _Benefit(
+        const PaywallBenefit(
             icon: Icons.check_circle, text: 'Premium-контент відкрито'),
-        const _Benefit(icon: Icons.check_circle, text: 'AI-поради без лімітів'),
+        const PaywallBenefit(
+            icon: Icons.check_circle, text: 'AI-поради без лімітів'),
       ]);
 }
 
@@ -509,81 +472,6 @@ String _entitlementLabel(PaywallSnapshot snapshot) => switch (snapshot.phase) {
       _ =>
         'Premium активний${snapshot.renewsOn == null ? '' : ' · до ${snapshot.renewsOn!.day}.${snapshot.renewsOn!.month}.${snapshot.renewsOn!.year}'}',
     };
-
-class _ProductOption extends StatelessWidget {
-  const _ProductOption(
-      {required this.product,
-      required this.selected,
-      required this.enabled,
-      required this.onTap});
-  final PurchaseProduct product;
-  final bool selected;
-  final bool enabled;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        selected: selected,
-        label: '${product.title}, ${product.price}',
-        child: InkWell(
-            onTap: enabled ? onTap : null,
-            borderRadius: AppRadius.md,
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                  border: Border.all(
-                      color: selected
-                          ? context.brandTheme.accentOnDark
-                          : context.semantic.surfaceStrong,
-                      width: selected ? 2 : 1),
-                  borderRadius: AppRadius.md),
-              child: Row(children: [
-                Icon(
-                    selected
-                        ? Icons.radio_button_checked
-                        : Icons.radio_button_off,
-                    color: context.brandTheme.accentOnDark),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text('${product.title} · ${product.price}',
-                          style: TextStyle(
-                              color: context.semantic.textPrimary,
-                              fontWeight: FontWeight.w700)),
-                      if (product.detail != null)
-                        Text(product.detail!,
-                            style: TextStyle(
-                                color: context.semantic.textSecondary,
-                                fontSize: 12))
-                      else if (product.trial != null)
-                        Text(product.trial!,
-                            style: TextStyle(
-                                color: context.semantic.textSecondary,
-                                fontSize: 12))
-                    ])),
-                if (product.badge != null) AppBadge(label: product.badge!)
-              ]),
-            )),
-      );
-}
-
-class _Benefit extends StatelessWidget {
-  const _Benefit({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Icon(icon, size: 18, color: context.brandTheme.accentOnDark),
-        const SizedBox(width: 9),
-        Expanded(
-            child: Text(text,
-                style: TextStyle(color: context.semantic.textPrimary)))
-      ]));
-}
 
 class _StatusMessage extends StatelessWidget {
   const _StatusMessage({required this.snapshot, this.onRetry});
