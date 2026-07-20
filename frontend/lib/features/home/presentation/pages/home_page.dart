@@ -13,7 +13,7 @@ import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
-import '../../../../core/widgets/premium.dart';
+import '../widgets/home_scene.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
 /// The public, tenant-branded recipe feed.
@@ -195,7 +195,7 @@ class _MobileHome extends StatelessWidget {
                     if (brand.voice.courseName != null &&
                         brand.courseTag != null) ...[
                       const SizedBox(height: AppSpacing.md),
-                      _CourseCard(
+                      BrandCourseCard(
                         courseName: brand.voice.courseName!,
                         locked: courseLocked,
                         onOpen: onCollectionTap,
@@ -355,7 +355,7 @@ class _DesktopHomeContent extends StatelessWidget {
                     if (brand.voice.courseName != null &&
                         brand.courseTag != null) ...[
                       const SizedBox(height: AppSpacing.xl),
-                      _CourseCard(
+                      BrandCourseCard(
                         courseName: brand.voice.courseName!,
                         locked: courseLocked,
                         onOpen: onCollectionTap,
@@ -443,7 +443,7 @@ class _HomeIntro extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                _ScanBanner(onTap: onScanTap),
+                ScanBanner(onTap: onScanTap),
                 const SizedBox(height: AppSpacing.xs),
                 // Secondary path for anyone who would rather type than shoot.
                 Align(
@@ -461,90 +461,6 @@ class _HomeIntro extends StatelessWidget {
           ),
         ),
       );
-}
-
-class _ScanBanner extends StatelessWidget {
-  const _ScanBanner({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Сканувати інгредієнти',
-        child: Row(
-          children: [
-            const Icon(Icons.photo_camera_outlined),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Сканувати інгредієнти',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  Text('Фото продуктів → рецепти за 10 секунд',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_rounded),
-          ],
-        ),
-      );
-}
-
-/// Brand course card (13g). Hidden when the brand publishes no course;
-/// locked for guests and free users; active for premium.
-class _CourseCard extends StatelessWidget {
-  const _CourseCard({
-    required this.courseName,
-    required this.locked,
-    required this.onOpen,
-    required this.onUnlock,
-  });
-
-  final String courseName;
-  final bool locked;
-  final VoidCallback onOpen;
-  final VoidCallback onUnlock;
-
-  @override
-  Widget build(BuildContext context) {
-    if (locked) {
-      return PremiumGateCard(
-        title: courseName,
-        message: 'Авторський курс від шефа доступний у Premium.',
-        ctaLabel: 'Відкрити Premium',
-        onUnlock: onUnlock,
-      );
-    }
-    return ContentCard(
-      onTap: onOpen,
-      semanticLabel: 'Відкрити колекцію $courseName',
-      child: Row(
-        children: [
-          const Icon(Icons.workspace_premium_rounded,
-              color: AppColorsV2.premiumGold),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Преміум-колекція',
-                    style: Theme.of(context).textTheme.labelLarge),
-                Text(courseName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge),
-              ],
-            ),
-          ),
-          const Icon(Icons.arrow_forward_rounded),
-        ],
-      ),
-    );
-  }
 }
 
 class _RecipeFeed extends StatelessWidget {

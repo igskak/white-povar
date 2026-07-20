@@ -3,13 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/api/api_error.dart';
-import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../studio_brand_draft_service.dart';
+import '../../studio_brand_validation.dart';
+import '../widgets/studio_preview.dart';
+
+/// 13d master frame minimum; the count bounds live in studio_brand_validation.
+const int _minPhotoWidth = 1600;
+const int _minPhotoHeight = 1200;
+const List<String> _photoRoles = ['home', 'login', 'paywall', 'collection'];
 
 class StudioBrandPage extends ConsumerStatefulWidget {
   const StudioBrandPage({super.key});
@@ -34,12 +39,17 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   late final TextEditingController _tag = TextEditingController();
   late final TextEditingController _rollbackVersion = TextEditingController();
   String _font = 'serif';
-  int _preview = 0;
+  StudioPreviewTab _preview = StudioPreviewTab.home;
   bool _uploadingAsset = false;
   bool _releasing = false;
   StudioReleaseStatus? _releaseStatus;
   String? _avatarUrl;
   List<BrandHeroPhoto> _photos = [];
+
+  /// Upload-time facts the published config does not carry (13m frame states).
+  /// Keyed by asset URL and deliberately not persisted.
+  final Map<String, String> _photoMeta = {};
+  String? _rejectedPhoto;
 
   @override
   void initState() {
@@ -141,6 +151,33 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
 
   void _changed() => setState(() => _dirty = true);
 
+  /// The order of [_photos] is the rotation order the app publishes as-is.
+  void _reorderPhotos(int oldIndex, int newIndex) => setState(() {
+        // Removing first shifts every later target down by one.
+        if (newIndex > oldIndex) newIndex -= 1;
+        _photos.insert(newIndex, _photos.removeAt(oldIndex));
+        _dirty = true;
+      });
+
+  /// Rewrites one frame in place. [BrandHeroPhoto] is immutable and carries no
+  /// setters, so an edit re-creates it with the fields that changed.
+  void _updatePhoto(
+    int index, {
+    Set<String>? roles,
+    double? focalX,
+    double? focalY,
+  }) =>
+      setState(() {
+        final photo = _photos[index];
+        _photos[index] = BrandHeroPhoto(
+          url: photo.url,
+          roles: roles ?? photo.roles,
+          focalX: (focalX ?? photo.focalX).clamp(0.0, 1.0),
+          focalY: (focalY ?? photo.focalY).clamp(0.0, 1.0),
+        );
+        _dirty = true;
+      });
+
   Future<void> _release(
       Future<void> Function(StudioBrandDraftService service) action) async {
     setState(() => _releasing = true);
@@ -164,16 +201,39 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
         allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
         withData: true);
     if (picked == null || picked.files.isEmpty) return;
-    setState(() => _uploadingAsset = true);
+    final file = picked.files.single;
+    setState(() {
+      _uploadingAsset = true;
+      _rejectedPhoto = null;
+    });
     try {
-      final asset = await ref.read(studioBrandDraftServiceProvider).upload(
-          picked.files.single,
-          altText: 'Фото бренду ${_name.text.trim()}');
+      final asset = await ref
+          .read(studioBrandDraftServiceProvider)
+          .upload(file, altText: 'Фото бренду ${_name.text.trim()}');
       if (!mounted) return;
+      final width = asset.width, height = asset.height;
+      // 13d master rules. The server is the authority at publish time; this is
+      // the early, local «відхилено» so a too-small frame never reaches a hero.
+      if (!avatar &&
+          width != null &&
+          height != null &&
+          (width < _minPhotoWidth || height < _minPhotoHeight)) {
+        setState(() => _rejectedPhoto = '${file.name} відхилено: '
+            '$width×$height — менше мінімуму '
+            '$_minPhotoWidth×$_minPhotoHeight. Завантажте кадр більшої роздільності.');
+        return;
+      }
       setState(() {
         if (avatar) {
           _avatarUrl = asset.url;
+        } else if (_photos.any((photo) => photo.url == asset.url)) {
+          // Frames are keyed by URL, so the same asset cannot appear twice.
+          return;
         } else {
+          if (width != null && height != null) {
+            _photoMeta[asset.url] =
+                '$width×$height · ${(file.size / 1024).round()} КБ';
+          }
           _photos = [
             ..._photos,
             BrandHeroPhoto(url: asset.url, roles: const {'home'})
@@ -277,18 +337,44 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     );
   }
 
-  Widget _editor() =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Бренд застосунку',
-            style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 4),
-        const Text(
-            'Зміни зберігаються як чернетка; публікація та реліз доступні лише Studio admin.'),
-        const SizedBox(height: 16),
-        _section('1 · Ідентичність',
-            [_field(_name, 'Назва бренду'), _field(_creator, 'Ім’я автора')]),
-        _section('2 · Колір і шрифт', [
+  /// Section validity, recomputed from the live controllers on every build so
+  /// the markers and the publish gate can never lag behind an edit.
+  StudioBrandChecks get _checks => StudioBrandChecks.of(
+        name: _name.text,
+        creatorName: _creator.text,
+        avatar: _avatarUrl,
+        accent: _accent.text,
+        greeting: _greeting.text,
+        loginTitle: _login.text,
+        paywallTitle: _paywall.text,
+        courseName: _course.text,
+        courseTag: _tag.text,
+        photoCount: _photos.length,
+      );
+
+  Widget _editor() {
+    final checks = _checks;
+    final contrast = BrandContrast.of(_accent.text);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Бренд застосунку',
+          style: Theme.of(context).textTheme.headlineMedium),
+      const SizedBox(height: 4),
+      const Text(
+          'Зміни зберігаються як чернетка; публікація та реліз доступні лише Studio admin.'),
+      const SizedBox(height: 16),
+      _section('1 · Ідентичність',
+          [_field(_name, 'Назва бренду'), _field(_creator, 'Ім’я автора')],
+          status: checks.identity,
+          summary: [
+            if (_name.text.trim().isNotEmpty) _name.text.trim(),
+            if (_creator.text.trim().isNotEmpty) _creator.text.trim(),
+            _avatarUrl == null ? 'аватар відсутній' : 'аватар завантажено',
+          ].join(' · ')),
+      _section(
+        '2 · Колір і шрифт',
+        [
           _field(_accent, 'Accent · #RRGGBB'),
+          if (contrast != null) _contrastNote(contrast),
           DropdownButtonFormField<String>(
               value: _font,
               decoration: const InputDecoration(labelText: 'Шрифт'),
@@ -305,44 +391,127 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                   });
                 }
               })
-        ]),
-        _section('3 · Голос бренду · 4 рядки', [
-          _field(_greeting, 'Привітання Home', 24),
-          _field(_login, 'Заголовок логіна', 28),
-          _field(_paywall, 'Заголовок пейвола', 28),
-          _field(_course, 'Назва колекції · optional', 36),
-          _field(_tag, 'Course tag · optional')
-        ]),
-        _section('4 · Фото бренду', [
-          const Text(
-              'JPG, PNG або WebP до 12 MB. Сервер перевіряє, стискає і прив’язує файл до цього tenant.'),
-          Wrap(spacing: 8, children: [
-            OutlinedButton.icon(
-                onPressed:
-                    _uploadingAsset ? null : () => _uploadAsset(avatar: true),
-                icon: const Icon(Icons.account_circle_outlined),
-                label: const Text('Завантажити avatar')),
-            OutlinedButton.icon(
-                onPressed:
-                    _uploadingAsset ? null : () => _uploadAsset(avatar: false),
-                icon: const Icon(Icons.add_photo_alternate_outlined),
-                label: Text(_uploadingAsset ? 'Обробка…' : 'Додати hero')),
-          ]),
-          ..._photos
-              .asMap()
-              .entries
-              .map((entry) => _photoEditor(entry.key, entry.value)),
-        ]),
-        _releasePanel(),
-        if (_error != null)
-          Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(_error.toString(),
-                  style:
-                      TextStyle(color: Theme.of(context).colorScheme.error))),
-      ]);
+        ],
+        status: checks.colour,
+        summary: [
+          if (isBrandHex(_accent.text)) _accent.text.trim().toUpperCase(),
+          _font,
+          if (contrast != null)
+            contrast.accentFillAllowed
+                ? 'контраст ✓ · CTA = заливка акцентом'
+                : 'гейт: CTA = ink у світлій темі',
+        ].join(' · '),
+      ),
+      _section(
+          '3 · Голос бренду · 4 рядки',
+          [
+            _field(_greeting, 'Привітання Home', kGreetingLimit),
+            _field(_login, 'Заголовок логіна', kLoginTitleLimit),
+            _field(_paywall, 'Заголовок пейвола', kPaywallTitleLimit),
+            _field(_course, 'Назва колекції · optional', kCourseNameLimit),
+            _field(_tag, 'Course tag · optional')
+          ],
+          status: checks.voice,
+          summary: _course.text.trim().isEmpty
+              ? 'курс не опубліковано — курс-картка прихована'
+              : 'курс «${_course.text.trim()}»'),
+      _section(
+          '4 · Фото бренду',
+          [
+            const Text(
+                'JPEG ≥ 1600×1200 (4:3), до 600 КБ після стиснення. Людина або процес у кадрі, '
+                'без тексту й логотипів, темніший нижній край.'),
+            Wrap(spacing: AppSpacing.xs, children: [
+              OutlinedButton.icon(
+                  onPressed:
+                      _uploadingAsset ? null : () => _uploadAsset(avatar: true),
+                  icon: const Icon(Icons.account_circle_outlined),
+                  label: const Text('Завантажити avatar')),
+              OutlinedButton.icon(
+                  onPressed: _uploadingAsset
+                      ? null
+                      : () => _uploadAsset(avatar: false),
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: Text(_uploadingAsset ? 'Обробка…' : 'Додати кадр')),
+            ]),
+            _photoCounter(),
+            if (_rejectedPhoto != null)
+              _photoNotice(icon: Icons.error_outline, message: _rejectedPhoto!),
+            if (_photos.isEmpty)
+              _photoNotice(
+                  icon: Icons.gradient_outlined,
+                  message:
+                      'Можна пропустити — логін і обкладинка курсу лишаться на фірмовому градієнті.'),
+            if (_photos.isNotEmpty) ...[
+              const Text(
+                  'Порядок кадрів = ротація в застосунку · перетягніть, щоб змінити.'),
+              ReorderableListView.builder(
+                key: const ValueKey('studio-hero-photos'),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                itemCount: _photos.length,
+                onReorder: _reorderPhotos,
+                itemBuilder: (context, index) =>
+                    _photoEditor(index, _photos[index]),
+              ),
+            ],
+          ],
+          status: checks.photos,
+          summary: _photoSummary()),
+      _releasePanel(canPublish: checks.canPublish),
+      if (_error != null)
+        Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(_error.toString(),
+                style: TextStyle(color: Theme.of(context).colorScheme.error))),
+    ]);
+  }
 
-  Widget _releasePanel() {
+  String _photoSummary() {
+    final count = _photos.length;
+    if (count == 0) return 'без кадрів — логін лишиться градієнтом';
+    if (count < kMinHeroPhotos) {
+      return '$count з $kMinHeroPhotos мінімальних · '
+          'додайте ще ${kMinHeroPhotos - count} або лишиться градієнт';
+    }
+    if (count > kMaxHeroPhotos) {
+      return '$count кадрів · максимум $kMaxHeroPhotos';
+    }
+    return '$count з $kMinHeroPhotos–$kMaxHeroPhotos кадрів';
+  }
+
+  /// 13b, previewed client-side. The server recomputes the derived palette at
+  /// publish, so this states the expected outcome rather than a guarantee.
+  Widget _contrastNote(BrandContrast contrast) {
+    final semantic = context.semantic;
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(contrast.accentFillAllowed ? Icons.check_circle : Icons.info_outline,
+          size: 18,
+          color:
+              contrast.accentFillAllowed ? semantic.success : semantic.warning),
+      const SizedBox(width: AppSpacing.xs),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(
+              contrast.accentFillAllowed
+                  ? 'Акцент проходить гейт світлої теми — CTA буде заливкою.'
+                  : 'Акцент не тримає 3:1 на світлому тлі — CTA стане ink '
+                      'із акцентною іконкою.',
+              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+              'на тлі $kLightBackground ${contrast.onLightBackground.toStringAsFixed(1)}:1 · '
+              'на ink ${contrast.onInk.toStringAsFixed(1)}:1 · '
+              'onAccent = ${contrast.onAccentIsInk ? 'ink' : 'білий'}',
+              style: semantic.dataLabel),
+          Text('Похідні кольори остаточно рахує сервер при публікації.',
+              style: Theme.of(context).textTheme.bodySmall),
+        ]),
+      ),
+    ]);
+  }
+
+  Widget _releasePanel({required bool canPublish}) {
     final status = _releaseStatus;
     String label(StudioRelease? release, String fallback) =>
         release == null ? fallback : release.status;
@@ -365,10 +534,15 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       _releaseAction(
         icon: Icons.publish_outlined,
         title: 'Застосувати зміни для користувачів',
-        description:
-            'Публікує збережені фото, тексти, кольори та інші налаштування бренду. Це наступний крок після «Зберегти чернетку».',
+        description: canPublish
+            ? 'Публікує збережені фото, тексти, кольори та інші налаштування бренду. Це наступний крок після «Зберегти чернетку».'
+            // 13m: publishing stays closed until every required section is
+            // green. The server refuses an invalid config anyway; blocking the
+            // button here turns a failed request into a visible checklist.
+            : 'Спочатку заповніть секції, позначені знаком уваги вище: '
+                'публікація вимагає всіх 7 обов’язкових полів.',
         buttonLabel: 'Опублікувати зміни',
-        onPressed: _releasing
+        onPressed: _releasing || !canPublish
             ? null
             : () => _release((s) async {
                   await s.publish();
@@ -461,188 +635,311 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
         ]),
       );
 
-  Widget _section(String title, List<Widget> children) => Card(
-      child: Padding(
-          padding: const EdgeInsets.all(16),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 12),
-            ...children.map((child) => Padding(
-                padding: const EdgeInsets.only(bottom: 12), child: child))
-          ])));
-  Widget _field(TextEditingController controller, String label, [int? max]) =>
-      AppTextField(
-          controller: controller,
-          label: label,
-          onChanged: (_) => _changed(),
-          maxLines: 1,
-          validator: max == null
-              ? null
-              : (value) =>
-                  (value ?? '').length > max ? 'Максимум $max символів' : null);
+  /// A collapsible section carrying its own validity (13m): the summary and
+  /// the status marker stay visible when the body is folded away.
+  Widget _section(
+    String title,
+    List<Widget> children, {
+    String? summary,
+    StudioSectionStatus? status,
+  }) {
+    final semantic = context.semantic;
+    final (icon, colour, label) = switch (status) {
+      StudioSectionStatus.ok => (
+          Icons.check_circle,
+          semantic.success,
+          'секція заповнена'
+        ),
+      StudioSectionStatus.warning => (
+          Icons.info_outline,
+          semantic.warning,
+          'секція заповнена частково'
+        ),
+      StudioSectionStatus.invalid => (
+          Icons.priority_high,
+          semantic.error,
+          'секція потребує уваги'
+        ),
+      null => (null, null, null),
+    };
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        childrenPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+        leading: icon == null
+            ? null
+            : Tooltip(message: label!, child: Icon(icon, color: colour)),
+        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        subtitle: summary == null
+            ? null
+            : Text(summary, style: Theme.of(context).textTheme.bodySmall),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+        children: children
+            .map((child) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: child))
+            .toList(),
+      ),
+    );
+  }
 
-  Widget _photoEditor(int index, BrandHeroPhoto photo) => Card(
-      margin: const EdgeInsets.only(top: 8),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        SizedBox(
-            height: 120,
-            width: double.infinity,
-            child: Image.network(photo.url,
+  Widget _field(TextEditingController controller, String label, [int? max]) {
+    final field = AppTextField(
+        controller: controller,
+        label: label,
+        onChanged: (_) => _changed(),
+        maxLines: 1,
+        validator: max == null
+            ? null
+            : (value) =>
+                (value ?? '').length > max ? 'Максимум $max символів' : null);
+    if (max == null) return field;
+    // Live counter against the 13a schema limit, next to the validator.
+    final length = controller.text.characters.length;
+    final semantic = context.semantic;
+    return Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      field,
+      Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.xxs),
+        child: Text('$length/$max',
+            style: length > max
+                ? semantic.dataLabel.copyWith(color: semantic.error)
+                : semantic.dataLabel),
+      ),
+    ]);
+  }
+
+  /// One hero frame: drag handle, focal-point editor and the live 13d crops.
+  ///
+  /// The key is the asset URL, not the list index — a [ReorderableListView]
+  /// child must keep its identity across a reorder, and a key that changed on
+  /// every focal update would tear down the drag gesture mid-pan.
+  Widget _photoEditor(int index, BrandHeroPhoto photo) {
+    final semantic = context.semantic;
+    final meta = _photoMeta[photo.url];
+    return Card(
+      key: ValueKey(photo.url),
+      margin: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: Tooltip(
+                message: 'Перетягніть, щоб змінити порядок ротації',
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xxs),
+                  child: Icon(Icons.drag_handle, color: semantic.textSecondary),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text('Кадр ${index + 1}',
+                  style: Theme.of(context).textTheme.titleSmall),
+            ),
+            if (meta != null) Text(meta, style: semantic.dataLabel),
+            IconButton(
+                tooltip: 'Видалити з чернетки',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => setState(() {
+                      _photos.removeAt(index);
+                      _dirty = true;
+                    })),
+          ]),
+          const SizedBox(height: AppSpacing.xs),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: _focalPicker(index, photo)),
+            const SizedBox(width: AppSpacing.sm),
+            _focalCrops(photo),
+          ]),
+          const SizedBox(height: AppSpacing.xs),
+          Row(children: [
+            Expanded(
+              child: Text(
+                  'Тап по кадру ставить точку фокуса — праворуч живі кропи.',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+            Text(
+                'focal {x: ${photo.focalX.toStringAsFixed(2)}, '
+                'y: ${photo.focalY.toStringAsFixed(2)}}',
+                style: semantic.dataLabel),
+          ]),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+              spacing: AppSpacing.xs,
+              children: _photoRoles
+                  .map((role) => AppChip(
+                      label: role,
+                      selected: photo.roles.contains(role),
+                      onSelected: (selected) {
+                        final roles = Set<String>.from(photo.roles);
+                        selected ? roles.add(role) : roles.remove(role);
+                        // A frame with no role would never be rendered.
+                        if (roles.isNotEmpty) _updatePhoto(index, roles: roles);
+                      }))
+                  .toList()),
+        ]),
+      ),
+    );
+  }
+
+  /// Tap or drag anywhere on the master frame to place focal {x, y} (13m).
+  ///
+  /// The box is locked to the 4:3 master ratio required by 13d, so a
+  /// conforming upload maps its tap position onto the source image 1:1.
+  Widget _focalPicker(int index, BrandHeroPhoto photo) => AspectRatio(
+        aspectRatio: 4 / 3,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            void place(Offset local) => _updatePhoto(
+                  index,
+                  focalX: local.dx / constraints.maxWidth,
+                  focalY: local.dy / constraints.maxHeight,
+                );
+            return Semantics(
+              label: 'Точка фокуса кадру ${index + 1}',
+              child: GestureDetector(
+                key: ValueKey('studio-focal-picker-$index'),
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (details) => place(details.localPosition),
+                onPanStart: (details) => place(details.localPosition),
+                onPanUpdate: (details) => place(details.localPosition),
+                child: ClipRRect(
+                  borderRadius: AppRadius.md,
+                  child: Stack(fit: StackFit.expand, children: [
+                    _frameImage(photo.url, fit: BoxFit.cover),
+                    Align(
+                      alignment:
+                          Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
+                      child: _focalMarker(),
+                    ),
+                  ]),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+
+  /// A draft frame straight from storage. Loading and failure both resolve to
+  /// a neutral surface so the editor never shows a broken-image box.
+  Widget _frameImage(String url,
+          {required BoxFit fit, Alignment alignment = Alignment.center}) =>
+      Image.network(
+        url,
+        fit: fit,
+        alignment: alignment,
+        errorBuilder: (context, _, __) => ColoredBox(
+          color: context.semantic.surfaceStrong,
+          child: Icon(Icons.broken_image_outlined,
+              color: context.semantic.textSecondary),
+        ),
+        frameBuilder: (context, child, frame, wasSynchronous) =>
+            wasSynchronous || frame != null
+                ? child
+                : ColoredBox(color: context.semantic.surfaceStrong),
+      );
+
+  Widget _focalMarker() => Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Theme.of(context).colorScheme.primary,
+          border: Border.all(color: context.semantic.surface, width: 2),
+        ),
+      );
+
+  /// The three crops 13d derives from one master, all centred on focal.
+  Widget _focalCrops(BrandHeroPhoto photo) => SizedBox(
+        width: 92,
+        child: Column(children: [
+          _crop(photo, label: 'Логін', aspectRatio: 390 / 300),
+          _crop(photo, label: 'Пейвол', aspectRatio: 390 / 280),
+          _crop(photo,
+              label: 'Курс', aspectRatio: 1, borderRadius: AppRadius.md),
+        ]),
+      );
+
+  Widget _crop(
+    BrandHeroPhoto photo, {
+    required String label,
+    required double aspectRatio,
+    BorderRadius borderRadius = AppRadius.sm,
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(height: AppSpacing.xxs),
+          ClipRRect(
+            borderRadius: borderRadius,
+            child: AspectRatio(
+              aspectRatio: aspectRatio,
+              child: _frameImage(
+                photo.url,
                 fit: BoxFit.cover,
                 alignment:
-                    Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1))),
-        Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(children: [
-              Wrap(
-                  spacing: 6,
-                  children: ['home', 'login', 'paywall', 'collection']
-                      .map((role) => FilterChip(
-                          label: Text(role),
-                          selected: photo.roles.contains(role),
-                          onSelected: (selected) => setState(() {
-                                final roles = Set<String>.from(photo.roles);
-                                selected ? roles.add(role) : roles.remove(role);
-                                if (roles.isNotEmpty) {
-                                  _photos[index] = BrandHeroPhoto(
-                                      url: photo.url,
-                                      roles: roles,
-                                      focalX: photo.focalX,
-                                      focalY: photo.focalY);
-                                }
-                                _dirty = true;
-                              })))
-                      .toList()),
-              Row(children: [
-                const Text('Фокус'),
-                Expanded(
-                    child: Slider(
-                        value: photo.focalX,
-                        onChanged: (value) => setState(() {
-                              _photos[index] = BrandHeroPhoto(
-                                  url: photo.url,
-                                  roles: photo.roles,
-                                  focalX: value,
-                                  focalY: photo.focalY);
-                              _dirty = true;
-                            }))),
-                IconButton(
-                    tooltip: 'Видалити з чернетки',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => setState(() {
-                          _photos.removeAt(index);
-                          _dirty = true;
-                        }))
-              ]),
-            ])),
-      ]));
+                    Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
+              ),
+            ),
+          ),
+        ]),
+      );
 
-  Widget _previews(BrandConfig config) => Theme(
-      data: AppThemeV2.light(config),
-      child: Builder(
-          builder: (context) =>
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Живе прев’ю',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                SegmentedButton<int>(
-                    segments: const [
-                      ButtonSegment(value: 0, label: Text('Home')),
-                      ButtonSegment(value: 1, label: Text('Логін')),
-                      ButtonSegment(value: 2, label: Text('Пейвол'))
-                    ],
-                    selected: {
-                      _preview
-                    },
-                    onSelectionChanged: (v) =>
-                        setState(() => _preview = v.first)),
-                const SizedBox(height: 12),
-                _StudioConsumerPreview(brand: config.brand, tab: _preview)
-              ])));
-}
+  Widget _photoCounter() {
+    final count = _photos.length;
+    final missing = kMinHeroPhotos - count;
+    return Text(
+      missing > 0
+          ? '$count з $kMinHeroPhotos–$kMaxHeroPhotos кадрів · додайте ще $missing'
+          : count > kMaxHeroPhotos
+              ? '$count з $kMinHeroPhotos–$kMaxHeroPhotos кадрів · приберіть зайві'
+              : '$count з $kMinHeroPhotos–$kMaxHeroPhotos кадрів',
+      style: context.semantic.dataLabel,
+    );
+  }
 
-class _StudioConsumerPreview extends StatelessWidget {
-  const _StudioConsumerPreview({required this.brand, required this.tab});
-  final BrandDetails brand;
-  final int tab;
-  @override
-  Widget build(BuildContext context) => AspectRatio(
-      aspectRatio: .66,
-      child: Card(
-          clipBehavior: Clip.antiAlias,
-          child: switch (tab) {
-            0 =>
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: BrandHeader(brand: brand)),
-                Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Text(brand.voice.greeting,
-                        style: Theme.of(context).textTheme.headlineSmall)),
-                const Spacer(),
-                Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: AppButton(
-                        label: 'Сканувати інгредієнти',
-                        icon: Icons.photo_camera_outlined,
-                        expand: true,
-                        onPressed: () {}))
-              ]),
-            1 => DecoratedBox(
-                decoration:
-                    BoxDecoration(color: SemanticColors.dark.background),
-                child: Column(children: [
-                  Expanded(child: BrandHero(brand: brand, role: 'login')),
-                  Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(children: [
-                        Text(brand.voice.loginTitle,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleLarge
-                                ?.copyWith(
-                                    color: SemanticColors.dark.textPrimary)),
-                        const SizedBox(height: 12),
-                        const TextField(
-                            decoration: InputDecoration(labelText: 'Email')),
-                        const SizedBox(height: 8),
-                        AppButton(
-                            label: 'Увійти', expand: true, onPressed: () {})
-                      ]))
-                ])),
-            _ => DecoratedBox(
-                decoration:
-                    BoxDecoration(color: SemanticColors.dark.background),
-                child: Column(children: [
-                  SizedBox(
-                      height: 120,
-                      child: BrandHero(brand: brand, role: 'paywall')),
-                  Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(brand.voice.paywallTitle,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                        color:
-                                            SemanticColors.dark.textPrimary)),
-                            const SizedBox(height: 12),
-                            Text('Premium-колекції та рецепти',
-                                style: TextStyle(
-                                    color: SemanticColors.dark.textSecondary)),
-                            const SizedBox(height: 16),
-                            AppButton(
-                                label: 'Оформити підписку',
-                                expand: true,
-                                onPressed: () {})
-                          ]))
-                ])),
-          }));
+  Widget _photoNotice({required IconData icon, required String message}) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: context.semantic.textSecondary),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+              child:
+                  Text(message, style: Theme.of(context).textTheme.bodySmall)),
+        ],
+      );
+
+  Widget _previews(BrandConfig config) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Живе прев’ю', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.xs),
+        SegmentedButton<StudioPreviewTab>(
+            segments: const [
+              ButtonSegment(value: StudioPreviewTab.home, label: Text('Home')),
+              ButtonSegment(
+                  value: StudioPreviewTab.login, label: Text('Логін')),
+              ButtonSegment(
+                  value: StudioPreviewTab.paywall, label: Text('Пейвол'))
+            ],
+            selected: {
+              _preview
+            },
+            onSelectionChanged: (value) =>
+                setState(() => _preview = value.first)),
+        const SizedBox(height: AppSpacing.sm),
+        StudioBrandPreview(config: config, tab: _preview),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+            'Рендер тими самими віджетами, що й застосунок. Ціни на пейволі — '
+            'приклад: справжні приходять з App Store і Google Play.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]);
 }
