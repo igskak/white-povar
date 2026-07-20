@@ -121,18 +121,20 @@ class _IngredientRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColorsV2.surfaceStrong)),
+        decoration: BoxDecoration(
+          border:
+              Border(bottom: BorderSide(color: context.semantic.surfaceStrong)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.circle, size: 8, color: AppColorsV2.accent),
+            Icon(Icons.circle,
+                size: 8, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: AppSpacing.sm),
             Expanded(child: Text(ingredient.name)),
             Text(
               '${ingredient.amount} ${ingredient.unit}'.trim(),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColorsV2.textSecondary,
+                    color: context.semantic.textSecondary,
                   ),
             ),
           ],
@@ -153,10 +155,12 @@ class _InstructionStep extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 14,
-              backgroundColor:
-                  number == 1 ? AppColorsV2.accent : AppColorsV2.surfaceStrong,
-              foregroundColor:
-                  number == 1 ? AppColorsV2.ink : AppColorsV2.textPrimary,
+              backgroundColor: number == 1
+                  ? Theme.of(context).colorScheme.primary
+                  : context.semantic.surfaceStrong,
+              foregroundColor: number == 1
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : context.semantic.textPrimary,
               child: Text('$number'),
             ),
             const SizedBox(width: AppSpacing.sm),
@@ -176,7 +180,7 @@ class _EmptySection extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         label,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColorsV2.textSecondary,
+              color: context.semantic.textSecondary,
             ),
       );
 }

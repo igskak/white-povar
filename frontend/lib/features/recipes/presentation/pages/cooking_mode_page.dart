@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../app/router/route_models.dart';
+import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
@@ -81,72 +82,74 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
     final isAuthenticated = ref.watch(authProvider).isAuthenticated;
     final hasAccess = ref.watch(isPremiumProvider);
-    return Scaffold(
-      backgroundColor: AppColorsV2.ink,
-      body: recipeAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _CookingError(onExit: () => context.pop()),
-        data: (recipe) {
-          if (recipe.isPremium && !hasAccess) {
-            return _CookingGate(
-              onUnlock: () => _openGate(context, isAuthenticated),
-            );
-          }
-          if (recipe.contentKind != ContentKind.recipe &&
-              recipe.contentKind != ContentKind.process) {
-            return const _CookingEmpty();
-          }
-          if (recipe.instructions.isEmpty) return const _CookingEmpty();
-          _step = _step.clamp(0, recipe.instructions.length - 1);
-          if (!_sessionStored) {
-            _sessionStored = true;
-            // Persist immediately so even the first step survives a restart.
-            _saveProgress(recipe);
-          }
-          if (_complete) {
-            return _CookingComplete(
+    return ForcedDarkTheme(
+      child: Scaffold(
+        backgroundColor: AppColorsV2.ink,
+        body: recipeAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => _CookingError(onExit: () => context.pop()),
+          data: (recipe) {
+            if (recipe.isPremium && !hasAccess) {
+              return _CookingGate(
+                onUnlock: () => _openGate(context, isAuthenticated),
+              );
+            }
+            if (recipe.contentKind != ContentKind.recipe &&
+                recipe.contentKind != ContentKind.process) {
+              return const _CookingEmpty();
+            }
+            if (recipe.instructions.isEmpty) return const _CookingEmpty();
+            _step = _step.clamp(0, recipe.instructions.length - 1);
+            if (!_sessionStored) {
+              _sessionStored = true;
+              // Persist immediately so even the first step survives a restart.
+              _saveProgress(recipe);
+            }
+            if (_complete) {
+              return _CookingComplete(
+                title: recipe.title,
+                onExit: () => context.pop(),
+              );
+            }
+            return _CookingStep(
               title: recipe.title,
-              onExit: () => context.pop(),
-            );
-          }
-          return _CookingStep(
-            title: recipe.title,
-            step: _step,
-            steps: recipe.instructions,
-            imageUrl: recipe.images.isEmpty ? null : recipe.images.first,
-            onExit: _confirmExit,
-            onTimer: () => _startTimer(recipe),
-            timerLabel: _timerLabel(),
-            onSelectStep: (step) async {
-              setState(() => _step = step);
-              await _saveProgress(recipe);
-            },
-            onPrevious: _step == 0
-                ? null
-                : () async {
-                    setState(() => _step--);
-                    await _saveProgress(recipe);
-                  },
-            onNext: () async {
-              if (_step == recipe.instructions.length - 1) {
-                setState(() => _complete = true);
-                await _progressStore.clear();
-                if (isAuthenticated) {
-                  try {
-                    await ref
-                        .read(recipeServiceProvider)
-                        .recordHistory(recipe.id, 'cooked');
-                  } catch (_) {
-                    // Completion stays local; a network retry must not undo it.
-                  }
-                }
-              } else {
-                setState(() => _step++);
+              step: _step,
+              steps: recipe.instructions,
+              imageUrl: recipe.images.isEmpty ? null : recipe.images.first,
+              onExit: _confirmExit,
+              onTimer: () => _startTimer(recipe),
+              timerLabel: _timerLabel(),
+              onSelectStep: (step) async {
+                setState(() => _step = step);
                 await _saveProgress(recipe);
-              }
-            },
-          );
-        },
+              },
+              onPrevious: _step == 0
+                  ? null
+                  : () async {
+                      setState(() => _step--);
+                      await _saveProgress(recipe);
+                    },
+              onNext: () async {
+                if (_step == recipe.instructions.length - 1) {
+                  setState(() => _complete = true);
+                  await _progressStore.clear();
+                  if (isAuthenticated) {
+                    try {
+                      await ref
+                          .read(recipeServiceProvider)
+                          .recordHistory(recipe.id, 'cooked');
+                    } catch (_) {
+                      // Completion stays local; a network retry must not undo it.
+                    }
+                  }
+                } else {
+                  setState(() => _step++);
+                  await _saveProgress(recipe);
+                }
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -242,7 +245,7 @@ class _CookingStep extends StatelessWidget {
               onSelected: onSelectStep,
             ),
           ),
-          const VerticalDivider(width: 1, color: Color(0xFF2E2820)),
+          VerticalDivider(width: 1, color: context.semantic.surfaceStrong),
           Expanded(
               key: const ValueKey('desktop-cooking-active-step'),
               child: Padding(
@@ -290,8 +293,8 @@ class _StepContent extends StatelessWidget {
     final stepCopy = Column(mainAxisSize: MainAxisSize.min, children: [
       Text('КРОК ${step + 1}',
           textAlign: TextAlign.center,
-          style: const TextStyle(
-              color: AppColorsV2.accent,
+          style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.8)),
       const SizedBox(height: AppSpacing.md),
@@ -354,9 +357,9 @@ class _StepContent extends StatelessWidget {
       ]),
       if (desktop) ...[
         const SizedBox(height: AppSpacing.sm),
-        const Text('← / → для навігації',
+        Text('← / → для навігації',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white54)),
+            style: TextStyle(color: context.semantic.textSecondary)),
       ],
     ]);
   }
@@ -414,12 +417,12 @@ class _CookingStepPhoto extends StatelessWidget {
   const _CookingStepPhoto({required this.imageUrl});
 
   final String? imageUrl;
-  static const _fallback = DecoratedBox(
+  static final _fallback = DecoratedBox(
     decoration: BoxDecoration(
-      color: Color(0xFF2E2820),
+      color: SemanticColors.dark.surfaceStrong,
       borderRadius: AppRadius.lg,
     ),
-    child: Center(
+    child: const Center(
       child: Icon(Icons.restaurant_menu_rounded,
           size: 52, color: AppColorsV2.onInk),
     ),
@@ -428,7 +431,7 @@ class _CookingStepPhoto extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl == null || imageUrl!.isEmpty) {
-      return const AspectRatio(aspectRatio: 1, child: _fallback);
+      return AspectRatio(aspectRatio: 1, child: _fallback);
     }
     return AspectRatio(
       aspectRatio: 1,
@@ -457,8 +460,8 @@ class _Progress extends StatelessWidget {
         const SizedBox(height: 4),
         LinearProgressIndicator(
             value: (step + 1) / total,
-            color: AppColorsV2.accent,
-            backgroundColor: Colors.white24)
+            color: Theme.of(context).colorScheme.primary,
+            backgroundColor: SemanticColors.dark.surfaceStrong)
       ]);
 }
 
@@ -489,7 +492,7 @@ class _StepList extends StatelessWidget {
             _Progress(step: active, total: steps.length),
           ]),
         ),
-        const Divider(height: 1, color: Color(0xFF2E2820)),
+        Divider(height: 1, color: context.semantic.surfaceStrong),
         Expanded(
           child: ListView.builder(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -506,10 +509,10 @@ class _StepList extends StatelessWidget {
                         borderRadius: AppRadius.md),
                     leading: CircleAvatar(
                         backgroundColor: index == active
-                            ? AppColorsV2.accent
+                            ? Theme.of(context).colorScheme.primary
                             : index < active
                                 ? AppColorsV2.success
-                                : const Color(0xFF2E2820),
+                                : context.semantic.surfaceStrong,
                         child: index < active
                             ? const Icon(Icons.check,
                                 color: AppColorsV2.ink, size: 18)
@@ -535,7 +538,8 @@ class _CookingComplete extends StatelessWidget {
       child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.restaurant, size: 72, color: AppColorsV2.accent),
+            Icon(Icons.restaurant,
+                size: 72, color: Theme.of(context).colorScheme.primary),
             const SizedBox(height: AppSpacing.md),
             Text('Смачного!',
                 style: Theme.of(context)
@@ -559,7 +563,7 @@ class _CookingGate extends StatelessWidget {
       child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.lock, size: 52, color: AppColorsV2.accent),
+            const Icon(Icons.lock, size: 52, color: AppColorsV2.premiumGold),
             const SizedBox(height: AppSpacing.md),
             Text('Режим готування — у Premium',
                 style: Theme.of(context)

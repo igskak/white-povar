@@ -283,7 +283,7 @@ class _RecipeBody extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodyLarge
-                    ?.copyWith(color: AppColorsV2.textSecondary)),
+                    ?.copyWith(color: context.semantic.textSecondary)),
             const SizedBox(height: AppSpacing.lg),
             _StatsRow(recipe: recipe),
             if (!desktop && !locked) ...[
@@ -295,7 +295,13 @@ class _RecipeBody extends StatelessWidget {
             ],
             const SizedBox(height: AppSpacing.xl),
             if (locked)
-              _PremiumGate(onUnlock: onUnlock)
+              PremiumGateCard(
+                title: 'Рецепт від шефа — у Premium',
+                message:
+                    'Повний рецепт, відео й режим приготування доступні з Premium.',
+                ctaLabel: 'Відкрити Premium',
+                onUnlock: onUnlock,
+              )
             else
               ContentDetailSections(
                 ingredients: recipe.ingredients,
@@ -453,35 +459,6 @@ class _DesktopRecipeActionBar extends StatelessWidget {
       );
 }
 
-class _PremiumGate extends StatelessWidget {
-  const _PremiumGate({required this.onUnlock});
-  final VoidCallback onUnlock;
-  @override
-  Widget build(BuildContext context) => ContentCard(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(children: [
-          const PremiumBadge(size: 30),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Рецепт від шефа — у Premium',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Повний рецепт, відео й режим приготування доступні з Premium.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: AppColorsV2.textSecondary)),
-          const SizedBox(height: AppSpacing.md),
-          AppButton(
-              label: 'Відкрити Premium',
-              icon: Icons.workspace_premium,
-              onPressed: onUnlock,
-              expand: true),
-        ]),
-      );
-}
-
 class _BottomAction extends StatelessWidget {
   const _BottomAction(
       {required this.enabled,
@@ -562,13 +539,13 @@ class _Stat extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => DecoratedBox(
-      decoration: const BoxDecoration(
-          color: AppColorsV2.surfaceStrong, borderRadius: AppRadius.md),
+      decoration: BoxDecoration(
+          color: context.semantic.surfaceStrong, borderRadius: AppRadius.md),
       child: Padding(
           padding: const EdgeInsets.symmetric(
               vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
           child: Column(children: [
-            Icon(icon, color: AppColorsV2.accent),
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
             Text(value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
