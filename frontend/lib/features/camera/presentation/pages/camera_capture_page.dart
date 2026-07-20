@@ -279,7 +279,7 @@ class _CameraActionView extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         color: theme.colorScheme.surface,
-        border: Border.all(color: Colors.white.withOpacity(.18), width: 1.5),
+        border: Border.all(color: context.semantic.surfaceStrong, width: 1.5),
       ),
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -382,17 +382,18 @@ class _NativeCaptureView extends StatelessWidget {
         if (initialized)
           native.CameraPreview(controller!)
         else
-          const ColoredBox(
-            color: Color(0xFF17130F),
+          ColoredBox(
+            color: AppColorsV2.ink,
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.photo_camera_outlined,
-                      size: 72, color: Colors.white38),
-                  SizedBox(height: AppSpacing.sm),
+                      size: 72, color: SemanticColors.dark.surfaceStrong),
+                  const SizedBox(height: AppSpacing.sm),
                   Text('Готуємо видошукач',
-                      style: TextStyle(color: Colors.white70)),
+                      style:
+                          TextStyle(color: SemanticColors.dark.textSecondary)),
                 ],
               ),
             ),
@@ -478,8 +479,9 @@ class _NativeCaptureView extends StatelessWidget {
                         style: IconButton.styleFrom(
                           backgroundColor: AppColorsV2.onInk,
                           foregroundColor: AppColorsV2.ink,
-                          side:
-                              const BorderSide(color: Colors.white54, width: 4),
+                          side: BorderSide(
+                              color: SemanticColors.dark.textSecondary,
+                              width: 4),
                         ),
                       ),
                     ),

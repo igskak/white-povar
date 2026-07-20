@@ -51,11 +51,25 @@ class IngredientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final confirmation = Checkbox(
-      value: ingredient.isConfirmed,
-      onChanged: (_) => onToggle(),
-      activeColor: AppColorsV2.accent,
+    final semantic = context.semantic;
+    // Handoff §3 IngredientRow: checkbox 22 inside a 44 hit area.
+    final confirmation = SizedBox.square(
+      dimension: 44,
+      child: Center(
+        child: SizedBox.square(
+          dimension: 22,
+          child: Checkbox(
+            value: ingredient.isConfirmed,
+            onChanged: (_) => onToggle(),
+            activeColor: Theme.of(context).colorScheme.primary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ),
     );
+    // < 60% confidence needs an explicit confirmation prompt.
+    final lowConfidence =
+        ingredient.confidence > 0 && ingredient.confidence < .6;
     final ingredientInfo = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -84,6 +98,16 @@ class IngredientCard extends StatelessWidget {
           const SizedBox(height: 4),
           _buildConfidenceIndicator(context),
         ],
+        if (lowConfidence) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Підтвердіть цей продукт',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: semantic.warning),
+          ),
+        ],
       ],
     );
     final actions = Row(
@@ -98,7 +122,7 @@ class IngredientCard extends StatelessWidget {
           onPressed: onDelete,
           icon: const Icon(Icons.delete, size: 20),
           tooltip: 'Видалити продукт',
-          color: AppColorsV2.error,
+          color: semantic.error,
         ),
       ],
     );
@@ -108,7 +132,10 @@ class IngredientCard extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.lg,
-        side: BorderSide(color: Colors.white.withOpacity(.08)),
+        side: BorderSide(
+          color: lowConfidence ? semantic.warning : semantic.surfaceStrong,
+          width: lowConfidence ? 1.5 : 1,
+        ),
       ),
       child: InkWell(
         onTap: onTap,
@@ -144,11 +171,12 @@ class IngredientCard extends StatelessWidget {
 
   Widget _buildConfidenceIndicator(BuildContext context) {
     final percentage = (ingredient.confidence * 100).toInt();
+    final semantic = context.semantic;
     final color = ingredient.confidence > 0.7
-        ? AppColorsV2.success
+        ? semantic.success
         : ingredient.confidence > 0.4
-            ? AppColorsV2.warning
-            : AppColorsV2.error;
+            ? semantic.warning
+            : semantic.error;
 
     return Row(
       children: [
@@ -219,7 +247,7 @@ class IngredientSummary extends StatelessWidget {
                   'Підтверджено',
                   '$confirmedCount/$totalCount',
                   Icons.check_circle,
-                  AppColorsV2.success,
+                  context.semantic.success,
                 ),
                 const SizedBox(width: 16),
                 _buildSummaryItem(
@@ -228,8 +256,8 @@ class IngredientSummary extends StatelessWidget {
                   '${(averageConfidence * 100).toInt()}%',
                   Icons.analytics,
                   averageConfidence > 0.7
-                      ? AppColorsV2.success
-                      : AppColorsV2.warning,
+                      ? context.semantic.success
+                      : context.semantic.warning,
                 ),
               ],
             ),

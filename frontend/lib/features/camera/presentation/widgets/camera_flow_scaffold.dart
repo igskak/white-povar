@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../app/theme/brand_theme.dart';
+import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 
 enum CameraFlowStep {
@@ -33,29 +35,15 @@ class CameraFlowScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context);
     final immersiveCapture = immersive &&
         step == CameraFlowStep.capture &&
         !kIsWeb &&
         MediaQuery.sizeOf(context).width < 600;
-    final brand = base.extension<BrandThemeExtension>();
-    final darkScheme = base.colorScheme.copyWith(
-      brightness: Brightness.dark,
-      primary: brand?.accentOnDark ?? base.colorScheme.primary,
-      surface: const Color(0xFF221D16),
-      onSurface: AppColorsV2.onInk,
-    );
 
-    return Theme(
-      data: base.copyWith(
-        brightness: Brightness.dark,
-        colorScheme: darkScheme,
-        scaffoldBackgroundColor: AppColorsV2.ink,
-        textTheme: base.textTheme.apply(
-          bodyColor: AppColorsV2.onInk,
-          displayColor: AppColorsV2.onInk,
-        ),
-      ),
+    // The flow is dark in both themes. ForcedDarkTheme swaps the whole theme,
+    // including the SemanticColors extension, so descendants reading
+    // `context.semantic` get the dark column rather than light-on-dark.
+    return ForcedDarkTheme(
       child: Scaffold(
         backgroundColor: AppColorsV2.ink,
         appBar: immersiveCapture
@@ -98,7 +86,7 @@ class CameraFlowScaffold extends StatelessWidget {
                     }
                     return Column(
                       children: [
-                        _CameraStepHeader(
+                        FlowStepper(
                           labels: _labels,
                           currentStep: step.index + 1,
                         ),
@@ -140,7 +128,7 @@ class _DesktopCameraStepRail extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: AppColorsV2.onInk.withOpacity(.62))),
+                  ?.copyWith(color: context.semantic.textSecondary)),
           const SizedBox(height: AppSpacing.lg),
           for (var index = 0; index < labels.length; index++)
             _DesktopStep(
@@ -155,7 +143,7 @@ class _DesktopCameraStepRail extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: AppColorsV2.onInk.withOpacity(.48))),
+                  ?.copyWith(color: context.semantic.textSecondary)),
         ],
       ),
     );
@@ -183,22 +171,23 @@ class _DesktopStep extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: AppRadius.md,
-            color: current ? const Color(0xFF221D16) : Colors.transparent,
-            border: current ? Border.all(color: const Color(0xFF2E2820)) : null,
+            color: current ? context.semantic.surface : Colors.transparent,
+            border: current
+                ? Border.all(color: context.semantic.surfaceStrong)
+                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.sm),
             child: Row(children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: done || current
-                    ? accent
-                    : AppColorsV2.onInk.withOpacity(.14),
+                backgroundColor:
+                    done || current ? accent : context.semantic.surfaceStrong,
                 child: Icon(done ? Icons.check : Icons.circle,
                     size: done ? 16 : 8,
                     color: done || current
                         ? AppColorsV2.ink
-                        : AppColorsV2.onInk.withOpacity(.5)),
+                        : context.semantic.textSecondary),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
@@ -206,7 +195,7 @@ class _DesktopStep extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: current
                             ? AppColorsV2.onInk
-                            : AppColorsV2.onInk.withOpacity(.58),
+                            : context.semantic.textSecondary,
                         fontWeight: current ? FontWeight.w700 : null)),
               ),
             ]),
@@ -252,76 +241,6 @@ class CameraFlowStatusView extends StatelessWidget {
     return StateView.loading(
       title: title,
       subtitle: subtitle,
-    );
-  }
-}
-
-class _CameraStepHeader extends StatelessWidget {
-  const _CameraStepHeader({
-    required this.labels,
-    required this.currentStep,
-  });
-
-  final List<String> labels;
-  final int currentStep;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-      child: Row(
-        children: List.generate(labels.length, (index) {
-          final stepNumber = index + 1;
-          final isDone = stepNumber < currentStep;
-          final isCurrent = stepNumber == currentStep;
-          final color = isDone || isCurrent
-              ? Theme.of(context)
-                      .extension<BrandThemeExtension>()
-                      ?.accentOnDark ??
-                  AppColorsV2.premiumGold
-              : AppColorsV2.onInk.withOpacity(.18);
-
-          return Expanded(
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: color,
-                  child: Text(
-                    '$stepNumber',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    labels[index],
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: isCurrent
-                          ? AppColorsV2.onInk
-                          : AppColorsV2.onInk.withOpacity(.52),
-                      fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (index < labels.length - 1)
-                  Container(
-                    width: 16,
-                    height: 1,
-                    color: AppColorsV2.onInk.withOpacity(.16),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                  ),
-              ],
-            ),
-          );
-        }),
-      ),
     );
   }
 }

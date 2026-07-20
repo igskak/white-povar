@@ -100,10 +100,10 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
     final confidence = widget.ingredient!.confidence;
     final percentage = (confidence * 100).toInt();
     final color = confidence > 0.7
-        ? AppColorsV2.success
+        ? context.semantic.success
         : confidence > 0.4
-            ? AppColorsV2.warning
-            : AppColorsV2.error;
+            ? context.semantic.warning
+            : context.semantic.error;
 
     return Container(
       padding: const EdgeInsets.all(12),
