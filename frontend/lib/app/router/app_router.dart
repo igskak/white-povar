@@ -299,6 +299,15 @@ class AdaptiveNavigationShell extends ConsumerWidget {
                   selectedIndex: selectedIndex,
                   labelType: NavigationRailLabelType.all,
                   onDestinationSelected: onDestinationSelected,
+                  // 13f: the blogger avatar sits at the top of the rail.
+                  leading: Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 8),
+                    child: BrandAvatar(
+                      brand:
+                          ref.watch(tenantBootstrapProvider).brandConfig.brand,
+                      radius: 20,
+                    ),
+                  ),
                   destinations: _navigationRailDestinations,
                 ),
                 const VerticalDivider(width: 1),

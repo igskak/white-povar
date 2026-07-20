@@ -206,12 +206,15 @@ class _RecipeHero extends StatelessWidget {
         height: expand ? null : 320,
         child: Stack(fit: StackFit.expand, children: [
           _RecipeHeroImage(recipe: recipe),
-          const DecoratedBox(
+          DecoratedBox(
               decoration: BoxDecoration(
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0x66000000), Color(0xE616130F)]))),
+                      colors: [
+                AppColorsV2.ink.withOpacity(.40),
+                AppColorsV2.ink.withOpacity(.90)
+              ]))),
           Positioned(
               top: AppSpacing.md,
               left: AppSpacing.sm,

@@ -112,31 +112,31 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       materialProgressColors: ChewieProgressColors(
         playedColor: Theme.of(context).primaryColor,
         handleColor: Theme.of(context).primaryColor,
-        backgroundColor: Colors.grey,
-        bufferedColor: Colors.grey[300]!,
+        backgroundColor: SemanticColors.dark.surfaceStrong,
+        bufferedColor: SemanticColors.dark.textSecondary,
       ),
       placeholder: Container(
-        color: Colors.black12,
+        color: AppColorsV2.ink.withOpacity(.12),
         child: const Center(
           child: CircularProgressIndicator(),
         ),
       ),
       errorBuilder: (context, errorMessage) {
         return Container(
-          color: Colors.black,
-          child: const Center(
+          color: AppColorsV2.ink,
+          child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.error,
-                  color: Colors.white,
+                  color: SemanticColors.dark.error,
                   size: 42,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'Не вдалося завантажити відео',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: SemanticColors.dark.textPrimary),
                 ),
               ],
             ),
@@ -272,7 +272,7 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       height: height,
       decoration: BoxDecoration(
         borderRadius: borderRadius,
-        color: Colors.black12,
+        color: AppColorsV2.ink.withOpacity(.12),
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
@@ -350,9 +350,9 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
   }
 
   Widget _buildLoadingWidget() {
-    return const Center(
+    return Center(
       child: CircularProgressIndicator(
-        color: Colors.white,
+        color: SemanticColors.dark.textPrimary,
       ),
     );
   }
@@ -361,20 +361,20 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      color: Colors.grey[300],
+      color: SemanticColors.dark.surfaceStrong,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.error_outline,
             size: 48,
-            color: Colors.grey[600],
+            color: SemanticColors.dark.textSecondary,
           ),
           const SizedBox(height: 8),
           Text(
             _errorMessage ?? 'Не вдалося завантажити відео',
             style: TextStyle(
-              color: Colors.grey[600],
+              color: SemanticColors.dark.textSecondary,
               fontSize: 14,
             ),
             textAlign: TextAlign.center,

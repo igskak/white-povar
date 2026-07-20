@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/tokens/app_tokens.dart';
+
 class LoadingOverlay extends StatelessWidget {
   final String message;
   final bool showProgress;
@@ -15,7 +17,7 @@ class LoadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black54,
+      color: AppColorsV2.ink.withOpacity(.54),
       child: Center(
         child: Card(
           margin: const EdgeInsets.all(32),
@@ -104,7 +106,7 @@ class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black54,
+      color: AppColorsV2.ink.withOpacity(.54),
       child: Center(
         child: Card(
           margin: const EdgeInsets.all(32),
@@ -156,7 +158,7 @@ class _IngredientLoadingAnimationState extends State<IngredientLoadingAnimation>
                 Text(
                   'This may take a few seconds...',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.grey[600],
+                        color: context.semantic.textSecondary,
                       ),
                   textAlign: TextAlign.center,
                 ),

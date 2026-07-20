@@ -93,12 +93,15 @@ class _DesktopPaywall extends StatelessWidget {
           children: [
             Opacity(
                 opacity: .35, child: BrandHero(brand: brand, role: 'paywall')),
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xB316130F), Color(0xF616130F)],
+                  colors: [
+                    AppColorsV2.ink.withOpacity(.70),
+                    AppColorsV2.ink.withOpacity(.96),
+                  ],
                 ),
               ),
             ),

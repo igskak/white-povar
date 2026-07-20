@@ -208,12 +208,15 @@ class _LoginHero extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               BrandHero(brand: brand, role: 'login'),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0x3316130F), Color(0xFF16130F)],
+                    colors: [
+                      AppColorsV2.ink.withOpacity(.20),
+                      AppColorsV2.ink,
+                    ],
                   ),
                 ),
               ),

@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_theme.dart';
+import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/api/api_error.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
@@ -591,7 +592,8 @@ class _StudioConsumerPreview extends StatelessWidget {
                         onPressed: () {}))
               ]),
             1 => DecoratedBox(
-                decoration: const BoxDecoration(color: Color(0xFF16130F)),
+                decoration:
+                    BoxDecoration(color: SemanticColors.dark.background),
                 child: Column(children: [
                   Expanded(child: BrandHero(brand: brand, role: 'login')),
                   Padding(
@@ -602,7 +604,8 @@ class _StudioConsumerPreview extends StatelessWidget {
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge
-                                ?.copyWith(color: Colors.white)),
+                                ?.copyWith(
+                                    color: SemanticColors.dark.textPrimary)),
                         const SizedBox(height: 12),
                         const TextField(
                             decoration: InputDecoration(labelText: 'Email')),
@@ -612,7 +615,8 @@ class _StudioConsumerPreview extends StatelessWidget {
                       ]))
                 ])),
             _ => DecoratedBox(
-                decoration: const BoxDecoration(color: Color(0xFF16130F)),
+                decoration:
+                    BoxDecoration(color: SemanticColors.dark.background),
                 child: Column(children: [
                   SizedBox(
                       height: 120,
@@ -626,11 +630,13 @@ class _StudioConsumerPreview extends StatelessWidget {
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge
-                                    ?.copyWith(color: Colors.white)),
+                                    ?.copyWith(
+                                        color:
+                                            SemanticColors.dark.textPrimary)),
                             const SizedBox(height: 12),
                             Text('Premium-колекції та рецепти',
                                 style: TextStyle(
-                                    color: Colors.white.withOpacity(.8))),
+                                    color: SemanticColors.dark.textSecondary)),
                             const SizedBox(height: 16),
                             AppButton(
                                 label: 'Оформити підписку',

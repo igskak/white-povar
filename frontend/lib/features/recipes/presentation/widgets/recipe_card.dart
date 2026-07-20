@@ -242,15 +242,15 @@ class RecipeCard extends ConsumerWidget {
             fit: StackFit.expand,
             children: [
               RecipeImageFallback.wrap(recipe),
-              const DecoratedBox(
+              DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      Color(0xE616130F),
-                      Color(0x5C16130F),
-                      Colors.transparent
+                      AppColorsV2.ink.withOpacity(.90),
+                      AppColorsV2.ink.withOpacity(.36),
+                      Colors.transparent,
                     ],
                   ),
                 ),

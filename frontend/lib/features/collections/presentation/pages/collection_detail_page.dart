@@ -153,12 +153,15 @@ class _CollectionHero extends StatelessWidget {
                 imageUrl: collection.coverUrl!,
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => const _HeroFallback()),
-        const DecoratedBox(
+        DecoratedBox(
             decoration: BoxDecoration(
                 gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0x33000000), Color(0xE616130F)]))),
+                    colors: [
+              AppColorsV2.ink.withOpacity(.20),
+              AppColorsV2.ink.withOpacity(.90)
+            ]))),
         Positioned(
             top: AppSpacing.md,
             left: AppSpacing.sm,

@@ -398,17 +398,17 @@ class _NativeCaptureView extends StatelessWidget {
               ),
             ),
           ),
-        const DecoratedBox(
+        DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0x99000000),
+                AppColorsV2.ink.withOpacity(.60),
                 Colors.transparent,
-                Color(0xCC000000),
+                AppColorsV2.ink.withOpacity(.80),
               ],
-              stops: [0, .5, 1],
+              stops: const [0, .5, 1],
             ),
           ),
         ),
