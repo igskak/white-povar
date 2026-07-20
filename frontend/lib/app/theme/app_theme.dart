@@ -7,26 +7,34 @@ import 'tokens/app_tokens.dart';
 
 class AppThemeV2 {
   static ThemeData light(BrandConfig brandConfig) => _build(
-        brandConfig: brandConfig,
+        brand: BrandThemeExtension.fromConfig(brandConfig),
         brightness: Brightness.light,
       );
 
   static ThemeData dark(BrandConfig brandConfig) => _build(
-        brandConfig: brandConfig,
+        brand: BrandThemeExtension.fromConfig(brandConfig),
         brightness: Brightness.dark,
       );
 
+  /// The dark theme for the same brand as [base], regardless of the ambient
+  /// [ThemeMode]. Used by the permanently dark scenes (camera flow, login,
+  /// paywall) per the Handoff Spec.
+  static ThemeData forcedDark(ThemeData base) {
+    final brand = base.extension<BrandThemeExtension>();
+    if (brand == null) return base;
+    return _build(brand: brand, brightness: Brightness.dark);
+  }
+
   static ThemeData _build({
-    required BrandConfig brandConfig,
+    required BrandThemeExtension brand,
     required Brightness brightness,
   }) {
-    final brand = BrandThemeExtension.fromConfig(brandConfig);
     final isDark = brightness == Brightness.dark;
-    final background = isDark ? AppColorsV2.ink : AppColorsV2.bg;
-    final surface = isDark ? const Color(0xFF221D16) : AppColorsV2.surface;
-    final onSurface = isDark ? AppColorsV2.onInk : AppColorsV2.textPrimary;
-    final secondaryText =
-        isDark ? const Color(0xFFB9AC98) : AppColorsV2.textSecondary;
+    final semantic = SemanticColors.of(brightness);
+    final background = semantic.background;
+    final surface = semantic.surface;
+    final onSurface = semantic.textPrimary;
+    final secondaryText = semantic.textSecondary;
     final primary = isDark ? brand.accentOnDark : brand.accent;
     final lightPrimary =
         brand.lightCtaMode == 'accentFill' ? primary : AppColorsV2.ink;
@@ -38,8 +46,8 @@ class AppThemeV2 {
           : AppColorsV2.onInk,
       secondary: AppColorsV2.premiumGold,
       onSecondary: AppColorsV2.ink,
-      error: AppColorsV2.error,
-      onError: Colors.white,
+      error: semantic.error,
+      onError: isDark ? AppColorsV2.ink : Colors.white,
       surface: surface,
       onSurface: onSurface,
     );
@@ -66,24 +74,30 @@ class AppThemeV2 {
           color: onSurface),
       bodyLarge: TextStyle(
           fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
           fontSize: 16,
           height: 1.4,
           color: onSurface),
       bodyMedium: TextStyle(
           fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
           fontSize: 14,
           height: 1.4,
           color: onSurface),
       bodySmall: TextStyle(
           fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
           fontSize: 12,
           height: 1.3,
           color: secondaryText),
       labelSmall: TextStyle(
           fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
           fontSize: 11,
           letterSpacing: 0,
           color: secondaryText),
+      // Data/mono role (Handoff §1): numeric metadata, codes, counters.
+      labelMedium: semantic.dataLabel,
     );
 
     return ThemeData(
@@ -92,7 +106,8 @@ class AppThemeV2 {
       scaffoldBackgroundColor: background,
       textTheme: textTheme,
       fontFamily: brand.bodyFontFamily,
-      extensions: [brand],
+      fontFamilyFallback: brand.bodyFontFallback,
+      extensions: [brand, semantic],
       appBarTheme: AppBarTheme(
         elevation: AppElevation.level0,
         centerTitle: false,
@@ -103,8 +118,7 @@ class AppThemeV2 {
       navigationBarTheme: NavigationBarThemeData(
         height: 72,
         backgroundColor: surface,
-        indicatorColor:
-            isDark ? const Color(0xFF2E2820) : AppColorsV2.surfaceStrong,
+        indicatorColor: semantic.surfaceStrong,
         elevation: 0,
       ),
       elevatedButtonTheme: ComponentThemes.elevatedButtonTheme(scheme),
@@ -121,4 +135,18 @@ class AppThemeV2 {
       ),
     );
   }
+}
+
+/// Renders [child] with the brand's dark theme whatever the ambient
+/// [ThemeMode] is. Camera flow, login and paywall are dark in both themes.
+class ForcedDarkTheme extends StatelessWidget {
+  const ForcedDarkTheme({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+        data: AppThemeV2.forcedDark(Theme.of(context)),
+        child: child,
+      );
 }

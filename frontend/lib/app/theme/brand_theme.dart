@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/branding/brand_config.dart';
+import 'tokens/app_tokens.dart';
 
 /// Brand-owned presentation values. System semantic colours stay in AppColorsV2.
 class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
@@ -12,6 +13,7 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
     required this.lightCtaMode,
     required this.displayFontFamily,
     required this.bodyFontFamily,
+    this.bodyFontFallback = AppFonts.bodyFallback,
   });
 
   final Color accent;
@@ -22,11 +24,17 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
   final String displayFontFamily;
   final String bodyFontFamily;
 
+  /// Appended after [bodyFontFamily] so Cyrillic body glyphs always resolve
+  /// (design 13c UI stack: 'Figtree', 'Golos Text', sans-serif).
+  final List<String> bodyFontFallback;
+
   factory BrandThemeExtension.fromConfig(BrandConfig config) {
-    final fontFamilies = switch (config.brand.font) {
-      'serif' => ('Lora', 'Source Serif 4'),
-      'humanist' => ('Golos Text', 'Golos Text'),
-      _ => ('Figtree', 'Figtree'),
+    // Curated display pairings (design 13c). The UI/body family is shared.
+    final displayFontFamily = switch (config.brand.font) {
+      'serif' => 'Source Serif 4',
+      'grotesque' => 'Golos Text',
+      'humanist' => 'Lora',
+      _ => 'Source Serif 4',
     };
     return BrandThemeExtension(
       accent: _color(config.brand.accent),
@@ -34,8 +42,8 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
       accentOnDark: _color(config.brand.derived.accentOnDark),
       onAccent: _color(config.brand.derived.onAccent),
       lightCtaMode: config.brand.derived.lightCtaMode,
-      displayFontFamily: fontFamilies.$1,
-      bodyFontFamily: fontFamilies.$2,
+      displayFontFamily: displayFontFamily,
+      bodyFontFamily: AppFonts.body,
     );
   }
 
@@ -51,6 +59,7 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
     String? lightCtaMode,
     String? displayFontFamily,
     String? bodyFontFamily,
+    List<String>? bodyFontFallback,
   }) =>
       BrandThemeExtension(
         accent: accent ?? this.accent,
@@ -60,6 +69,7 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
         lightCtaMode: lightCtaMode ?? this.lightCtaMode,
         displayFontFamily: displayFontFamily ?? this.displayFontFamily,
         bodyFontFamily: bodyFontFamily ?? this.bodyFontFamily,
+        bodyFontFallback: bodyFontFallback ?? this.bodyFontFallback,
       );
 
   @override
@@ -74,6 +84,7 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
       lightCtaMode: t < .5 ? lightCtaMode : other.lightCtaMode,
       displayFontFamily: t < .5 ? displayFontFamily : other.displayFontFamily,
       bodyFontFamily: t < .5 ? bodyFontFamily : other.bodyFontFamily,
+      bodyFontFallback: t < .5 ? bodyFontFallback : other.bodyFontFallback,
     );
   }
 }
