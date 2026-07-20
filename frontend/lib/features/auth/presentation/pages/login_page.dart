@@ -7,6 +7,7 @@ import '../../../../app/router/route_models.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/branding/brand_providers.dart';
+import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/widgets/design_system.dart';
@@ -118,54 +119,56 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       onGuestPressed: () => context.go('/home'),
     );
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF16130F),
-      body: SafeArea(
-        child: width >= 1024
-            ? Row(
-                key: const ValueKey('desktop-login-split'),
-                children: [
-                  Expanded(
-                    flex: 46,
-                    child: KeyedSubtree(
-                      key: const ValueKey('desktop-login-hero'),
-                      child: _LoginHero(brand: brand, compact: false),
+    return ForcedDarkTheme(
+      child: Scaffold(
+        backgroundColor: SemanticColors.dark.background,
+        body: SafeArea(
+          child: width >= 1024
+              ? Row(
+                  key: const ValueKey('desktop-login-split'),
+                  children: [
+                    Expanded(
+                      flex: 46,
+                      child: KeyedSubtree(
+                        key: const ValueKey('desktop-login-hero'),
+                        child: _LoginHero(brand: brand, compact: false),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 54,
-                    child: Center(
-                      key: const ValueKey('desktop-login-form'),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(32),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 440),
-                          child: form,
+                    Expanded(
+                      flex: 54,
+                      child: Center(
+                        key: const ValueKey('desktop-login-form'),
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.all(32),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 440),
+                            child: form,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              )
-            : Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        KeyedSubtree(
-                          key: const ValueKey('mobile-login-hero'),
-                          child: _LoginHero(brand: brand, compact: true),
-                        ),
-                        const SizedBox(height: 16),
-                        form,
-                      ],
+                  ],
+                )
+              : Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 480),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          KeyedSubtree(
+                            key: const ValueKey('mobile-login-hero'),
+                            child: _LoginHero(brand: brand, compact: true),
+                          ),
+                          const SizedBox(height: 16),
+                          form,
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -268,10 +271,11 @@ class _LoginForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const foreground = Color(0xFFF3E9DA);
-    const muted = Color(0xFFB9AC98);
-    const field = Color(0xFF221D16);
-    final accent = Theme.of(context).colorScheme.secondary;
+    final semantic = context.semantic;
+    final foreground = semantic.textPrimary;
+    final muted = semantic.textSecondary;
+    final field = semantic.surface;
+    final accent = Theme.of(context).colorScheme.primary;
     final form = Form(
       key: formKey,
       child: AutofillGroup(
@@ -359,6 +363,9 @@ class _LoginForm extends StatelessWidget {
               },
               field: field,
               foreground: foreground,
+              muted: muted,
+              border: semantic.surfaceStrong,
+              focus: accent,
             ),
             if (!isReset) ...[
               const SizedBox(height: 12),
@@ -389,6 +396,9 @@ class _LoginForm extends StatelessWidget {
                 },
                 field: field,
                 foreground: foreground,
+                muted: muted,
+                border: semantic.surfaceStrong,
+                focus: accent,
               ),
               const SizedBox(height: 4),
               if (isSignUp)
@@ -440,13 +450,13 @@ class _LoginForm extends StatelessWidget {
                               ? _LoginMode.signIn
                               : _LoginMode.signUp))),
               const SizedBox(height: 8),
-              const Row(children: [
-                Expanded(child: Divider(color: Color(0xFF3A332A))),
+              Row(children: [
+                Expanded(child: Divider(color: semantic.surfaceStrong)),
                 Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text('АБО',
                         style: TextStyle(color: muted, fontSize: 11))),
-                Expanded(child: Divider(color: Color(0xFF3A332A)))
+                Expanded(child: Divider(color: semantic.surfaceStrong))
               ]),
               const SizedBox(height: 12),
               if (AppConfig.googleOAuthEnabled)
@@ -480,8 +490,8 @@ class _LoginForm extends StatelessWidget {
       ),
     );
     return DecoratedBox(
-      decoration: const BoxDecoration(
-          color: Color(0xFF16130F), borderRadius: AppRadius.lg),
+      decoration:
+          BoxDecoration(color: semantic.background, borderRadius: AppRadius.lg),
       child: Padding(padding: const EdgeInsets.all(24), child: form),
     );
   }
@@ -493,6 +503,9 @@ class _LoginForm extends StatelessWidget {
           required IconData icon,
           required Color field,
           required Color foreground,
+          required Color muted,
+          required Color border,
+          required Color focus,
           TextInputType? keyboardType,
           TextInputAction? textInputAction,
           Iterable<String>? autofillHints,
@@ -505,20 +518,19 @@ class _LoginForm extends StatelessWidget {
             inputDecorationTheme: InputDecorationTheme(
                 filled: true,
                 fillColor: field,
-                labelStyle: const TextStyle(color: Color(0xFFB9AC98)),
+                labelStyle: TextStyle(color: muted),
                 border: const OutlineInputBorder(borderRadius: AppRadius.md),
-                enabledBorder: const OutlineInputBorder(
+                enabledBorder: OutlineInputBorder(
                     borderRadius: AppRadius.md,
-                    borderSide: BorderSide(color: Color(0xFF3A332A))),
-                focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: border)),
+                focusedBorder: OutlineInputBorder(
                     borderRadius: AppRadius.md,
-                    borderSide:
-                        BorderSide(color: Color(0xFFD9A441), width: 1.5)))),
+                    borderSide: BorderSide(color: focus, width: 1.5)))),
         child: AppTextField(
             controller: controller,
             focusNode: focusNode,
             label: label,
-            prefixIcon: Icon(icon, color: const Color(0xFFB9AC98)),
+            prefixIcon: Icon(icon, color: muted),
             suffixIcon: suffix,
             keyboardType: keyboardType,
             textInputAction: textInputAction,
@@ -538,34 +550,34 @@ class _AuthBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         liveRegion: true,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-              color: error ? const Color(0xFF2A1A17) : const Color(0xFF2B2518),
-              border: Border.all(
-                  color: error
-                      ? const Color(0xFF6B3A31)
-                      : const Color(0xFF80632B)),
-              borderRadius: AppRadius.md),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                    error
-                        ? Icons.error_outline
-                        : Icons.mark_email_read_outlined,
-                    color: error
-                        ? const Color(0xFFD67A6B)
-                        : const Color(0xFFD9A441)),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Text(message,
-                        style: const TextStyle(
-                            color: Color(0xFFF3E9DA), height: 1.35))),
-              ],
+        child: Builder(builder: (context) {
+          final semantic = context.semantic;
+          final tone = error ? semantic.error : semantic.warning;
+          return DecoratedBox(
+            decoration: BoxDecoration(
+                color: Color.alphaBlend(
+                    tone.withOpacity(.16), semantic.background),
+                border: Border.all(color: tone.withOpacity(.55)),
+                borderRadius: AppRadius.md),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                      error
+                          ? Icons.error_outline
+                          : Icons.mark_email_read_outlined,
+                      color: tone),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(message,
+                          style: TextStyle(
+                              color: semantic.textPrimary, height: 1.35))),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       );
 }

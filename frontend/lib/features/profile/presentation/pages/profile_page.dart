@@ -40,15 +40,17 @@ class ProfilePage extends ConsumerWidget {
               ? const _GuestProfile()
               : _SignedInProfile(
                   email: user.email ?? 'Email не вказано',
-                  name: _displayName(user.userMetadata ?? const {})),
+                  userId: user.id,
+                ),
         ),
       );
     });
   }
-
-  String _displayName(Map<String, dynamic> metadata) =>
-      (metadata['full_name'] ?? metadata['name'] ?? '').toString();
 }
+
+/// Enough of the id to identify an account in support without printing a full
+/// opaque UUID at title size.
+String _shortId(String id) => id.length <= 8 ? id : id.substring(0, 8);
 
 class _GuestProfile extends StatelessWidget {
   const _GuestProfile();
@@ -94,13 +96,12 @@ class _GuestProfile extends StatelessWidget {
 }
 
 class _SignedInProfile extends ConsumerWidget {
-  const _SignedInProfile({required this.email, required this.name});
+  const _SignedInProfile({required this.email, required this.userId});
   final String email;
-  final String name;
+  final String userId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final displayName = name.isEmpty ? email.split('@').first : name;
     final theme = Theme.of(context);
     final studioSession = ref.watch(studioSessionProvider);
     final isPremium = ref.watch(isPremiumProvider);
@@ -108,7 +109,7 @@ class _SignedInProfile extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
         Row(children: [
-          UserAvatar(name: displayName, radius: 32),
+          UserAvatar(name: email, radius: 32),
           const SizedBox(width: AppSpacing.md),
           Expanded(
               child: Column(
@@ -119,7 +120,7 @@ class _SignedInProfile extends ConsumerWidget {
                   runSpacing: AppSpacing.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(displayName, style: theme.textTheme.titleLarge),
+                    Text(email, style: theme.textTheme.titleLarge),
                     AppBadge(
                       label: isPremium ? 'Premium активна' : 'Free',
                       icon: isPremium
@@ -129,7 +130,8 @@ class _SignedInProfile extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.xxs),
-                Text(email, style: theme.textTheme.bodyMedium)
+                Text('ID ${_shortId(userId)}',
+                    style: context.semantic.dataLabel)
               ]))
         ]),
         const SizedBox(height: AppSpacing.lg),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/brand_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../app/theme/tokens/app_tokens.dart';
 import '../../../core/branding/brand_assets.dart';
 import '../../../core/branding/brand_config.dart';
@@ -37,28 +38,36 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final isDialog = width >= 600;
     final child = _PaywallCard(snapshot: snapshot, onClose: _close);
     if (isDesktop) {
-      return _DesktopPaywall(
-        brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
-        onClose: _close,
-        child: child,
+      return ForcedDarkTheme(
+        child: _DesktopPaywall(
+          brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
+          onClose: _close,
+          child: child,
+        ),
       );
     }
-    return Scaffold(
-      backgroundColor:
-          isDialog ? Colors.black45 : Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: isDialog
-                ? Material(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: AppRadius.lg,
-                    child: child)
-                : child,
+    return ForcedDarkTheme(
+      child: Builder(builder: (context) {
+        final semantic = context.semantic;
+        return Scaffold(
+          // >= 600 presents as a centred dialog over a 45% scrim (13f).
+          backgroundColor:
+              isDialog ? AppColorsV2.ink.withOpacity(.45) : semantic.background,
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: isDialog
+                    ? Material(
+                        color: semantic.surface,
+                        borderRadius: AppRadius.lg,
+                        child: child)
+                    : child,
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
@@ -156,7 +165,7 @@ class _DesktopPremiumPitch extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyLarge
-                ?.copyWith(color: const Color(0xFFD6C9B4)),
+                ?.copyWith(color: context.semantic.textSecondary),
           ),
           const SizedBox(height: AppSpacing.lg),
           const _DesktopBenefit(
@@ -215,7 +224,7 @@ class _PaywallCard extends ConsumerWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFF16130F),
+        color: context.semantic.background,
         borderRadius:
             MediaQuery.sizeOf(context).width >= 600 ? AppRadius.lg : null,
       ),
@@ -249,7 +258,7 @@ class _PaywallCard extends ConsumerWidget {
             else ...[
               Text(brand.voice.paywallTitle,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: const Color(0xFFF3E9DA),
+                      color: context.semantic.textPrimary,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
               Text('— ${brand.creatorName}, ${brand.name}',
@@ -332,7 +341,7 @@ class _PaywallCard extends ConsumerWidget {
                         : selectedProduct?.detail ??
                             'Скасувати можна в налаштуваннях магазину.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFB9AC98))),
+                    style: TextStyle(color: context.semantic.textSecondary)),
               ],
             ],
             if (_needsMessage(snapshot.phase)) ...[
@@ -368,7 +377,7 @@ class _PaywallCard extends ConsumerWidget {
                 style: Theme.of(context)
                     .textTheme
                     .labelSmall
-                    ?.copyWith(color: const Color(0xFF8D8271))),
+                    ?.copyWith(color: context.semantic.textSecondary)),
           ],
         ),
       ),
@@ -429,8 +438,8 @@ class _Unavailable extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: const Color(0xFF221E18),
-          border: Border.all(color: const Color(0xFF4A4234)),
+          color: context.semantic.surface,
+          border: Border.all(color: context.semantic.surfaceStrong),
           borderRadius: AppRadius.md,
         ),
         child: Column(
@@ -449,7 +458,7 @@ class _Unavailable extends StatelessWidget {
                   ? 'Доступ недоступний для акаунта'
                   : 'Каталог тимчасово недоступний',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: const Color(0xFFF3E9DA),
+                    color: context.semantic.textPrimary,
                     fontWeight: FontWeight.w700,
                   ),
             ),
@@ -459,7 +468,7 @@ class _Unavailable extends StatelessWidget {
                   (phase == PaywallPhase.notAllowlisted
                       ? 'Демо-доступ недоступний для цього акаунта.'
                       : 'Не вдалося отримати доступні плани. Спробуйте оновити каталог.'),
-              style: const TextStyle(color: Color(0xFFB9AC98)),
+              style: TextStyle(color: context.semantic.textSecondary),
             ),
             const SizedBox(height: AppSpacing.md),
             AppButton(
@@ -522,7 +531,7 @@ class _ProductOption extends StatelessWidget {
                   border: Border.all(
                       color: selected
                           ? context.brandTheme.accentOnDark
-                          : const Color(0xFF4A4234),
+                          : context.semantic.surfaceStrong,
                       width: selected ? 2 : 1),
                   borderRadius: AppRadius.md),
               child: Row(children: [
@@ -537,17 +546,19 @@ class _ProductOption extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                       Text('${product.title} · ${product.price}',
-                          style: const TextStyle(
-                              color: Color(0xFFF3E9DA),
+                          style: TextStyle(
+                              color: context.semantic.textPrimary,
                               fontWeight: FontWeight.w700)),
                       if (product.detail != null)
                         Text(product.detail!,
-                            style: const TextStyle(
-                                color: Color(0xFFB9AC98), fontSize: 12))
+                            style: TextStyle(
+                                color: context.semantic.textSecondary,
+                                fontSize: 12))
                       else if (product.trial != null)
                         Text(product.trial!,
-                            style: const TextStyle(
-                                color: Color(0xFFB9AC98), fontSize: 12))
+                            style: TextStyle(
+                                color: context.semantic.textSecondary,
+                                fontSize: 12))
                     ])),
                 if (product.badge != null) AppBadge(label: product.badge!)
               ]),
@@ -566,7 +577,8 @@ class _Benefit extends StatelessWidget {
         Icon(icon, size: 18, color: context.brandTheme.accentOnDark),
         const SizedBox(width: 9),
         Expanded(
-            child: Text(text, style: const TextStyle(color: Color(0xFFE0D4BF))))
+            child: Text(text,
+                style: TextStyle(color: context.semantic.textPrimary)))
       ]));
 }
 
@@ -610,15 +622,16 @@ class _Notice extends StatelessWidget {
   Widget build(BuildContext context) => Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: const Color(0xFF2A1A17),
-          border: Border.all(color: const Color(0xFF6B3A31)),
+          color: Color.alphaBlend(context.semantic.error.withOpacity(.16),
+              context.semantic.background),
+          border: Border.all(color: context.semantic.error.withOpacity(.55)),
           borderRadius: AppRadius.md),
       child: Row(children: [
-        Icon(icon, color: const Color(0xFFD67A6B)),
+        Icon(icon, color: context.semantic.error),
         const SizedBox(width: 10),
         Expanded(
             child: Text(message,
-                style: const TextStyle(color: Color(0xFFF3E9DA)))),
+                style: TextStyle(color: context.semantic.textPrimary))),
         if (action != null) action!
       ]));
 }
