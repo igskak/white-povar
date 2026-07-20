@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,7 +13,6 @@ import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
-import '../../../recipes/presentation/widgets/favorite_button.dart';
 
 /// The public, tenant-branded recipe feed.
 ///
@@ -171,11 +169,11 @@ class _MobileHome extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FeaturedRecipeHero(
+                    RecipeCard.featured(
                       key: const ValueKey('mobile-featured-recipe-hero'),
                       recipe: featured,
                       compact: true,
-                      onOpen: () => onOpenRecipe(featured),
+                      onTap: () => onOpenRecipe(featured),
                     ),
                     if (brand.voice.courseName != null &&
                         brand.courseTag != null) ...[
@@ -290,9 +288,9 @@ class _DesktopHomeContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _FeaturedRecipeHero(
+                    RecipeCard.featured(
                       recipe: featured,
-                      onOpen: () => onOpenRecipe(featured),
+                      onTap: () => onOpenRecipe(featured),
                     ),
                     const SizedBox(height: 28),
                     Row(
@@ -340,110 +338,6 @@ class _DesktopHomeContent extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _FeaturedRecipeHero extends StatelessWidget {
-  const _FeaturedRecipeHero({
-    super.key,
-    required this.recipe,
-    required this.onOpen,
-    this.compact = false,
-  });
-
-  final Recipe recipe;
-  final VoidCallback onOpen;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final fallback = ColoredBox(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(child: Icon(Icons.restaurant_menu_rounded, size: 56)),
-    );
-    return Semantics(
-      button: true,
-      label: 'Відкрити рекомендований рецепт ${recipe.title}',
-      child: SizedBox(
-        height: compact ? 320 : 340,
-        child: ClipRRect(
-          borderRadius: AppRadius.xl,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              recipe.images.isEmpty
-                  ? fallback
-                  : CachedNetworkImage(
-                      imageUrl: recipe.images.first,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => fallback,
-                      errorWidget: (_, __, ___) => fallback,
-                    ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Color(0xE616130F),
-                      Color(0x5C16130F),
-                      Colors.transparent
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(compact ? AppSpacing.lg : 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const AppBadge(
-                      label: 'Рекомендоване',
-                      icon: Icons.local_fire_department_outlined,
-                      color: AppColorsV2.premiumGold,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Text(
-                        recipe.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineLarge
-                            ?.copyWith(
-                              color: AppColorsV2.onInk,
-                              fontFamily: context.brandTheme.displayFontFamily,
-                              fontWeight: FontWeight.w700,
-                              height: 1.05,
-                              fontSize: compact ? 30 : null,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}  ·  Рівень ${recipe.difficulty}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.copyWith(color: AppColorsV2.onInk),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    ElevatedButton.icon(
-                      onPressed: onOpen,
-                      icon: const Icon(Icons.restaurant_menu_rounded),
-                      label: const Text('Почати готувати'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -631,82 +525,11 @@ class _RecipeFeed extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         children: [
           for (final recipe in recipes) ...[
-            _RecipeTile(recipe: recipe, onTap: () => onOpen(recipe)),
+            RecipeCard.list(recipe: recipe, onTap: () => onOpen(recipe)),
             const SizedBox(height: AppSpacing.sm),
           ],
         ],
       );
-}
-
-class _RecipeTile extends StatelessWidget {
-  const _RecipeTile({required this.recipe, required this.onTap});
-  final Recipe recipe;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Відкрити рецепт ${recipe.title}',
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Row(
-          children: [
-            _RecipeImage(recipe: recipe, width: 84, height: 84),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(recipe.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text('${recipe.totalTimeMinutes} хв · ${recipe.cuisine}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ],
-              ),
-            ),
-            if (recipe.isPremium)
-              const Icon(Icons.workspace_premium_rounded,
-                  color: AppColorsV2.premiumGold),
-            FavoriteButton(recipeId: recipe.id),
-          ],
-        ),
-      );
-}
-
-class _RecipeImage extends StatelessWidget {
-  const _RecipeImage(
-      {required this.recipe, required this.width, required this.height});
-  final Recipe recipe;
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    final fallback = Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      alignment: Alignment.center,
-      child: const Icon(Icons.restaurant_menu_rounded),
-    );
-    return ClipRRect(
-      borderRadius: AppRadius.md,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: recipe.images.isEmpty
-            ? fallback
-            : CachedNetworkImage(
-                imageUrl: recipe.images.first,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => fallback,
-                errorWidget: (_, __, ___) => fallback,
-              ),
-      ),
-    );
-  }
 }
 
 class _HomeSkeleton extends StatelessWidget {

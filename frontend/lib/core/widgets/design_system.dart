@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme/brand_theme.dart';
 import '../../app/theme/tokens/app_tokens.dart';
 import '../branding/brand_assets.dart';
 import '../branding/brand_config.dart';
@@ -308,7 +309,11 @@ class UserAvatar extends StatelessWidget {
   }
 }
 
-class AppSkeleton extends StatelessWidget {
+/// Loading placeholder with the design's 1.4 s shimmer sweep.
+///
+/// Falls back to a static [SemanticColors.surfaceStrong] block when the
+/// platform requests reduced motion.
+class AppSkeleton extends StatefulWidget {
   const AppSkeleton(
       {super.key,
       this.width,
@@ -319,22 +324,243 @@ class AppSkeleton extends StatelessWidget {
   final double height;
   final BorderRadius borderRadius;
 
+  /// Design: «Shimmer 1.4 с».
+  static const Duration shimmerPeriod = Duration(milliseconds: 1400);
+
   @override
-  Widget build(BuildContext context) => Semantics(
-        label: 'Завантаження',
-        child: ExcludeSemantics(
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: borderRadius,
-              ),
-            ),
+  State<AppSkeleton> createState() => _AppSkeletonState();
+}
+
+class _AppSkeletonState extends State<AppSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: AppSkeleton.shimmerPeriod,
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Repeating forever would stall `pumpAndSettle` and burn frames for users
+    // who asked for reduced motion, so the sweep is opt-out.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+    } else if (!_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = context.semantic;
+    final base = semantic.surfaceStrong;
+    final highlight = Color.alphaBlend(
+      semantic.surface.withOpacity(.65),
+      base,
+    );
+
+    return Semantics(
+      label: 'Завантаження',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              // -1.5 → 1.5 walks the highlight band fully across the box.
+              final offset = _controller.value * 3 - 1.5;
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: widget.borderRadius,
+                  gradient: LinearGradient(
+                    begin: Alignment(offset - 1, 0),
+                    end: Alignment(offset + 1, 0),
+                    colors: [base, highlight, base],
+                    stops: const [.35, .5, .65],
+                  ),
+                ),
+              );
+            },
           ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+/// Icon + label metadata pair used across recipe cards, detail and camera
+/// results (Handoff §3: chip height 34–36, radius 8–18, label 12–13).
+///
+/// Numeric values render in the mono data role so counters line up.
+class MetaChip extends StatelessWidget {
+  const MetaChip({
+    super.key,
+    required this.icon,
+    required this.label,
+    this.isData = false,
+    this.boxed = false,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// Renders [label] in the JetBrains Mono data role (times, servings, counts).
+  final bool isData;
+
+  /// Draws the surface + border chip shell. Bare rows stay borderless so dense
+  /// metadata wraps cleanly inside a card.
+  final bool boxed;
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = context.semantic;
+    final textStyle = isData
+        ? semantic.dataBody
+            .copyWith(fontSize: 12, color: semantic.textSecondary)
+        : Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: semantic.textSecondary);
+
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: semantic.textSecondary),
+        const SizedBox(width: AppSpacing.xxs),
+        Flexible(
+          child: Text(label, style: textStyle, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+
+    if (!boxed) return Semantics(label: label, child: row);
+
+    return Semantics(
+      label: label,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 34),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: semantic.surface,
+            borderRadius: AppRadius.sm,
+            border: Border.all(color: semantic.surfaceStrong),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
+            child: row,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal progress stepper (Handoff §3): 26–28 px circles, done =
+/// success + check, active = accent + number, pending = surfaceStrong.
+class FlowStepper extends StatelessWidget {
+  const FlowStepper({
+    super.key,
+    required this.labels,
+    required this.currentStep,
+  });
+
+  final List<String> labels;
+
+  /// 1-based index of the active step.
+  final int currentStep;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    final brand = theme.extension<BrandThemeExtension>();
+    final accent = theme.brightness == Brightness.dark
+        ? brand?.accentOnDark ?? AppColorsV2.premiumGold
+        : brand?.accent ?? AppColorsV2.premiumGold;
+
+    return Semantics(
+      label: 'Крок $currentStep з ${labels.length}',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md, AppSpacing.xs, AppSpacing.md, 18),
+        child: Row(
+          children: List.generate(labels.length, (index) {
+            final stepNumber = index + 1;
+            final isDone = stepNumber < currentStep;
+            final isCurrent = stepNumber == currentStep;
+            final circleColor = isDone
+                ? semantic.success
+                : isCurrent
+                    ? accent
+                    : semantic.surfaceStrong;
+            final onCircle = isDone || isCurrent
+                ? (brand?.onAccent ?? AppColorsV2.ink)
+                : semantic.textSecondary;
+
+            return Expanded(
+              child: Row(
+                children: [
+                  SizedBox.square(
+                    dimension: 27,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: circleColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: isDone
+                            ? Icon(Icons.check_rounded,
+                                size: 16, color: onCircle)
+                            : Text(
+                                '$stepNumber',
+                                style: TextStyle(
+                                  color: onCircle,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      labels[index],
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isCurrent
+                            ? semantic.textPrimary
+                            : semantic.textSecondary,
+                        fontWeight:
+                            isCurrent ? FontWeight.w800 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  if (index < labels.length - 1)
+                    Container(
+                      width: 16,
+                      height: 1,
+                      color: semantic.surfaceStrong,
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxs),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
 }
 
 class ResponsiveContainer extends StatelessWidget {
