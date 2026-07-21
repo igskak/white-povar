@@ -206,14 +206,20 @@ class _RecipeHero extends StatelessWidget {
         height: expand ? null : 320,
         child: Stack(fit: StackFit.expand, children: [
           _RecipeHeroImage(recipe: recipe),
+          // Keep the dish photo bright: the middle stays fully clear, and we
+          // only darken a thin top edge (for the overlaid controls) and the
+          // bottom band behind the title so both remain legible.
           DecoratedBox(
               decoration: BoxDecoration(
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.25, 0.5, 1.0],
                       colors: [
-                AppColorsV2.ink.withOpacity(.40),
-                AppColorsV2.ink.withOpacity(.90)
+                AppColorsV2.ink.withOpacity(.30),
+                AppColorsV2.ink.withOpacity(0),
+                AppColorsV2.ink.withOpacity(0),
+                AppColorsV2.ink.withOpacity(.78),
               ]))),
           Positioned(
               top: AppSpacing.md,
