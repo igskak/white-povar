@@ -58,3 +58,9 @@ app.*.map.json
 .env
 backend/.env
 frontend/.env
+
+# Recipe translation backups (contain live recipe data)
+backend/tools/backups/
+
+# Python venv (local tooling)
+backend/.venv/
