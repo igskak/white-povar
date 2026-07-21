@@ -7,6 +7,14 @@ from app.schemas.ingestion import ParsedRecipe, ParsedIngredient, ParsedNutritio
 
 logger = logging.getLogger(__name__)
 
+# Human-readable names for the locales the ingestion pipeline can target.
+# Used to word the AI prompt for the configured default_locale.
+_LANGUAGE_NAMES = {
+    'uk': 'Ukrainian',
+    'en': 'English',
+    'it': 'Italian',
+}
+
 
 class AIRecipeParser:
     """AI-powered recipe parser using OpenAI"""
@@ -25,7 +33,21 @@ class AIRecipeParser:
 
             self._client = AsyncOpenAI(api_key=settings.openai_api_key)
         return self._client
-    
+
+    @property
+    def target_language(self) -> str:
+        """Locale the recipe narrative (title/description/instructions) is written in.
+
+        Driven by the AI_TARGET_LANG setting (default 'uk'); falls back to the app
+        default locale if that is unset.
+        """
+        return settings.ai_target_lang or settings.default_locale
+
+    @property
+    def target_language_name(self) -> str:
+        """Human-readable name of the target language, for prompt wording."""
+        return _LANGUAGE_NAMES.get(self.target_language, self.target_language)
+
     async def parse_recipe(self, text: str, detected_language: Optional[str] = None) -> Tuple[ParsedRecipe, Dict[str, Any]]:
         """
         Parse recipe text into structured data
@@ -62,7 +84,7 @@ class AIRecipeParser:
                     'processing_time_seconds': processing_time,
                     'model_used': self.model,
                     'detected_language': detected_language,
-                    'was_translated': detected_language and detected_language != 'en'
+                    'was_translated': bool(detected_language and detected_language != self.target_language)
                 }
                 
                 logger.info(f"Successfully parsed recipe: {recipe.title}")
@@ -74,10 +96,10 @@ class AIRecipeParser:
     
     def _get_system_prompt(self) -> str:
         """Get the system prompt for recipe parsing"""
-        return """You are a professional recipe parser. Extract structured recipe data from unstructured text.
+        prompt = """You are a professional recipe parser. Extract structured recipe data from unstructured text.
 
 IMPORTANT RULES:
-1. If text is not in English, translate all content to English
+1. Write the recipe title, description, and instructions in %%LANG%% - translate them if the source text is in another language. Keep each ingredient "name" in canonical English so it matches the ingredient database; put any localized or preparation wording in "notes".
 2. Improve descriptions to match professional chef style - make them appetizing and descriptive
 3. For ingredients: separate quantity, unit, and name clearly
 4. Normalize units and provide reasonable quantities for "to taste" items
@@ -110,8 +132,8 @@ EXAMPLES:
 
 Return ONLY valid JSON matching this exact schema:
 {
-  "title": "string",
-  "description": "string (appetizing, chef-style description)",
+  "title": "string (in %%LANG%%)",
+  "description": "string (appetizing, chef-style description in %%LANG%%)",
   "cuisine": "string",
   "category": "string (appetizer, main, dessert, etc.)",
   "difficulty": 1-5,
@@ -146,7 +168,8 @@ Return ONLY valid JSON matching this exact schema:
     "instructions": 0.0-1.0
   }
 }"""
-    
+        return prompt.replace('%%LANG%%', self.target_language_name)
+
     def _get_user_prompt(self, text: str, detected_language: Optional[str] = None) -> str:
         """Get the user prompt with the recipe text"""
         lang_info = f" (detected language: {detected_language})" if detected_language else ""
@@ -155,7 +178,7 @@ Return ONLY valid JSON matching this exact schema:
 {text}
 
 Remember to:
-- Translate to English if needed
+- Write the title, description, and instructions in {self.target_language_name} (translate if the source text is in another language); keep ingredient names in canonical English
 - Make the description appetizing and professional
 - Choose appropriate cuisine and category from the predefined lists
 - Provide reasonable quantities for ALL ingredients (never use 0)
