@@ -215,7 +215,7 @@ class _SignedInProfile extends ConsumerWidget {
             icon: Icons.logout,
             variant: AppButtonVariant.secondary,
             expand: true,
-            onPressed: () => ref.read(authProvider.notifier).signOut()),
+            onPressed: () => _signOut(context, ref)),
       ],
     );
     return LayoutBuilder(builder: (context, constraints) {
@@ -267,7 +267,27 @@ class _SignedInProfile extends ConsumerWidget {
     );
     if (confirmed == true) {
       await ref.read(authProvider.notifier).deleteAccount();
+      if (context.mounted) {
+        _showAuthActionError(context, ref,
+            'Не вдалося видалити акаунт. Перевірте зʼєднання і спробуйте ще раз.');
+      }
     }
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    await ref.read(authProvider.notifier).signOut();
+    if (context.mounted) {
+      _showAuthActionError(context, ref,
+          'Не вдалося вийти з акаунта. Перевірте зʼєднання і спробуйте ще раз.');
+    }
+  }
+
+  void _showAuthActionError(
+      BuildContext context, WidgetRef ref, String message) {
+    if (!ref.read(authProvider).hasError) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+    ));
   }
 }
 

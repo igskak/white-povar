@@ -48,10 +48,13 @@ class AppAuthState extends Equatable {
           needsEmailVerification: true,
         );
 
-  const AppAuthState.error(String error)
+  /// A failed action must not pretend the session is gone: pass [user] when
+  /// the client still holds a live session so guarded UI stays signed in.
+  const AppAuthState.error(String error, {User? user})
       : this._(
           isLoading: false,
-          isAuthenticated: false,
+          isAuthenticated: user != null,
+          user: user,
           error: error,
         );
 

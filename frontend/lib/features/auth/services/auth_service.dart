@@ -143,7 +143,12 @@ class AuthService {
     if (token == null) throw Exception('No active session');
     final response = await http.delete(
       Uri.parse('${AppConfig.apiBaseUrl}/api/v1/lifecycle/me/devices'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        // Push bindings are tenant-scoped; without the slug the backend
+        // rejects the revoke with 400 and sign-out never completes.
+        'X-Tenant-Slug': AppConfig.tenantSlug,
+      },
     );
     if (response.statusCode != 204) {
       throw Exception('Could not revoke notification device');

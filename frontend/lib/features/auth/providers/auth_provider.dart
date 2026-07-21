@@ -119,7 +119,9 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
       await CookingProgressStore().clearPrivateData();
       await CollectionResumeStore().clearPrivateData();
     } catch (e) {
-      state = AppAuthState.error(e.toString());
+      // The session survived, so the state must stay authenticated: a guest
+      // presentation here desynchronizes the UI from the persisted session.
+      state = AppAuthState.error(e.toString(), user: _authService?.currentUser);
     }
   }
 
@@ -133,7 +135,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
             : AppAuthState.authenticated(user);
       }
     } catch (e) {
-      state = AppAuthState.error(e.toString());
+      state = AppAuthState.error(e.toString(), user: _authService?.currentUser);
     }
   }
 
@@ -144,7 +146,7 @@ class AuthNotifier extends StateNotifier<AppAuthState> {
       await CookingProgressStore().clearPrivateData();
       state = const AppAuthState.unauthenticated();
     } catch (e) {
-      state = AppAuthState.error(e.toString());
+      state = AppAuthState.error(e.toString(), user: _authService?.currentUser);
     }
   }
 
