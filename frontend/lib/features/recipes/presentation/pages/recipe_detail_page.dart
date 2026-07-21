@@ -214,7 +214,12 @@ class _RecipeHero extends StatelessWidget {
                   gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.25, 0.5, 1.0],
+                      stops: const [
+                0.0,
+                0.25,
+                0.5,
+                1.0
+              ],
                       colors: [
                 AppColorsV2.ink.withOpacity(.30),
                 AppColorsV2.ink.withOpacity(0),
