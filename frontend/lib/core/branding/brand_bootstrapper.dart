@@ -65,36 +65,68 @@ class BrandBootstrapper {
     required BrandBootstrapStorage storage,
     required BrandBootstrapRemoteLoader remoteLoader,
     BundledBootstrapLoader? bundledLoader,
-    Duration remoteTimeout = const Duration(seconds: 3),
+    Duration startupBudget = const Duration(seconds: 6),
+    Duration remoteTimeout = const Duration(seconds: 30),
+    Duration retryDelay = const Duration(seconds: 2),
+    int remoteAttempts = 2,
   })  : _storage = storage,
         _remoteLoader = remoteLoader,
         _bundledLoader = bundledLoader ??
             (() => rootBundle.loadString(_pilotBootstrapAsset)),
-        _remoteTimeout = remoteTimeout;
+        _startupBudget = startupBudget,
+        _remoteTimeout = remoteTimeout,
+        _retryDelay = retryDelay,
+        _remoteAttempts = remoteAttempts;
 
   final String tenantSlug;
   final BrandBootstrapStorage _storage;
   final BrandBootstrapRemoteLoader _remoteLoader;
   final BundledBootstrapLoader _bundledLoader;
-  final Duration _remoteTimeout;
 
-  /// Returns the version selected at cold start. A newer remote response is
-  /// persisted only, so an active session never changes brand unexpectedly.
+  /// How long a cold start waits for published configuration before falling
+  /// back. A warm API answers in about a second; anything slower is not worth
+  /// holding the splash screen for.
+  final Duration _startupBudget;
+
+  /// The request itself is allowed to run far longer than the startup budget:
+  /// the API sleeps between sessions, and a wake-up can take tens of seconds.
+  /// Giving up early is what used to leave a device pinned to a stale brand.
+  final Duration _remoteTimeout;
+  final Duration _retryDelay;
+  final int _remoteAttempts;
+
+  /// Returns the configuration this session runs on. Published changes apply
+  /// immediately when they arrive inside the startup budget; a slower response
+  /// still refreshes the cache in the background, so the next cold start picks
+  /// it up rather than the session changing brand mid-flight.
   Future<TenantBootstrap> load() async {
     final bundled = _parseForTenant(await _bundledLoader());
     final cached = await _loadCached();
-    final selected = cached ?? bundled;
 
-    try {
-      final remoteSource =
-          await _remoteLoader.load(tenantSlug).timeout(_remoteTimeout);
-      _parseForTenant(remoteSource);
-      await _storage.write(tenantSlug, remoteSource);
-    } catch (_) {
-      // Cached/bundled config is a valid, tenant-specific offline fallback.
+    // Deliberately not awaited past the budget: the refresh keeps running and
+    // persists whatever it eventually gets.
+    final refresh = _refreshFromRemote();
+    final fresh = await refresh.timeout(_startupBudget, onTimeout: () => null);
+
+    return fresh ?? cached ?? bundled;
+  }
+
+  /// Never throws; a failed refresh simply leaves the cache untouched.
+  Future<TenantBootstrap?> _refreshFromRemote() async {
+    for (var attempt = 1; attempt <= _remoteAttempts; attempt++) {
+      try {
+        final source =
+            await _remoteLoader.load(tenantSlug).timeout(_remoteTimeout);
+        final bootstrap = _parseForTenant(source);
+        await _storage.write(tenantSlug, source);
+        return bootstrap;
+      } catch (_) {
+        // Cached/bundled config is a valid, tenant-specific offline fallback.
+        if (attempt == _remoteAttempts) return null;
+        await Future<void>.delayed(_retryDelay);
+      }
     }
-
-    return selected;
+    return null;
   }
 
   Future<TenantBootstrap?> _loadCached() async {
