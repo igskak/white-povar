@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,12 +9,13 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
+import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
 import '../../services/cooking_progress_store.dart';
-import '../../models/recipe.dart';
 
 class CookingModePage extends ConsumerStatefulWidget {
   const CookingModePage({super.key, required this.recipeId});
@@ -437,11 +437,12 @@ class _CookingStepPhoto extends StatelessWidget {
       aspectRatio: 1,
       child: ClipRRect(
         borderRadius: AppRadius.lg,
-        child: CachedNetworkImage(
-          imageUrl: imageUrl!,
-          fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => _fallback,
-          placeholder: (_, __) => _fallback,
+        child: RemoteImage(
+          url: imageUrl!,
+          // Square step illustration, capped by the reading column.
+          targetWidth: 480,
+          errorWidget: _fallback,
+          placeholder: _fallback,
         ),
       ),
     );

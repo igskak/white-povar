@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme/brand_theme.dart';
+import '../images/remote_image.dart';
 import 'brand_config.dart';
 
 class BrandAvatar extends StatelessWidget {
@@ -16,13 +16,15 @@ class BrandAvatar extends StatelessWidget {
         _BrandMonogram(radius: radius, creatorName: brand.creatorName);
     if (!_isRemoteUrl(brand.avatar)) return fallback;
     return ClipOval(
-      child: CachedNetworkImage(
-        imageUrl: brand.avatar,
+      child: SizedBox(
         width: radius * 2,
         height: radius * 2,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => fallback,
-        errorWidget: (_, __, ___) => fallback,
+        child: RemoteImage(
+          url: brand.avatar,
+          targetWidth: radius * 2,
+          placeholder: fallback,
+          errorWidget: fallback,
+        ),
       ),
     );
   }
@@ -43,12 +45,16 @@ class BrandLogo extends StatelessWidget {
       style: Theme.of(context).textTheme.titleLarge,
     );
     if (!_isRemoteUrl(brand.logo)) return fallback;
-    return CachedNetworkImage(
-      imageUrl: brand.logo!,
+    return SizedBox(
       height: height,
-      fit: BoxFit.contain,
-      placeholder: (_, __) => fallback,
-      errorWidget: (_, __, ___) => fallback,
+      child: RemoteImage(
+        url: brand.logo!,
+        // Wordmarks are wider than they are tall; leave room for the ratio.
+        targetWidth: height * 6,
+        fit: BoxFit.contain,
+        placeholder: fallback,
+        errorWidget: fallback,
+      ),
     );
   }
 }
@@ -70,12 +76,13 @@ class BrandHero extends StatelessWidget {
         brand.heroPhotos.where((photo) => photo.hasRole(role)).firstOrNull;
     final fallback = _BrandHeroFallback(creatorName: brand.creatorName);
     if (photo == null || !_isRemoteUrl(photo.url)) return fallback;
-    return CachedNetworkImage(
-      imageUrl: photo.url,
+    return RemoteImage(
+      url: photo.url,
+      targetWidth: MediaQuery.sizeOf(context).width,
       fit: fit,
       alignment: Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
-      placeholder: (_, __) => fallback,
-      errorWidget: (_, __, ___) => fallback,
+      placeholder: fallback,
+      errorWidget: fallback,
     );
   }
 }

@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../models/collection.dart';
@@ -181,10 +181,11 @@ class _Cover extends StatelessWidget {
   @override
   Widget build(BuildContext context) => url == null || url!.isEmpty
       ? const _CoverFallback()
-      : CachedNetworkImage(
-          imageUrl: url!,
-          fit: BoxFit.cover,
-          errorWidget: (_, __, ___) => const _CoverFallback());
+      : RemoteImage(
+          url: url!,
+          // Widest collection cover across the responsive grid.
+          targetWidth: 480,
+          errorWidget: const _CoverFallback());
 }
 
 class _CoverFallback extends StatelessWidget {

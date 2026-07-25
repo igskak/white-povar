@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +7,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
-import '../../../pantry/providers/pantry_provider.dart';
 import '../../../menu_plan/providers/menu_plan_provider.dart';
+import '../../../pantry/providers/pantry_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
@@ -500,11 +500,11 @@ class _RecipeHeroImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => recipe.images.isEmpty
       ? const _HeroFallback()
-      : CachedNetworkImage(
-          imageUrl: recipe.images.first,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => const _HeroFallback(isLoading: true),
-          errorWidget: (_, __, ___) => const _HeroFallback());
+      : RemoteImage(
+          url: recipe.images.first,
+          targetWidth: MediaQuery.sizeOf(context).width,
+          placeholder: const _HeroFallback(isLoading: true),
+          errorWidget: const _HeroFallback());
 }
 
 class _HeroFallback extends StatelessWidget {

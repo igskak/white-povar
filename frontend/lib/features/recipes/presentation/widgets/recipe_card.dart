@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/premium.dart';
 import '../../models/recipe.dart';
@@ -343,24 +343,30 @@ class RecipeImageFallback extends StatelessWidget {
         child: SizedBox(
           width: width,
           height: height,
-          child: _RecipeImage(recipe: recipe),
+          child: _RecipeImage(recipe: recipe, slotWidth: width),
         ),
       );
 }
 
 class _RecipeImage extends StatelessWidget {
-  const _RecipeImage({required this.recipe});
+  const _RecipeImage({required this.recipe, this.slotWidth});
 
   final Recipe recipe;
+
+  /// Known width of the slot; absent when the image fills a card or a hero.
+  final double? slotWidth;
+
+  /// Widest catalogue card across the responsive grid and the Home rails.
+  static const _cardWidth = 400.0;
 
   @override
   Widget build(BuildContext context) => recipe.images.isEmpty
       ? const _ImageFallback()
-      : CachedNetworkImage(
-          imageUrl: recipe.images.first,
-          fit: BoxFit.cover,
-          placeholder: (_, __) => const _ImageFallback(isLoading: true),
-          errorWidget: (_, __, ___) => const _ImageFallback(),
+      : RemoteImage(
+          url: recipe.images.first,
+          targetWidth: slotWidth ?? _cardWidth,
+          placeholder: const _ImageFallback(isLoading: true),
+          errorWidget: const _ImageFallback(),
         );
 }
 

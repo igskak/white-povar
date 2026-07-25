@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/branding/brand_providers.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
@@ -149,10 +149,10 @@ class _CollectionHero extends StatelessWidget {
       child: Stack(fit: StackFit.expand, children: [
         collection.coverUrl == null || collection.coverUrl!.isEmpty
             ? const _HeroFallback()
-            : CachedNetworkImage(
-                imageUrl: collection.coverUrl!,
-                fit: BoxFit.cover,
-                errorWidget: (_, __, ___) => const _HeroFallback()),
+            : RemoteImage(
+                url: collection.coverUrl!,
+                targetWidth: MediaQuery.sizeOf(context).width,
+                errorWidget: const _HeroFallback()),
         DecoratedBox(
             decoration: BoxDecoration(
                 gradient: LinearGradient(
