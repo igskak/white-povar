@@ -93,6 +93,8 @@ class RemoteImage extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: sizedRemoteImageUrl(url, width: pixelWidth),
       httpHeaders: remoteImageHeaders,
+      width: double.infinity,
+      height: double.infinity,
       fit: fit,
       alignment: alignment,
       memCacheWidth: pixelWidth,

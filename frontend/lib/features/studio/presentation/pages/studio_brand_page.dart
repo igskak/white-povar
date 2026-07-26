@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/api/api_error.dart';
+import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../studio_brand_draft_service.dart';
@@ -769,7 +770,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Перетягніть точку на обличчя. Пунктирне коло показує те, що буде видно в застосунку.',
+            'Перетягніть фото під пунктирним колом. Усередині кола — точне прев’ю аватара.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           _zoomSlider(
@@ -957,14 +958,22 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
         ),
       ]);
 
-  /// The three crops 13d derives from one master, all centred on focal.
+  /// The three crops derived from one master, all centred on focal.
+  ///
+  /// These ratios intentionally mirror the real compact Studio scenes. The
+  /// old 390/300 and 390/280 placeholders were much taller than the live
+  /// slots, which made the thumbnails promise a crop the app could not show.
   Widget _focalCrops(BrandHeroPhoto photo) => SizedBox(
         width: 92,
         child: Column(children: [
-          _crop(photo, label: 'Логін', aspectRatio: 390 / 300),
-          _crop(photo, label: 'Пейвол', aspectRatio: 390 / 280),
           _crop(photo,
-              label: 'Курс', aspectRatio: 1, borderRadius: AppRadius.md),
+              label: 'Логін', aspectRatio: BrandMediaAspectRatio.login),
+          _crop(photo,
+              label: 'Пейвол', aspectRatio: BrandMediaAspectRatio.paywall),
+          _crop(photo,
+              label: 'Курс',
+              aspectRatio: BrandMediaAspectRatio.banner,
+              borderRadius: AppRadius.md),
         ]),
       );
 

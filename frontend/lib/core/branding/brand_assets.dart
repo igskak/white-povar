@@ -7,6 +7,19 @@ import '../../app/theme/tokens/app_tokens.dart';
 import '../images/remote_image.dart';
 import 'brand_config.dart';
 
+/// Aspect ratios used by the compact Studio preview.
+///
+/// Keep these in one place: the crop thumbnails in Studio must describe the
+/// same slots as the widgets below, otherwise a perfectly valid 1.0x crop can
+/// look dramatically more zoomed when it reaches the live preview.
+abstract final class BrandMediaAspectRatio {
+  static const double studioViewportWidth = 360;
+  static const double login = (studioViewportWidth - AppSpacing.md * 2) / 172;
+  static const double paywall = (studioViewportWidth - 22 * 2) / 130;
+  static const double banner = 2;
+  static const double avatar = 1;
+}
+
 class BrandAvatar extends StatelessWidget {
   const BrandAvatar({super.key, required this.brand, this.radius = 24});
 
@@ -25,17 +38,21 @@ class BrandAvatar extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final size = constraints.biggest;
+            final zoom = brand.avatarCrop.zoom;
+            // At 1x there is no overflow to pan through, so legacy focal
+            // values away from the centre must not translate the whole image
+            // out of its circular viewport.
+            final minFocal = .5 / zoom;
+            final maxFocal = 1 - minFocal;
+            final focalX = brand.avatarCrop.focalX.clamp(minFocal, maxFocal);
+            final focalY = brand.avatarCrop.focalY.clamp(minFocal, maxFocal);
             return Transform(
               transform: Matrix4.identity()
                 ..translate(size.width / 2, size.height / 2)
-                ..scale(
-                  brand.avatarCrop.zoom,
-                  brand.avatarCrop.zoom,
-                  1,
-                )
+                ..scale(zoom, zoom, 1)
                 ..translate(
-                  -brand.avatarCrop.focalX * size.width,
-                  -brand.avatarCrop.focalY * size.height,
+                  -focalX * size.width,
+                  -focalY * size.height,
                 ),
               child: RemoteImage(
                 url: brand.avatar,
@@ -131,7 +148,7 @@ class BrandHeroBanner extends StatelessWidget {
     super.key,
     required this.brand,
     required this.role,
-    this.aspectRatio = 2,
+    this.aspectRatio = BrandMediaAspectRatio.banner,
     this.maxHeight = 300,
   });
 
