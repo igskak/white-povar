@@ -872,37 +872,15 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   ///
   /// The box is locked to the 4:3 master ratio required by 13d, so a
   /// conforming upload maps its tap position onto the source image 1:1.
-  Widget _focalPicker(int index, BrandHeroPhoto photo) => AspectRatio(
-        aspectRatio: 4 / 3,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            void place(Offset local) => _updatePhoto(
-                  index,
-                  focalX: local.dx / constraints.maxWidth,
-                  focalY: local.dy / constraints.maxHeight,
-                );
-            return Semantics(
-              label: 'Точка фокуса кадру ${index + 1}',
-              child: GestureDetector(
-                key: ValueKey('studio-focal-picker-$index'),
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) => place(details.localPosition),
-                onPanStart: (details) => place(details.localPosition),
-                onPanUpdate: (details) => place(details.localPosition),
-                child: ClipRRect(
-                  borderRadius: AppRadius.md,
-                  child: Stack(fit: StackFit.expand, children: [
-                    _frameImage(photo.url, fit: BoxFit.cover),
-                    Align(
-                      alignment:
-                          Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
-                      child: _focalMarker(),
-                    ),
-                  ]),
-                ),
-              ),
-            );
-          },
+  Widget _focalPicker(int index, BrandHeroPhoto photo) => _ContainedFocalPicker(
+        key: ValueKey('studio-focal-picker-$index'),
+        url: photo.url,
+        focal: Offset(photo.focalX, photo.focalY),
+        semanticsLabel: 'Точка фокуса кадру ${index + 1}',
+        onChanged: (focal) => _updatePhoto(
+          index,
+          focalX: focal.dx,
+          focalY: focal.dy,
         ),
       );
 
@@ -978,16 +956,6 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
               textAlign: TextAlign.end, style: context.semantic.dataLabel),
         ),
       ]);
-
-  Widget _focalMarker() => Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.primary,
-          border: Border.all(color: context.semantic.surface, width: 2),
-        ),
-      );
 
   /// The three crops 13d derives from one master, all centred on focal.
   Widget _focalCrops(BrandHeroPhoto photo) => SizedBox(
@@ -1107,4 +1075,141 @@ class _DashedCirclePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DashedCirclePainter oldDelegate) => false;
+}
+
+class _ContainedFocalPicker extends StatefulWidget {
+  const _ContainedFocalPicker({
+    super.key,
+    required this.url,
+    required this.focal,
+    required this.semanticsLabel,
+    required this.onChanged,
+  });
+
+  final String url;
+  final Offset focal;
+  final String semanticsLabel;
+  final ValueChanged<Offset> onChanged;
+
+  @override
+  State<_ContainedFocalPicker> createState() => _ContainedFocalPickerState();
+}
+
+class _ContainedFocalPickerState extends State<_ContainedFocalPicker> {
+  ImageStream? _stream;
+  ImageStreamListener? _listener;
+  Size? _sourceSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveImage();
+  }
+
+  @override
+  void didUpdateWidget(_ContainedFocalPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) _resolveImage();
+  }
+
+  void _resolveImage() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    _sourceSize = null;
+    final stream = NetworkImage(widget.url).resolve(ImageConfiguration.empty);
+    final listener = ImageStreamListener((info, _) {
+      if (!mounted) return;
+      setState(() => _sourceSize =
+          Size(info.image.width.toDouble(), info.image.height.toDouble()));
+    });
+    _stream = stream;
+    _listener = listener;
+    stream.addListener(listener);
+  }
+
+  @override
+  void dispose() {
+    if (_stream != null && _listener != null) {
+      _stream!.removeListener(_listener!);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AspectRatio(
+        aspectRatio: 4 / 3,
+        child: LayoutBuilder(builder: (context, constraints) {
+          final bounds = Offset.zero & constraints.biggest;
+          final imageRect = _containedRect(bounds, _sourceSize);
+          void place(Offset local) {
+            final point = Offset(
+              local.dx.clamp(imageRect.left, imageRect.right),
+              local.dy.clamp(imageRect.top, imageRect.bottom),
+            );
+            widget.onChanged(Offset(
+              (point.dx - imageRect.left) / imageRect.width,
+              (point.dy - imageRect.top) / imageRect.height,
+            ));
+          }
+
+          return Semantics(
+            label: widget.semanticsLabel,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) => place(details.localPosition),
+              onPanStart: (details) => place(details.localPosition),
+              onPanUpdate: (details) => place(details.localPosition),
+              child: ClipRRect(
+                borderRadius: AppRadius.md,
+                child: ColoredBox(
+                  color: context.semantic.surfaceStrong,
+                  child: Stack(children: [
+                    Positioned.fromRect(
+                      rect: imageRect,
+                      child: Image.network(
+                        widget.url,
+                        fit: BoxFit.fill,
+                        errorBuilder: (context, _, __) => Icon(
+                          Icons.broken_image_outlined,
+                          color: context.semantic.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: imageRect.left +
+                          widget.focal.dx * imageRect.width -
+                          10,
+                      top: imageRect.top +
+                          widget.focal.dy * imageRect.height -
+                          10,
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          border: Border.all(
+                              color: context.semantic.surface, width: 2),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          );
+        }),
+      );
+}
+
+Rect _containedRect(Rect bounds, Size? source) {
+  if (source == null || source.isEmpty) return bounds;
+  final scale = math.min(
+    bounds.width / source.width,
+    bounds.height / source.height,
+  );
+  final size = Size(source.width * scale, source.height * scale);
+  return Rect.fromCenter(
+      center: bounds.center, width: size.width, height: size.height);
 }

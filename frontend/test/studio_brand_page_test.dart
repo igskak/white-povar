@@ -26,9 +26,13 @@ void main() {
     final picker = find.byKey(const ValueKey('studio-focal-picker-0'));
     expect(picker, findsOneWidget);
 
-    // Top-left quadrant: both axes must move, not just x as the old slider did.
+    // Image dimensions are not exposed by the fake HTTP decoder, so the
+    // loading-state editor maps against the complete 4:3 surface.
     final rect = tester.getRect(picker);
-    await tester.tapAt(Rect.fromPoints(rect.topLeft, rect.center).center);
+    await tester.tapAt(Offset(
+      rect.left + rect.width * .25,
+      rect.top + rect.height * .25,
+    ));
     await tester.pump();
 
     final photo = _publishedPhotos(tester).single;
