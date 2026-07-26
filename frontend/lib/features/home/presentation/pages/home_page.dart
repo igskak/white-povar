@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
@@ -317,6 +318,15 @@ class _DesktopHomeContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (brand.heroFor('home') != null) ...[
+                      BrandHeroBanner(
+                        key: const ValueKey('home-brand-hero'),
+                        brand: brand,
+                        role: 'home',
+                        height: 260,
+                      ),
+                      const SizedBox(height: 28),
+                    ],
                     RecipeCard.featured(
                       recipe: featured,
                       onTap: () => onOpenRecipe(featured),
@@ -431,6 +441,15 @@ class _HomeIntro extends StatelessWidget {
                     child: UserAvatar(name: userName),
                   ),
                 ),
+                // The brand's own photo, when it published one for Home.
+                if (brand.heroFor('home') != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  BrandHeroBanner(
+                    key: const ValueKey('home-brand-hero'),
+                    brand: brand,
+                    role: 'home',
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                   brand.voice.greeting,

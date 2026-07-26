@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/tokens/app_tokens.dart';
+import '../../../../core/branding/brand_assets.dart';
+import '../../../../core/branding/brand_config.dart';
+import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
@@ -17,9 +20,11 @@ class CollectionListPage extends ConsumerWidget {
         body: SafeArea(
           child: Column(
             children: [
-              const ResponsiveContainer(
+              ResponsiveContainer(
                 maxWidth: 1180,
-                child: _CollectionPageIntro(),
+                child: _CollectionPageIntro(
+                  brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
+                ),
               ),
               Expanded(
                 child: ref.watch(collectionListProvider).when(
@@ -77,7 +82,9 @@ class CollectionListPage extends ConsumerWidget {
 }
 
 class _CollectionPageIntro extends StatelessWidget {
-  const _CollectionPageIntro();
+  const _CollectionPageIntro({required this.brand});
+
+  final BrandDetails brand;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -90,6 +97,16 @@ class _CollectionPageIntro extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // The brand's own photo, when it published one for collections.
+            if (brand.heroFor('collection') != null) ...[
+              BrandHeroBanner(
+                key: const ValueKey('collections-brand-hero'),
+                brand: brand,
+                role: 'collection',
+                height: 152,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             Text('Колекції', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: AppSpacing.xs),
             Text(

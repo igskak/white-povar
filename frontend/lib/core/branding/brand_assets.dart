@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/theme/brand_theme.dart';
+import '../../app/theme/tokens/app_tokens.dart';
 import '../images/remote_image.dart';
 import 'brand_config.dart';
 
@@ -72,8 +73,7 @@ class BrandHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photo =
-        brand.heroPhotos.where((photo) => photo.hasRole(role)).firstOrNull;
+    final photo = brand.heroFor(role);
     final fallback = _BrandHeroFallback(creatorName: brand.creatorName);
     if (photo == null || !_isRemoteUrl(photo.url)) return fallback;
     return RemoteImage(
@@ -85,6 +85,35 @@ class BrandHero extends StatelessWidget {
       errorWidget: fallback,
     );
   }
+}
+
+/// A published brand photo shown as a rounded banner.
+///
+/// Home and the collection index read as finished without a photo, so call
+/// sites guard on [BrandDetails.heroFor] and omit this entirely rather than
+/// dropping in the gradient placeholder [BrandHero] uses. No scrim: nothing is
+/// drawn on top, and the dish should read bright.
+class BrandHeroBanner extends StatelessWidget {
+  const BrandHeroBanner({
+    super.key,
+    required this.brand,
+    required this.role,
+    this.height = 172,
+  });
+
+  final BrandDetails brand;
+  final String role;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: height,
+        width: double.infinity,
+        child: ClipRRect(
+          borderRadius: AppRadius.lg,
+          child: BrandHero(brand: brand, role: role),
+        ),
+      );
 }
 
 class _BrandMonogram extends StatelessWidget {

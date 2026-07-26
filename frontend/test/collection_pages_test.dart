@@ -101,6 +101,7 @@ final _collections = List.generate(
 
 Widget _collectionApp() => ProviderScope(
       overrides: [
+        tenantBootstrapProvider.overrideWithValue(_bootstrap),
         collectionListProvider.overrideWith(
           (ref) async => _collections,
         ),

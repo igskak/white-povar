@@ -71,6 +71,16 @@ class BrandDetails {
   final String? courseTag;
   final String? logo;
 
+  /// The photo published for [role], or null when the tenant assigned none.
+  /// Surfaces that are complete without a photo check this instead of falling
+  /// back to a gradient.
+  BrandHeroPhoto? heroFor(String role) {
+    for (final photo in heroPhotos) {
+      if (photo.hasRole(role)) return photo;
+    }
+    return null;
+  }
+
   Map<String, dynamic> toJson() => {
         'name': name,
         'creatorName': creatorName,

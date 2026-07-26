@@ -120,6 +120,11 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
               brand: brand,
               trailing: const UserAvatar(),
             ),
+            // 13j/13d: no photo assigned to Home → no banner, not a placeholder.
+            if (brand.heroFor('home') != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              BrandHeroBanner(brand: brand, role: 'home'),
+            ],
             const SizedBox(height: AppSpacing.lg),
             Text(
               brand.voice.greeting,
