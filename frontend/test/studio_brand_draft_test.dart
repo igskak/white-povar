@@ -16,6 +16,10 @@ void main() {
           'name': 'Огороднік Олександр',
           'creatorName': 'Олександр',
           'avatar': 'PENDING:/brands/ohorodnik-oleksandr/avatar-512.png',
+          'avatarCrop': {
+            'focal': {'x': .2, 'y': .3},
+            'zoom': 1.6,
+          },
           'accent': '#5D7183',
           'font': 'grotesque',
           'voice': {
@@ -30,6 +34,7 @@ void main() {
               'url': 'https://assets.example/hero.webp',
               'roles': ['login'],
               'focal': {'x': .25, 'y': .75},
+              'zoom': 1.4,
             },
           ],
           'logo': null,
@@ -49,6 +54,10 @@ void main() {
         'Готуйте з Олександром');
     expect(draft.config.brand.heroPhotos.single.focalX, .25);
     expect(draft.config.brand.heroPhotos.single.focalY, .75);
+    expect(draft.config.brand.heroPhotos.single.zoom, 1.4);
+    expect(draft.config.brand.avatarCrop.focalX, .2);
+    expect(draft.config.brand.avatarCrop.focalY, .3);
+    expect(draft.config.brand.avatarCrop.zoom, 1.6);
   });
 
   test('hero frame order and both focal axes survive the publish round trip',
@@ -61,7 +70,8 @@ void main() {
           url: 'https://assets.example/a.jpg',
           roles: {'login', 'paywall'},
           focalX: .34,
-          focalY: .42),
+          focalY: .42,
+          zoom: 1.8),
     ];
 
     final json = reordered.map((photo) => photo.toJson()).toList();
@@ -70,6 +80,7 @@ void main() {
     // Defaults are 13d's {0.5, 0.4} and are written out, never omitted.
     expect(json.first['focal'], {'x': .5, 'y': .4});
     expect(json.last['focal'], {'x': .34, 'y': .42});
+    expect(json.last['zoom'], 1.8);
 
     final parsed = json
         .map((photo) => BrandHeroPhoto.fromJson(photo))
@@ -78,6 +89,7 @@ void main() {
         parsed.map((photo) => photo.url), reordered.map((photo) => photo.url));
     expect(parsed.last.focalX, .34);
     expect(parsed.last.focalY, .42);
+    expect(parsed.last.zoom, 1.8);
     expect(parsed.last.roles, {'login', 'paywall'});
   });
 
@@ -91,5 +103,21 @@ void main() {
       }),
       throwsA(isA<FormatException>()),
     );
+  });
+
+  test('avatar crop defaults preserve legacy configs and round-trip edits', () {
+    final legacy = BrandCrop.fromJson(null);
+    expect(legacy.focalX, .5);
+    expect(legacy.focalY, .5);
+    expect(legacy.zoom, 1);
+
+    final parsed = BrandCrop.fromJson({
+      'focal': {'x': .22, 'y': .31},
+      'zoom': 2.2,
+    });
+    expect(parsed.toJson(), {
+      'focal': {'x': .22, 'y': .31},
+      'zoom': 2.2,
+    });
   });
 }

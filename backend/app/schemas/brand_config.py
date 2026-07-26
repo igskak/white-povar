@@ -54,11 +54,19 @@ class FocalPoint(BaseModel):
     y: float = Field(default=0.4, ge=0, le=1)
 
 
+class CropSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    focal: FocalPoint = Field(default_factory=lambda: FocalPoint(x=0.5, y=0.5))
+    zoom: float = Field(default=1, ge=1, le=3)
+
+
 class HeroPhoto(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     url: str
     focal: FocalPoint = Field(default_factory=FocalPoint)
+    zoom: float = Field(default=1, ge=1, le=3)
     roles: list[HeroRole] = Field(min_length=1)
 
     _url = field_validator("url")(_validate_url)
@@ -95,6 +103,7 @@ class Brand(BaseModel):
     name: str = Field(min_length=1, max_length=20)
     creator_name: str = Field(alias="creatorName", min_length=1, max_length=16)
     avatar: str
+    avatar_crop: CropSettings = Field(default_factory=CropSettings, alias="avatarCrop")
     accent: str
     font: BrandFont = BrandFont.serif
     voice: BrandVoice

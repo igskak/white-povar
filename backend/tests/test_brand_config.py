@@ -103,3 +103,49 @@ def test_hero_photo_list_is_empty_or_has_between_three_and_six_items():
 
     with pytest.raises(ValidationError, match="3 to 6"):
         BrandConfig.model_validate(config)
+
+
+def test_crop_settings_default_for_legacy_configs_and_round_trip():
+    config = pilot_config()
+    validated = validate_brand_config(config)
+
+    assert validated["brand"]["avatarCrop"] == {
+        "focal": {"x": 0.5, "y": 0.5},
+        "zoom": 1.0,
+    }
+
+    config["brand"]["avatarCrop"] = {
+        "focal": {"x": 0.25, "y": 0.3},
+        "zoom": 2.2,
+    }
+    config["brand"]["heroPhotos"] = [
+        {
+            "url": f"https://assets.example/hero-{index}.jpg",
+            "roles": ["home"],
+            "zoom": 1.5,
+        }
+        for index in range(3)
+    ]
+    validated = validate_brand_config(config)
+
+    assert validated["brand"]["avatarCrop"]["zoom"] == 2.2
+    assert validated["brand"]["heroPhotos"][0]["zoom"] == 1.5
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("avatarCrop", {"focal": {"x": 0.5, "y": 0.4}, "zoom": 3.1}),
+        ("heroPhotos", [
+            {"url": "https://assets.example/a.jpg", "roles": ["home"], "zoom": 0.9},
+            {"url": "https://assets.example/b.jpg", "roles": ["login"]},
+            {"url": "https://assets.example/c.jpg", "roles": ["paywall"]},
+        ]),
+    ],
+)
+def test_crop_zoom_is_bounded(field, value):
+    config = pilot_config()
+    config["brand"][field] = value
+
+    with pytest.raises(ValidationError):
+        BrandConfig.model_validate(config)

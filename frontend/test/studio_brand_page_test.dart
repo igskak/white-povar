@@ -54,6 +54,24 @@ void main() {
     expect(photo.focalY, greaterThan(.9));
   });
 
+  testWidgets('avatar crop picker updates focal point in the live config',
+      (tester) async {
+    await _pumpStudio(tester);
+
+    final picker = find.byKey(const ValueKey('studio-avatar-crop-picker'));
+    expect(picker, findsOneWidget);
+    final rect = tester.getRect(picker);
+    await tester.tapAt(Offset(
+      rect.left + rect.width * .3,
+      rect.top + rect.height * .25,
+    ));
+    await tester.pump();
+
+    final crop = _publishedBrand(tester).avatarCrop;
+    expect(crop.focalX, closeTo(.3, .02));
+    expect(crop.focalY, closeTo(.25, .02));
+  });
+
   testWidgets('dragging a frame reorders the published rotation',
       (tester) async {
     await _pumpStudio(tester, photos: _threePhotos);
@@ -148,6 +166,11 @@ List<BrandHeroPhoto> _publishedPhotos(WidgetTester tester) => tester
     .brand
     .heroPhotos;
 
+BrandDetails _publishedBrand(WidgetTester tester) => tester
+    .widget<StudioBrandPreview>(find.byType(StudioBrandPreview))
+    .config
+    .brand;
+
 Widget _previewApp(BrandConfig config,
         {StudioPreviewTab tab = StudioPreviewTab.login}) =>
     ProviderScope(
@@ -198,7 +221,8 @@ BrandConfig _config({
       brand: BrandDetails(
         name: 'Огороднік Олександр',
         creatorName: 'Олександр',
-        avatar: 'PENDING:/avatar.png',
+        avatar: 'https://assets.example/avatar.jpg',
+        avatarCrop: const BrandCrop(zoom: 2),
         accent: '#5D7183',
         font: 'grotesque',
         voice: BrandVoice(

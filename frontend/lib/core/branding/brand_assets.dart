@@ -22,11 +22,29 @@ class BrandAvatar extends StatelessWidget {
       child: SizedBox(
         width: radius * 2,
         height: radius * 2,
-        child: RemoteImage(
-          url: brand.avatar,
-          targetWidth: radius * 2,
-          placeholder: fallback,
-          errorWidget: fallback,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.biggest;
+            return Transform(
+              transform: Matrix4.identity()
+                ..translate(size.width / 2, size.height / 2)
+                ..scale(
+                  brand.avatarCrop.zoom,
+                  brand.avatarCrop.zoom,
+                  1,
+                )
+                ..translate(
+                  -brand.avatarCrop.focalX * size.width,
+                  -brand.avatarCrop.focalY * size.height,
+                ),
+              child: RemoteImage(
+                url: brand.avatar,
+                targetWidth: radius * 2,
+                placeholder: fallback,
+                errorWidget: fallback,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -84,13 +102,20 @@ class BrandHero extends StatelessWidget {
     final photo = brand.heroFor(role);
     final fallback = _BrandHeroFallback(creatorName: brand.creatorName);
     if (photo == null || !_isRemoteUrl(photo.url)) return fallback;
-    return RemoteImage(
-      url: photo.url,
-      targetWidth: targetWidth ?? MediaQuery.sizeOf(context).width,
-      fit: fit,
-      alignment: Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
-      placeholder: fallback,
-      errorWidget: fallback,
+    final alignment = Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1);
+    return ClipRect(
+      child: Transform.scale(
+        scale: photo.zoom,
+        alignment: alignment,
+        child: RemoteImage(
+          url: photo.url,
+          targetWidth: targetWidth ?? MediaQuery.sizeOf(context).width,
+          fit: fit,
+          alignment: alignment,
+          placeholder: fallback,
+          errorWidget: fallback,
+        ),
+      ),
     );
   }
 }

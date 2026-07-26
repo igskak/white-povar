@@ -56,6 +56,7 @@ class BrandDetails {
     required this.voice,
     required this.derived,
     required this.heroPhotos,
+    this.avatarCrop = const BrandCrop(),
     this.courseTag,
     this.logo,
   });
@@ -63,6 +64,7 @@ class BrandDetails {
   final String name;
   final String creatorName;
   final String avatar;
+  final BrandCrop avatarCrop;
   final String accent;
   final String font;
   final BrandVoice voice;
@@ -85,6 +87,7 @@ class BrandDetails {
         'name': name,
         'creatorName': creatorName,
         'avatar': avatar,
+        'avatarCrop': avatarCrop.toJson(),
         'accent': accent,
         'font': font,
         'voice': voice.toJson(),
@@ -114,6 +117,7 @@ class BrandDetails {
       name: _requiredString(json, 'name'),
       creatorName: _requiredString(json, 'creatorName'),
       avatar: _requiredString(json, 'avatar'),
+      avatarCrop: BrandCrop.fromJson(json['avatarCrop']),
       accent: accent.toUpperCase(),
       font: font,
       voice: voice,
@@ -130,19 +134,22 @@ class BrandHeroPhoto {
       {required this.url,
       required this.roles,
       this.focalX = .5,
-      this.focalY = .4});
+      this.focalY = .4,
+      this.zoom = 1});
 
   final String url;
   final Set<String> roles;
   final double focalX;
   final double focalY;
+  final double zoom;
 
   bool hasRole(String role) => roles.contains(role);
 
   Map<String, dynamic> toJson() => {
         'url': url,
         'roles': roles.toList(),
-        'focal': {'x': focalX, 'y': focalY}
+        'focal': {'x': focalX, 'y': focalY},
+        'zoom': zoom
       };
 
   factory BrandHeroPhoto.fromJson(Map<String, dynamic> json) {
@@ -156,11 +163,56 @@ class BrandHeroPhoto {
     if (x is! num || y is! num || x < 0 || x > 1 || y < 0 || y > 1) {
       throw const FormatException('Invalid BrandConfig focal point.');
     }
+    final zoom = json['zoom'] ?? 1;
+    if (zoom is! num || zoom < 1 || zoom > 3) {
+      throw const FormatException('Invalid BrandConfig crop zoom.');
+    }
     return BrandHeroPhoto(
         url: _requiredString(json, 'url'),
         roles: roles.cast<String>().toSet(),
         focalX: x.toDouble(),
-        focalY: y.toDouble());
+        focalY: y.toDouble(),
+        zoom: zoom.toDouble());
+  }
+}
+
+class BrandCrop {
+  const BrandCrop({this.focalX = .5, this.focalY = .5, this.zoom = 1});
+
+  final double focalX;
+  final double focalY;
+  final double zoom;
+
+  Map<String, dynamic> toJson() => {
+        'focal': {'x': focalX, 'y': focalY},
+        'zoom': zoom,
+      };
+
+  factory BrandCrop.fromJson(dynamic value) {
+    if (value == null) return const BrandCrop();
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('Invalid BrandConfig avatarCrop.');
+    }
+    final focal = value['focal'];
+    final x = focal is Map ? focal['x'] : .5;
+    final y = focal is Map ? focal['y'] : .5;
+    final zoom = value['zoom'] ?? 1;
+    if (x is! num ||
+        y is! num ||
+        zoom is! num ||
+        x < 0 ||
+        x > 1 ||
+        y < 0 ||
+        y > 1 ||
+        zoom < 1 ||
+        zoom > 3) {
+      throw const FormatException('Invalid BrandConfig avatarCrop.');
+    }
+    return BrandCrop(
+      focalX: x.toDouble(),
+      focalY: y.toDouble(),
+      zoom: zoom.toDouble(),
+    );
   }
 }
 

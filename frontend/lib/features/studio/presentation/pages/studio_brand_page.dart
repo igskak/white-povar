@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -44,6 +46,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   bool _releasing = false;
   StudioReleaseStatus? _releaseStatus;
   String? _avatarUrl;
+  BrandCrop _avatarCrop = const BrandCrop();
   List<BrandHeroPhoto> _photos = [];
 
   /// Upload-time facts the published config does not carry (13m frame states).
@@ -90,6 +93,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     _tag.text = brand.courseTag ?? '';
     _font = brand.font;
     _avatarUrl = brand.avatar;
+    _avatarCrop = brand.avatarCrop;
     _photos = List.of(brand.heroPhotos);
     _dirty = false;
     if (mounted) setState(() => _loading = false);
@@ -107,6 +111,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       ..['accent'] = _accent.text
       ..['font'] = _font;
     brand['avatar'] = _avatarUrl;
+    brand['avatarCrop'] = _avatarCrop.toJson();
     brand['heroPhotos'] = _photos.map((photo) => photo.toJson()).toList();
     voice
       ..['greeting'] = _greeting.text
@@ -166,6 +171,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     Set<String>? roles,
     double? focalX,
     double? focalY,
+    double? zoom,
   }) =>
       setState(() {
         final photo = _photos[index];
@@ -174,6 +180,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           roles: roles ?? photo.roles,
           focalX: (focalX ?? photo.focalX).clamp(0.0, 1.0),
           focalY: (focalY ?? photo.focalY).clamp(0.0, 1.0),
+          zoom: (zoom ?? photo.zoom).clamp(1.0, 3.0),
         );
         _dirty = true;
       });
@@ -226,6 +233,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       setState(() {
         if (avatar) {
           _avatarUrl = asset.url;
+          _avatarCrop = const BrandCrop();
         } else if (_photos.any((photo) => photo.url == asset.url)) {
           // Frames are keyed by URL, so the same asset cannot appear twice.
           return;
@@ -434,6 +442,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(_uploadingAsset ? 'Обробка…' : 'Додати кадр')),
             ]),
+            if (_avatarUrl != null && _isRemoteAsset(_avatarUrl!))
+              _avatarCropEditor(),
             _photoCounter(),
             if (_rejectedPhoto != null)
               _photoNotice(icon: Icons.error_outline, message: _rejectedPhoto!),
@@ -713,6 +723,71 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     ]);
   }
 
+  Widget _avatarCropEditor() {
+    final crop = _avatarCrop;
+    return Card(
+      margin: const EdgeInsets.only(top: AppSpacing.xs),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Кадрування avatar',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          Center(
+            child: SizedBox.square(
+              dimension: 280,
+              child: LayoutBuilder(builder: (context, constraints) {
+                void place(Offset local) => setState(() {
+                      _avatarCrop = BrandCrop(
+                        focalX: (local.dx / constraints.maxWidth)
+                            .clamp(_cropMin(crop.zoom), _cropMax(crop.zoom)),
+                        focalY: (local.dy / constraints.maxHeight)
+                            .clamp(_cropMin(crop.zoom), _cropMax(crop.zoom)),
+                        zoom: crop.zoom,
+                      );
+                      _dirty = true;
+                    });
+                return GestureDetector(
+                  key: const ValueKey('studio-avatar-crop-picker'),
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (details) => place(details.localPosition),
+                  onPanStart: (details) => place(details.localPosition),
+                  onPanUpdate: (details) => place(details.localPosition),
+                  child: ClipRRect(
+                    borderRadius: AppRadius.md,
+                    child: Stack(fit: StackFit.expand, children: [
+                      _avatarCroppedImage(
+                        _avatarUrl!,
+                        crop: crop,
+                      ),
+                      CustomPaint(painter: _DashedCirclePainter()),
+                    ]),
+                  ),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Перетягніть точку на обличчя. Пунктирне коло показує те, що буде видно в застосунку.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          _zoomSlider(
+            value: crop.zoom,
+            onChanged: (zoom) => setState(() {
+              _avatarCrop = BrandCrop(
+                focalX: crop.focalX.clamp(_cropMin(zoom), _cropMax(zoom)),
+                focalY: crop.focalY.clamp(_cropMin(zoom), _cropMax(zoom)),
+                zoom: zoom,
+              );
+              _dirty = true;
+            }),
+          ),
+        ]),
+      ),
+    );
+  }
+
   /// One hero frame: drag handle, focal-point editor and the live 13d crops.
   ///
   /// The key is the asset URL, not the list index — a [ReorderableListView]
@@ -752,6 +827,10 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                       _dirty = true;
                     })),
           ]),
+          _zoomSlider(
+            value: photo.zoom,
+            onChanged: (zoom) => _updatePhoto(index, zoom: zoom),
+          ),
           const SizedBox(height: AppSpacing.xs),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: _focalPicker(index, photo)),
@@ -846,6 +925,60 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                 : ColoredBox(color: context.semantic.surfaceStrong),
       );
 
+  Widget _croppedImage(
+    String url, {
+    required Alignment alignment,
+    required double zoom,
+  }) =>
+      ClipRect(
+        child: Transform.scale(
+          scale: zoom,
+          alignment: alignment,
+          child: _frameImage(url, fit: BoxFit.cover, alignment: alignment),
+        ),
+      );
+
+  Widget _avatarCroppedImage(String url, {required BrandCrop crop}) =>
+      LayoutBuilder(builder: (context, constraints) {
+        final size = constraints.biggest;
+        return ClipRect(
+          child: Transform(
+            transform: Matrix4.identity()
+              ..translate(size.width / 2, size.height / 2)
+              ..scale(crop.zoom, crop.zoom, 1)
+              ..translate(
+                -crop.focalX * size.width,
+                -crop.focalY * size.height,
+              ),
+            child: _frameImage(url, fit: BoxFit.cover),
+          ),
+        );
+      });
+
+  Widget _zoomSlider({
+    required double value,
+    required ValueChanged<double> onChanged,
+  }) =>
+      Row(children: [
+        const Icon(Icons.zoom_out, size: 18),
+        Expanded(
+          child: Slider(
+            value: value,
+            min: 1,
+            max: 3,
+            divisions: 20,
+            label: '${value.toStringAsFixed(1)}×',
+            onChanged: onChanged,
+          ),
+        ),
+        const Icon(Icons.zoom_in, size: 18),
+        SizedBox(
+          width: 42,
+          child: Text('${value.toStringAsFixed(1)}×',
+              textAlign: TextAlign.end, style: context.semantic.dataLabel),
+        ),
+      ]);
+
   Widget _focalMarker() => Container(
         width: 20,
         height: 20,
@@ -882,11 +1015,11 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             borderRadius: borderRadius,
             child: AspectRatio(
               aspectRatio: aspectRatio,
-              child: _frameImage(
+              child: _croppedImage(
                 photo.url,
-                fit: BoxFit.cover,
                 alignment:
                     Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
+                zoom: photo.zoom,
               ),
             ),
           ),
@@ -942,4 +1075,36 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             'приклад: справжні приходять з App Store і Google Play.',
             style: Theme.of(context).textTheme.bodySmall),
       ]);
+}
+
+bool _isRemoteAsset(String value) =>
+    value.startsWith('https://') || value.startsWith('http://');
+
+double _cropMin(double zoom) => .5 / zoom;
+double _cropMax(double zoom) => 1 - _cropMin(zoom);
+
+class _DashedCirclePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final center = size.center(Offset.zero);
+    final radius = math.min(size.width, size.height) / 2 - 12;
+    const dash = math.pi / 30;
+    const gap = math.pi / 45;
+    for (var angle = 0.0; angle < math.pi * 2; angle += dash + gap) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        angle,
+        dash,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedCirclePainter oldDelegate) => false;
 }
