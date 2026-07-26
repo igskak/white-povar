@@ -80,22 +80,29 @@ Roles (Handoff §1), applied in [app_theme.dart](frontend/lib/app/theme/app_them
 |---|---|---|
 | `headlineLarge` / `headlineMedium` | brand display | 40 / 30, w700 |
 | `titleLarge` | brand display | 22, w600 |
-| `bodyLarge` / `bodyMedium` | Figtree | 16 / 14 |
-| `bodySmall` | Figtree | 12, `textSecondary` |
-| `labelSmall` | Figtree | 11, `textSecondary` |
+| `bodyLarge` / `bodyMedium` | Manrope | 16 / 14 |
+| `bodySmall` | Manrope | 12, `textSecondary` |
+| `labelSmall` | Manrope | 11, `textSecondary` |
 | `labelMedium` (data role) | JetBrains Mono | 11, `textSecondary` |
 
-Font presets (design 13c) — the display family varies by brand, the UI family never does:
+Font presets — the display family varies by brand, the UI family never does:
 
 | `brand.font` | Display | Body |
 |---|---|---|
-| `serif` | Source Serif 4 | Figtree |
-| `grotesque` | Golos Text | Figtree |
-| `humanist` | Lora | Figtree |
-| *(absent / invalid)* | Source Serif 4 | Figtree |
+| `serif` | Source Serif 4 | Manrope |
+| `grotesque` | Manrope | Manrope |
+| `humanist` | Lora | Manrope |
+| *(absent / invalid)* | Source Serif 4 | Manrope |
 
 Body styles and `ThemeData.fontFamilyFallback` carry `AppFonts.bodyFallback`
-(`['Golos Text']`) so Cyrillic glyphs always resolve.
+(`['Golos Text']`). Manrope covers Ukrainian Cyrillic (ҐЄІЇ) on its own, so the
+fallback only catches glyphs outside its charset.
+
+Manrope ships one static file per weight (400/500/600/700/800). A variable font
+declared under several `weight:` keys renders every one of them at its default
+axis position and lets the engine synthesise the difference, so `w700` headlines
+come out as faux bold — Source Serif 4, Lora and JetBrains Mono are still
+registered that way and need the same treatment.
 
 ### Checks
 

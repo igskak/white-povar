@@ -24,15 +24,15 @@ class BrandThemeExtension extends ThemeExtension<BrandThemeExtension> {
   final String displayFontFamily;
   final String bodyFontFamily;
 
-  /// Appended after [bodyFontFamily] so Cyrillic body glyphs always resolve
-  /// (design 13c UI stack: 'Figtree', 'Golos Text', sans-serif).
+  /// Appended after [bodyFontFamily] so glyphs outside the body charset still
+  /// resolve (UI stack: 'Manrope', 'Golos Text', sans-serif).
   final List<String> bodyFontFallback;
 
   factory BrandThemeExtension.fromConfig(BrandConfig config) {
     // Curated display pairings (design 13c). The UI/body family is shared.
     final displayFontFamily = switch (config.brand.font) {
       'serif' => 'Source Serif 4',
-      'grotesque' => 'Golos Text',
+      'grotesque' => AppFonts.body,
       'humanist' => 'Lora',
       _ => 'Source Serif 4',
     };

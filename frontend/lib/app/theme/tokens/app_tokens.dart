@@ -143,10 +143,12 @@ extension SemanticColorsContext on BuildContext {
 }
 
 class AppFonts {
-  /// Shared UI/body family across every brand preset.
-  static const String body = 'Figtree';
+  /// Shared UI/body family across every brand preset. Ships real 400–800
+  /// instances and covers Ukrainian Cyrillic (ҐЄІЇ), so body text renders in
+  /// the family it asks for instead of dropping into [bodyFallback].
+  static const String body = 'Manrope';
 
-  /// Appended to body styles so Cyrillic glyphs always resolve.
+  /// Appended to body styles so glyphs outside the body charset still resolve.
   static const List<String> bodyFallback = ['Golos Text'];
 
   /// Data/mono role.
