@@ -139,17 +139,21 @@ flutter:
           weight: 700
         - asset: assets/fonts/Manrope-ExtraBold.ttf
           weight: 800
+    # The data role is w400 everywhere; there is no bold mono in the app.
     - family: JetBrains Mono
       fonts:
-        - asset: assets/fonts/JetBrainsMono-Variable.ttf
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
           weight: 400
-        - asset: assets/fonts/JetBrainsMono-Variable.ttf
-          weight: 700
+    # Display presets carry w600 (titleLarge) and w700 (headlines, card titles)
+    # only — the body family owns every regular-weight role.
+    #
+    # Source Serif 4 also has an optical-size axis, which Flutter cannot drive:
+    # both instances pin `opsz: 24`, sized for the 17–40px display range.
     - family: Source Serif 4
       fonts:
-        - asset: assets/fonts/SourceSerif4-Variable.ttf
-          weight: 400
-        - asset: assets/fonts/SourceSerif4-Variable.ttf
+        - asset: assets/fonts/SourceSerif4-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/SourceSerif4-Bold.ttf
           weight: 700
     # Body fallback only: Manrope covers Cyrillic, so this catches stray glyphs
     # outside its charset and never carries a display role of its own.
@@ -159,9 +163,9 @@ flutter:
           weight: 400
     - family: Lora
       fonts:
-        - asset: assets/fonts/Lora-Variable.ttf
-          weight: 400
-        - asset: assets/fonts/Lora-Variable.ttf
+        - asset: assets/fonts/Lora-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Lora-Bold.ttf
           weight: 700
 
   # An image asset can refer to one or more resolution-specific "variants", see

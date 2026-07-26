@@ -98,11 +98,21 @@ Body styles and `ThemeData.fontFamilyFallback` carry `AppFonts.bodyFallback`
 (`['Golos Text']`). Manrope covers Ukrainian Cyrillic (ҐЄІЇ) on its own, so the
 fallback only catches glyphs outside its charset.
 
-Manrope ships one static file per weight (400/500/600/700/800). A variable font
-declared under several `weight:` keys renders every one of them at its default
-axis position and lets the engine synthesise the difference, so `w700` headlines
-come out as faux bold — Source Serif 4, Lora and JetBrains Mono are still
-registered that way and need the same treatment.
+Every family ships one static file per weight. A variable font declared under
+several `weight:` keys renders all of them at its default axis position and lets
+the engine synthesise the difference, so `w700` headlines come out as faux bold;
+registering a real instance per weight is what avoids that.
+
+| Family | Weights | Role |
+|---|---|---|
+| Manrope | 400 · 500 · 600 · 700 · 800 | Body + `grotesque` display |
+| Source Serif 4 | 600 · 700 | `serif` display (`opsz` pinned to 24) |
+| Lora | 600 · 700 | `humanist` display |
+| JetBrains Mono | 400 | Data role |
+| Golos Text | 400 | Body fallback |
+
+Display families carry only w600/w700 because the display roles are the only
+ones that use them; regular weights belong to the body family.
 
 ### Checks
 
