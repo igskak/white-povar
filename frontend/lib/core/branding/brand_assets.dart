@@ -67,11 +67,17 @@ class BrandHero extends StatelessWidget {
       {super.key,
       required this.brand,
       required this.role,
-      this.fit = BoxFit.cover});
+      this.fit = BoxFit.cover,
+      this.targetWidth});
 
   final BrandDetails brand;
   final String role;
   final BoxFit fit;
+
+  /// Logical width of the slot. Defaults to the window, which is right for the
+  /// full-bleed login and paywall scenes; callers that fill only part of the
+  /// screen pass their own width so the fetch and the decode stay in scale.
+  final double? targetWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +86,7 @@ class BrandHero extends StatelessWidget {
     if (photo == null || !_isRemoteUrl(photo.url)) return fallback;
     return RemoteImage(
       url: photo.url,
-      targetWidth: MediaQuery.sizeOf(context).width,
+      targetWidth: targetWidth ?? MediaQuery.sizeOf(context).width,
       fit: fit,
       alignment: Alignment(photo.focalX * 2 - 1, photo.focalY * 2 - 1),
       placeholder: fallback,
@@ -126,7 +132,13 @@ class BrandHeroBanner extends StatelessWidget {
             width: double.infinity,
             child: ClipRRect(
               borderRadius: AppRadius.lg,
-              child: BrandHero(brand: brand, role: role),
+              child: BrandHero(
+                brand: brand,
+                role: role,
+                // The banner is a column, not the window: asking for the window
+                // width fetches and decodes a 2000px original for a 300px slot.
+                targetWidth: width,
+              ),
             ),
           );
         },
