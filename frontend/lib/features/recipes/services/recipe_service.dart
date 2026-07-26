@@ -20,7 +20,10 @@ class RecipeService {
   }) async {
     try {
       final response = await _apiClient.get<Map<String, dynamic>>(
-        '/api/v1/recipes',
+        // The trailing slash is the canonical route. Without it FastAPI answers
+        // 307, and WebKit refuses to follow a redirect on a preflighted
+        // cross-origin request, so the catalogue fails on iOS only.
+        '/api/v1/recipes/',
         queryParameters: {
           if (cuisine != null) 'cuisine': cuisine,
           if (category != null) 'category': category,
@@ -80,8 +83,9 @@ class RecipeService {
   // Create new recipe
   Future<Recipe> createRecipe(Recipe recipe) async {
     try {
-      final response = await _apiClient
-          .post<Map<String, dynamic>>('/api/v1/recipes', data: recipe.toJson());
+      final response = await _apiClient.post<Map<String, dynamic>>(
+          '/api/v1/recipes/',
+          data: recipe.toJson());
       if (response.statusCode == 201) {
         final data = response.data!;
         return Recipe.fromJson(data);
