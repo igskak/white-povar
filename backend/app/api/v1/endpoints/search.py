@@ -18,7 +18,11 @@ from app.schemas.chef import Chef
 from app.core.tenant import TenantContext, require_tenant_context
 from app.core.content_access import resolve_recipe_access
 from app.api.v1.endpoints.auth import get_optional_user, User
-from app.api.v1.endpoints.recipes import _premium_teaser, _recipe_from_row
+from app.api.v1.endpoints.recipes import (
+    _image_presentation,
+    _premium_teaser,
+    _recipe_from_row,
+)
 from app.services.voice_intent_service import parse_voice_intent
 from app.services.analytics_service import emit_analytics
 
@@ -394,7 +398,14 @@ async def search_by_text(
                 recipe_data['ingredients'] = processed_ingredients
 
                 # Ensure other required fields have defaults
-                recipe_data.setdefault('images', [])
+                recipe_data.setdefault(
+                    'images',
+                    [recipe_data['image_url']]
+                    if recipe_data.get('image_url')
+                    else [],
+                )
+                recipe_data.setdefault(
+                    'image_presentation', _image_presentation(recipe_data))
                 recipe_data.setdefault('tags', [])
                 recipe_data.setdefault('is_featured', False)
                 recipe_data.setdefault('video_url', None)
@@ -664,7 +675,14 @@ async def _find_recipes_by_ingredients(
                 recipe_data['ingredients'] = processed_ingredients
 
                 # Ensure other required fields have defaults
-                recipe_data.setdefault('images', [])
+                recipe_data.setdefault(
+                    'images',
+                    [recipe_data['image_url']]
+                    if recipe_data.get('image_url')
+                    else [],
+                )
+                recipe_data.setdefault(
+                    'image_presentation', _image_presentation(recipe_data))
                 recipe_data.setdefault('tags', [])
                 recipe_data.setdefault('is_featured', False)
                 recipe_data.setdefault('video_url', None)
@@ -838,7 +856,14 @@ async def advanced_search(
                     recipe_data['ingredients'] = processed_ingredients
 
                     # Ensure other required fields have defaults
-                    recipe_data.setdefault('images', [])
+                    recipe_data.setdefault(
+                        'images',
+                        [recipe_data['image_url']]
+                        if recipe_data.get('image_url')
+                        else [],
+                    )
+                    recipe_data.setdefault(
+                        'image_presentation', _image_presentation(recipe_data))
                     recipe_data.setdefault('tags', [])
                     recipe_data.setdefault('is_featured', False)
                     recipe_data.setdefault('video_url', None)

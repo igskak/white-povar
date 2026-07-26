@@ -63,8 +63,11 @@ class StudioBrandDraftService {
     return StudioBrandDraft.fromJson(response.data!);
   }
 
-  Future<StudioAsset> upload(PlatformFile file,
-      {required String altText}) async {
+  Future<StudioAsset> upload(
+    PlatformFile file, {
+    required String altText,
+    String assetKind = 'brand',
+  }) async {
     final bytes = file.bytes;
     if (bytes == null) {
       throw const FormatException('Не вдалося прочитати файл.');
@@ -81,6 +84,7 @@ class StudioBrandDraftService {
           'filename': file.name,
           'contentType': contentType,
           'sizeBytes': bytes.length,
+          'assetKind': assetKind,
         });
     final data = ticket.data!;
     await Dio().put<dynamic>(data['uploadUrl'] as String,
@@ -129,6 +133,28 @@ class StudioBrandDraftService {
         .map((value) =>
             StudioContentItem.fromJson(Map<String, dynamic>.from(value as Map)))
         .toList();
+  }
+
+  Future<Map<String, dynamic>> contentItem(String id) async {
+    final response =
+        await _client.get<Map<String, dynamic>>('/api/v1/studio/content/$id');
+    return response.data!;
+  }
+
+  Future<Map<String, dynamic>> saveContent(
+    Map<String, dynamic> payload, {
+    String? id,
+  }) async {
+    final response = id == null
+        ? await _client.post<Map<String, dynamic>>(
+            '/api/v1/studio/content',
+            data: payload,
+          )
+        : await _client.put<Map<String, dynamic>>(
+            '/api/v1/studio/content/$id',
+            data: payload,
+          );
+    return response.data!;
   }
 
   Future<void> publishContent(String id) async =>
@@ -249,14 +275,16 @@ class StudioAsset {
       {required this.id,
       required this.url,
       required this.altText,
+      required this.assetKind,
       required this.width,
       required this.height});
-  final String id, url, altText;
+  final String id, url, altText, assetKind;
   final int? width, height;
   factory StudioAsset.fromJson(Map<String, dynamic> json) => StudioAsset(
       id: json['id'] as String,
       url: json['url'] as String,
       altText: json['altText'] as String,
+      assetKind: json['assetKind']?.toString() ?? 'brand',
       width: json['width'] as int?,
       height: json['height'] as int?);
 }

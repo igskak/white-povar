@@ -663,15 +663,47 @@ class SupabaseService:
         rows = result.data or []
         return rows[0] if rows else None
 
-    async def create_studio_asset(self, *, asset_id: str, chef_id: str, user_id: str, object_path: str, content_type: str, size_bytes: int) -> None:
-        self.get_client(use_service_key=True).table('studio_assets').insert({'id': asset_id, 'chef_id': chef_id, 'created_by': user_id, 'source_path': object_path, 'content_type': content_type, 'size_bytes': size_bytes, 'state': 'uploading'}).execute()
+    async def create_studio_asset(
+        self,
+        *,
+        asset_id: str,
+        chef_id: str,
+        user_id: str,
+        object_path: str,
+        content_type: str,
+        size_bytes: int,
+        asset_kind: str = 'brand',
+        bucket_id: str = 'studio-brand-assets',
+    ) -> None:
+        self.get_client(use_service_key=True).table('studio_assets').insert({
+            'id': asset_id,
+            'chef_id': chef_id,
+            'created_by': user_id,
+            'source_path': object_path,
+            'content_type': content_type,
+            'size_bytes': size_bytes,
+            'asset_kind': asset_kind,
+            'bucket_id': bucket_id,
+            'state': 'uploading',
+        }).execute()
 
     async def get_studio_asset(self, asset_id: str, chef_id: str) -> Optional[Dict[str, Any]]:
         result = self.get_client(use_service_key=True).table('studio_assets').select('*').eq('id', asset_id).eq('chef_id', chef_id).limit(1).execute()
         return (result.data or [None])[0]
 
-    async def list_studio_assets(self, chef_id: str) -> list[Dict[str, Any]]:
-        result = self.get_client(use_service_key=True).table('studio_assets').select('*').eq('chef_id', chef_id).eq('state', 'ready').order('created_at', desc=True).execute()
+    async def list_studio_assets(
+        self, chef_id: str, asset_kind: str | None = None
+    ) -> list[Dict[str, Any]]:
+        query = (
+            self.get_client(use_service_key=True)
+            .table('studio_assets')
+            .select('*')
+            .eq('chef_id', chef_id)
+            .eq('state', 'ready')
+        )
+        if asset_kind is not None:
+            query = query.eq('asset_kind', asset_kind)
+        result = query.order('created_at', desc=True).execute()
         return result.data or []
 
     async def finalize_studio_asset(self, asset_id: str, chef_id: str, values: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -717,6 +749,20 @@ class SupabaseService:
     async def studio_content_rows(self, chef_id: str) -> list[Dict[str, Any]]:
         result = self.get_client(use_service_key=True).table('recipes').select('*').eq('chef_id', chef_id).order('updated_at', desc=True).execute()
         return result.data or []
+
+    async def studio_content_row(
+        self, chef_id: str, content_id: str
+    ) -> Optional[Dict[str, Any]]:
+        result = (
+            self.get_client(use_service_key=True)
+            .table('recipes')
+            .select('*,recipe_ingredients(*)')
+            .eq('chef_id', chef_id)
+            .eq('id', content_id)
+            .limit(1)
+            .execute()
+        )
+        return (result.data or [None])[0]
 
     async def studio_collection_rows(self, chef_id: str) -> list[Dict[str, Any]]:
         result = self.get_client(use_service_key=True).table('collections').select('*, collection_items(recipe_id,position,is_preview)').eq('chef_id', chef_id).order('updated_at', desc=True).execute()

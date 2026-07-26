@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
-import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/premium.dart';
 import '../../models/recipe.dart';
 import 'favorite_button.dart';
+import 'recipe_photo.dart';
 
 /// How a recipe is presented. One implementation backs every surface so Home,
 /// Discover, Saved and the camera results cannot drift apart.
@@ -99,7 +99,10 @@ class RecipeCard extends ConsumerWidget {
               children: [
                 AspectRatio(
                   aspectRatio: 4 / 3,
-                  child: RecipeImageFallback.wrap(recipe),
+                  child: RecipeImageFallback.wrap(
+                    recipe,
+                    role: RecipeImageRole.grid,
+                  ),
                 ),
                 if (recipe.isPremium)
                   const Positioned(
@@ -204,7 +207,12 @@ class RecipeCard extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
         children: [
-          RecipeImageFallback(recipe: recipe, width: 84, height: 84),
+          RecipeImageFallback(
+            recipe: recipe,
+            width: 84,
+            height: 84,
+            role: RecipeImageRole.list,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
@@ -230,77 +238,125 @@ class RecipeCard extends ConsumerWidget {
   }
 
   Widget _buildFeatured(BuildContext context) {
-    final theme = Theme.of(context);
     return Semantics(
       button: true,
       label: 'Відкрити рекомендований рецепт ${recipe.title}',
+      child: LayoutBuilder(
+        builder: (context, constraints) =>
+            !compact && constraints.maxWidth >= 900
+                ? _featuredDesktop(context, constraints.maxWidth)
+                : _featuredMobile(context),
+      ),
+    );
+  }
+
+  Widget _featuredDesktop(BuildContext context, double width) {
+    final height = (width * .4).clamp(360.0, 472.0);
+    return ClipRRect(
+      borderRadius: AppRadius.xl,
       child: SizedBox(
-        height: compact ? 320 : 340,
-        child: ClipRRect(
-          borderRadius: AppRadius.xl,
-          child: Stack(
-            fit: StackFit.expand,
+        height: height,
+        child: ColoredBox(
+          color: AppColorsV2.ink,
+          child: Row(
             children: [
-              RecipeImageFallback.wrap(recipe),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      AppColorsV2.ink.withOpacity(.90),
-                      AppColorsV2.ink.withOpacity(.36),
-                      Colors.transparent,
-                    ],
-                  ),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(40),
+                  child: _featuredCopy(context),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.all(compact ? AppSpacing.lg : 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const AppBadge(
-                      label: 'Рекомендоване',
-                      icon: Icons.local_fire_department_outlined,
-                      color: AppColorsV2.premiumGold,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Text(
-                        recipe.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          color: AppColorsV2.onInk,
-                          fontFamily: context.brandTheme.displayFontFamily,
-                          fontWeight: FontWeight.w700,
-                          height: 1.05,
-                          fontSize: compact ? 30 : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}  ·  Рівень ${recipe.difficulty}',
-                      style: theme.textTheme.bodyLarge
-                          ?.copyWith(color: AppColorsV2.onInk),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    ElevatedButton.icon(
-                      onPressed: onTap,
-                      icon: const Icon(Icons.restaurant_menu_rounded),
-                      label: const Text('Почати готувати'),
-                    ),
-                  ],
+              Expanded(
+                flex: 3,
+                child: RecipePhoto(
+                  recipe: recipe,
+                  role: RecipeImageRole.featured,
+                  targetWidth: width * .6,
                 ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _featuredMobile(BuildContext context) => ClipRRect(
+        borderRadius: AppRadius.xl,
+        child: AspectRatio(
+          aspectRatio: 3 / 2,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              RecipePhoto(
+                recipe: recipe,
+                role: RecipeImageRole.featured,
+                targetWidth: 480,
+              ),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      AppColorsV2.ink.withOpacity(.92),
+                      AppColorsV2.ink.withOpacity(.48),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: _featuredCopy(context, mobile: true),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _featuredCopy(BuildContext context, {bool mobile = false}) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const AppBadge(
+          label: 'Рекомендоване',
+          icon: Icons.local_fire_department_outlined,
+          color: AppColorsV2.premiumGold,
+        ),
+        SizedBox(height: mobile ? AppSpacing.sm : AppSpacing.md),
+        Text(
+          recipe.title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.headlineLarge?.copyWith(
+            color: AppColorsV2.onInk,
+            fontFamily: context.brandTheme.displayFontFamily,
+            fontWeight: FontWeight.w700,
+            height: 1.05,
+            fontSize: mobile ? 26 : null,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}'
+          '${mobile ? '' : '  ·  Рівень ${recipe.difficulty}'}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style:
+              (mobile ? theme.textTheme.bodyMedium : theme.textTheme.bodyLarge)
+                  ?.copyWith(color: AppColorsV2.onInk),
+        ),
+        SizedBox(height: mobile ? AppSpacing.sm : AppSpacing.lg),
+        ElevatedButton.icon(
+          onPressed: onTap,
+          icon: const Icon(Icons.restaurant_menu_rounded),
+          label: const Text('Почати готувати'),
+        ),
+      ],
     );
   }
 }
@@ -326,74 +382,32 @@ class RecipeImageFallback extends StatelessWidget {
     required this.recipe,
     this.width,
     this.height,
+    this.role = RecipeImageRole.primary,
     this.borderRadius = AppRadius.md,
   });
 
   final Recipe recipe;
   final double? width;
   final double? height;
+  final RecipeImageRole role;
   final BorderRadius borderRadius;
 
   /// Fills the parent (used inside an [AspectRatio] or [Stack]).
-  static Widget wrap(Recipe recipe) => _RecipeImage(recipe: recipe);
+  static Widget wrap(
+    Recipe recipe, {
+    RecipeImageRole role = RecipeImageRole.primary,
+  }) =>
+      RecipePhoto(recipe: recipe, role: role);
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
+  Widget build(BuildContext context) => RecipePhoto(
+        recipe: recipe,
+        role: role,
+        width: width,
+        height: height,
+        targetWidth: width,
         borderRadius: borderRadius,
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: _RecipeImage(recipe: recipe, slotWidth: width),
-        ),
       );
-}
-
-class _RecipeImage extends StatelessWidget {
-  const _RecipeImage({required this.recipe, this.slotWidth});
-
-  final Recipe recipe;
-
-  /// Known width of the slot; absent when the image fills a card or a hero.
-  final double? slotWidth;
-
-  /// Widest catalogue card across the responsive grid and the Home rails.
-  static const _cardWidth = 400.0;
-
-  @override
-  Widget build(BuildContext context) => recipe.images.isEmpty
-      ? const _ImageFallback()
-      : RemoteImage(
-          url: recipe.images.first,
-          targetWidth: slotWidth ?? _cardWidth,
-          placeholder: const _ImageFallback(isLoading: true),
-          errorWidget: const _ImageFallback(),
-        );
-}
-
-class _ImageFallback extends StatelessWidget {
-  const _ImageFallback({this.isLoading = false});
-
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context) {
-    final semantic = context.semantic;
-    return Container(
-      color: semantic.surfaceStrong,
-      alignment: Alignment.center,
-      child: isLoading
-          ? const SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            )
-          : Icon(
-              Icons.restaurant_menu_rounded,
-              size: 44,
-              color: semantic.textSecondary,
-            ),
-    );
-  }
 }
 
 /// Badge painted on top of photography, where ink/onInk are correct in both

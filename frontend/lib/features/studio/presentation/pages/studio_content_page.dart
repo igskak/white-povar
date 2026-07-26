@@ -60,60 +60,80 @@ class _StudioContentPageState extends ConsumerState<StudioContentPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          leading: AppIconButton(
-            icon: Icons.arrow_back,
-            tooltip: 'Повернутися до застосунку',
-            onPressed: () => context.go('/profile'),
-          ),
-          title: const Text('Creator Studio · Контент'),
-          actions: [
-            AppButton(
-              label: 'Бренд',
-              icon: Icons.palette_outlined,
-              variant: AppButtonVariant.text,
-              onPressed: () => context.go('/studio/brand'),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    final narrow = MediaQuery.sizeOf(context).width < 700;
+    return Scaffold(
+      appBar: AppBar(
+        leading: AppIconButton(
+          icon: Icons.arrow_back,
+          tooltip: 'Повернутися до застосунку',
+          onPressed: () => context.go('/profile'),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.all(20), children: [
-                  SegmentedButton<String>(
-                      segments: const [
-                        ButtonSegment(
-                            value: 'Матеріали', label: Text('Матеріали')),
-                        ButtonSegment(
-                            value: 'Колекції', label: Text('Колекції'))
-                      ],
-                      selected: {
-                        _tab
-                      },
-                      onSelectionChanged: (value) =>
-                          setState(() => _tab = value.first)),
-                  const SizedBox(height: 16),
-                  if (_error != null)
-                    Text('Не вдалося оновити Studio: $_error'),
-                  if (_tab == 'Матеріали')
-                    ..._content.map(_contentCard)
-                  else
-                    ..._collections.map(_collectionCard),
-                  if ((_tab == 'Матеріали' ? _content : _collections).isEmpty)
-                    const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                            'Ще немає матеріалів. Створіть чернетку через Studio API.')),
-                ]),
-              ),
-      );
+        title: const Text('Creator Studio · Контент'),
+        actions: narrow
+            ? [
+                IconButton(
+                  tooltip: 'Новий рецепт',
+                  icon: const Icon(Icons.add),
+                  onPressed: () => context.go('/studio/content/new'),
+                ),
+                IconButton(
+                  tooltip: 'Бренд',
+                  icon: const Icon(Icons.palette_outlined),
+                  onPressed: () => context.go('/studio/brand'),
+                ),
+              ]
+            : [
+                AppButton(
+                  label: 'Новий рецепт',
+                  icon: Icons.add,
+                  onPressed: () => context.go('/studio/content/new'),
+                ),
+                AppButton(
+                  label: 'Бренд',
+                  icon: Icons.palette_outlined,
+                  variant: AppButtonVariant.text,
+                  onPressed: () => context.go('/studio/brand'),
+                ),
+              ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(padding: const EdgeInsets.all(20), children: [
+                SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                          value: 'Матеріали', label: Text('Матеріали')),
+                      ButtonSegment(value: 'Колекції', label: Text('Колекції'))
+                    ],
+                    selected: {
+                      _tab
+                    },
+                    onSelectionChanged: (value) =>
+                        setState(() => _tab = value.first)),
+                const SizedBox(height: 16),
+                if (_error != null) Text('Не вдалося оновити Studio: $_error'),
+                if (_tab == 'Матеріали')
+                  ..._content.map(_contentCard)
+                else
+                  ..._collections.map(_collectionCard),
+                if ((_tab == 'Матеріали' ? _content : _collections).isEmpty)
+                  const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                          'Ще немає матеріалів. Створіть чернетку через Studio API.')),
+              ]),
+            ),
+    );
+  }
 
   Widget _contentCard(StudioContentItem item) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: ContentCard(
           semanticLabel: 'Матеріал ${item.title}',
+          onTap: () => context.go('/studio/content/${item.id}/edit'),
           child: Row(children: [
             const Icon(Icons.menu_book_outlined),
             const SizedBox(width: 12),

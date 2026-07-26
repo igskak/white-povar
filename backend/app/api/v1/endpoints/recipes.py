@@ -181,6 +181,7 @@ def _extract_cuisine_from_tags(tags: list) -> str:
 
     # Common cuisines to look for in tags
     cuisines = [
+        'Українська',
         'Italian', 'Mexican', 'Chinese', 'Indian', 'French', 'Thai', 'Japanese',
         'Mediterranean', 'American', 'Greek', 'Spanish', 'Korean', 'Vietnamese',
         'Middle Eastern', 'British', 'German', 'Russian', 'Turkish', 'Lebanese',
@@ -216,6 +217,24 @@ def _normalize_images(images_data):
         return [images_data]
     else:
         return []
+
+
+def _image_presentation(row: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    value = row.get('image_presentation')
+    if isinstance(value, dict) and isinstance(value.get('primary'), dict):
+        return value
+    image_url = row.get('image_url')
+    if not image_url:
+        return None
+    return {
+        'primary': {
+            'url': str(image_url),
+            'alt_text': row.get('title') or '',
+            'focal': {'x': 0.5, 'y': 0.5},
+        },
+        'featured': None,
+        'detail': None,
+    }
 
 def _normalize_video_url(video_url_data):
     """Normalize video URL data"""
@@ -287,6 +306,7 @@ def _content_item_from_row(recipe_data: Dict[str, Any]) -> Recipe:
         'servings': row.get('servings') or 1,
         'instructions': _normalize_instructions(instructions),
         'images': _normalize_images(row.get('image_url')),
+        'image_presentation': _image_presentation(row),
         'video_url': _normalize_video_url(row.get('video_url')),
         'video_file_path': _normalize_video_file_path(row.get('video_file_path')),
         'tags': row.get('tags', []),

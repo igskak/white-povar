@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_models.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
-import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
@@ -19,6 +18,7 @@ import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
 import '../widgets/content_detail_sections.dart';
 import '../widgets/favorite_button.dart';
+import '../widgets/recipe_photo.dart';
 import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerStatefulWidget {
@@ -166,7 +166,7 @@ class _RecipeDetailContent extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= 1024;
-          final hero = _RecipeHero(recipe: recipe, expand: desktop);
+          final hero = _RecipeHero(recipe: recipe);
           final body = _RecipeBody(
               recipe: recipe,
               locked: locked,
@@ -178,37 +178,39 @@ class _RecipeDetailContent extends StatelessWidget {
               onAddToShopping: onAddToShopping,
               onAddToPlan: onAddToPlan);
           if (desktop) {
-            return Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    key: const ValueKey('desktop-recipe-hero-pane'),
-                    width: 520,
-                    child: hero,
-                  ),
-                  Expanded(child: body)
-                ]);
+            return _DesktopRecipeContent(
+              recipe: recipe,
+              locked: locked,
+              onUnlock: onUnlock,
+              primaryActionLabel: primaryActionLabel,
+              primaryActionIcon: primaryActionIcon,
+              onPrimaryAction: onPrimaryAction,
+              onAddToShopping: onAddToShopping,
+              onAddToPlan: onAddToPlan,
+            );
           }
-          return CustomScrollView(slivers: [
-            SliverToBoxAdapter(child: hero),
-            SliverFillRemaining(hasScrollBody: false, child: body)
-          ]);
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [hero, body],
+            ),
+          );
         },
       );
 }
 
 class _RecipeHero extends StatelessWidget {
-  const _RecipeHero({required this.recipe, this.expand = false});
+  const _RecipeHero({required this.recipe});
   final Recipe recipe;
-  final bool expand;
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: expand ? null : 320,
+  Widget build(BuildContext context) => AspectRatio(
+        aspectRatio: 4 / 3,
         child: Stack(fit: StackFit.expand, children: [
-          _RecipeHeroImage(recipe: recipe),
-          // Keep the dish photo bright: the middle stays fully clear, and we
-          // only darken a thin top edge (for the overlaid controls) and the
-          // bottom band behind the title so both remain legible.
+          RecipePhoto(
+            recipe: recipe,
+            role: RecipeImageRole.detail,
+            targetWidth: MediaQuery.sizeOf(context).width,
+          ),
           DecoratedBox(
               decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -216,15 +218,13 @@ class _RecipeHero extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       stops: const [
                 0.0,
-                0.25,
-                0.5,
+                0.3,
                 1.0
               ],
                       colors: [
                 AppColorsV2.ink.withOpacity(.30),
                 AppColorsV2.ink.withOpacity(0),
                 AppColorsV2.ink.withOpacity(0),
-                AppColorsV2.ink.withOpacity(.78),
               ]))),
           Positioned(
               top: AppSpacing.md,
@@ -239,23 +239,140 @@ class _RecipeHero extends StatelessWidget {
                 top: AppSpacing.md,
                 right: 56,
                 child: PremiumBadge(size: 24, showLabel: true)),
-          if (!expand)
-            Positioned(
-              top: AppSpacing.xs,
-              right: AppSpacing.xs,
-              child:
-                  FavoriteButton(recipeId: recipe.id, color: AppColorsV2.onInk),
-            ),
           Positioned(
-              left: AppSpacing.lg,
-              right: AppSpacing.lg,
-              bottom: AppSpacing.lg,
-              child: Text(recipe.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(color: AppColorsV2.onInk))),
+            top: AppSpacing.xs,
+            right: AppSpacing.xs,
+            child:
+                FavoriteButton(recipeId: recipe.id, color: AppColorsV2.onInk),
+          ),
         ]),
+      );
+}
+
+class _DesktopRecipeContent extends StatelessWidget {
+  const _DesktopRecipeContent({
+    required this.recipe,
+    required this.locked,
+    required this.onUnlock,
+    required this.primaryActionLabel,
+    required this.primaryActionIcon,
+    required this.onPrimaryAction,
+    this.onAddToShopping,
+    this.onAddToPlan,
+  });
+
+  final Recipe recipe;
+  final bool locked;
+  final VoidCallback onUnlock;
+  final String primaryActionLabel;
+  final IconData primaryActionIcon;
+  final VoidCallback? onPrimaryAction;
+  final Future<void> Function()? onAddToShopping;
+  final Future<void> Function()? onAddToPlan;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(40),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              key: const ValueKey('desktop-recipe-hero-pane'),
+                              borderRadius: AppRadius.xl,
+                              child: AspectRatio(
+                                aspectRatio: 4 / 3,
+                                child: _RecipeHero(recipe: recipe),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xl),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  recipe.title,
+                                  style:
+                                      Theme.of(context).textTheme.headlineLarge,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                Text(
+                                  recipe.description,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(
+                                          color:
+                                              context.semantic.textSecondary),
+                                ),
+                                const SizedBox(height: AppSpacing.lg),
+                                _StatsRow(recipe: recipe),
+                                if (locked) ...[
+                                  const SizedBox(height: AppSpacing.xl),
+                                  PremiumGateCard(
+                                    title: 'Рецепт від шефа — у Premium',
+                                    message:
+                                        'Повний рецепт, відео й режим приготування доступні з Premium.',
+                                    ctaLabel: 'Відкрити Premium',
+                                    onUnlock: onUnlock,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (!locked) ...[
+                        const SizedBox(height: 40),
+                        ContentDetailSections(
+                          ingredients: recipe.ingredients,
+                          steps: recipe.instructions,
+                          leading: recipe.videoUrl != null ||
+                                  recipe.videoFilePath != null
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Відео рецепта',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge),
+                                    const SizedBox(height: AppSpacing.sm),
+                                    RecipeVideoWidget(
+                                      videoUrl: recipe.videoUrl,
+                                      videoFilePath: recipe.videoFilePath,
+                                      height: 320,
+                                      borderRadius: AppRadius.lg,
+                                    ),
+                                  ],
+                                )
+                              : null,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          _DesktopRecipeActionBar(
+            recipeId: recipe.id,
+            primaryActionLabel: primaryActionLabel,
+            primaryActionIcon: primaryActionIcon,
+            onPrimaryAction: onPrimaryAction,
+            onAddToShopping: locked ? null : onAddToShopping,
+            onAddToPlan: locked ? null : onAddToPlan,
+          ),
+        ],
       );
 }
 
@@ -282,7 +399,7 @@ class _RecipeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = SingleChildScrollView(
+    final body = Padding(
       padding: EdgeInsets.fromLTRB(
           desktop ? AppSpacing.xxl : AppSpacing.md,
           desktop ? AppSpacing.xl : AppSpacing.lg,
@@ -293,6 +410,11 @@ class _RecipeBody extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 900),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (!desktop) ...[
+              Text(recipe.title,
+                  style: Theme.of(context).textTheme.headlineMedium),
+              const SizedBox(height: AppSpacing.md),
+            ],
             Text(recipe.description,
                 style: Theme.of(context)
                     .textTheme
@@ -339,7 +461,8 @@ class _RecipeBody extends StatelessWidget {
         ),
       ),
     );
-    if (!desktop) return content;
+    if (!desktop) return body;
+    final content = SingleChildScrollView(child: body);
     return Column(
       children: [
         Expanded(child: content),
@@ -492,32 +615,6 @@ class _BottomAction extends StatelessWidget {
               icon: icon,
               onPressed: enabled ? onPressed : null,
               expand: true)));
-}
-
-class _RecipeHeroImage extends StatelessWidget {
-  const _RecipeHeroImage({required this.recipe});
-  final Recipe recipe;
-  @override
-  Widget build(BuildContext context) => recipe.images.isEmpty
-      ? const _HeroFallback()
-      : RemoteImage(
-          url: recipe.images.first,
-          targetWidth: MediaQuery.sizeOf(context).width,
-          placeholder: const _HeroFallback(isLoading: true),
-          errorWidget: const _HeroFallback());
-}
-
-class _HeroFallback extends StatelessWidget {
-  const _HeroFallback({this.isLoading = false});
-  final bool isLoading;
-  @override
-  Widget build(BuildContext context) => Container(
-      color: AppColorsV2.ink,
-      alignment: Alignment.center,
-      child: isLoading
-          ? const CircularProgressIndicator()
-          : const Icon(Icons.restaurant_menu_rounded,
-              size: 72, color: AppColorsV2.onInk));
 }
 
 class _StatsRow extends StatelessWidget {

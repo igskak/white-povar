@@ -51,7 +51,7 @@ void main() {
       }
     });
 
-    testWidgets('desktop has fixed hero, two-column content and sticky actions',
+    testWidgets('desktop has 4:3 hero, two-column header and sticky actions',
         (tester) async {
       tester.view.physicalSize = const Size(1280, 1000);
       tester.view.devicePixelRatio = 1;
@@ -64,11 +64,10 @@ void main() {
       ));
       await tester.pump();
 
-      expect(
-          tester
-              .getSize(find.byKey(const ValueKey('desktop-recipe-hero-pane')))
-              .width,
-          520);
+      final heroSize = tester
+          .getSize(find.byKey(const ValueKey('desktop-recipe-hero-pane')));
+      expect(heroSize.aspectRatio, closeTo(4 / 3, .01));
+      expect(heroSize.width, greaterThan(500));
       expect(find.byKey(const ValueKey('recipe-sections-two-column')),
           findsOneWidget);
       expect(find.byKey(const ValueKey('desktop-recipe-action-bar')),

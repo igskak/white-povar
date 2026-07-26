@@ -32,6 +32,7 @@ class StudioAssetUploadRequest(BaseModel):
     filename: str = Field(min_length=1, max_length=160)
     content_type: Literal['image/jpeg', 'image/png', 'image/webp'] = Field(alias='contentType')
     size_bytes: int = Field(alias='sizeBytes', gt=0, le=12 * 1024 * 1024)
+    asset_kind: Literal['brand', 'recipe'] = Field(default='brand', alias='assetKind')
     model_config = ConfigDict(populate_by_name=True)
 
 
@@ -55,6 +56,7 @@ class StudioAsset(BaseModel):
     width: int | None = None
     height: int | None = None
     state: str
+    asset_kind: Literal['brand', 'recipe'] = Field(default='brand', alias='assetKind')
     model_config = ConfigDict(populate_by_name=True)
 
 
@@ -125,6 +127,41 @@ class StudioReleaseStatusView(BaseModel):
 # STUDIO-04 deliberately uses a separate internal contract.  Consumer recipe
 # DTOs never gain draft/scheduling fields, so a draft cannot leak through a
 # public endpoint by accident.
+class StudioFocalPoint(BaseModel):
+    x: float = Field(default=0.5, ge=0, le=1)
+    y: float = Field(default=0.5, ge=0, le=1)
+
+
+class StudioRecipeImage(BaseModel):
+    asset_id: str | None = Field(default=None, alias='assetId')
+    url: str | None = Field(default=None, max_length=1000)
+    use_primary: bool = Field(default=False, alias='usePrimary')
+    alt_text: str = Field(default='', alias='altText', max_length=180)
+    focal: StudioFocalPoint = Field(default_factory=StudioFocalPoint)
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode='after')
+    def has_asset_or_existing_url(self):
+        if sum([bool(self.asset_id), bool(self.url), self.use_primary]) != 1:
+            raise ValueError(
+                'Exactly one of assetId, url or usePrimary is required')
+        return self
+
+
+class StudioImagePresentation(BaseModel):
+    primary: StudioRecipeImage | None = None
+    featured: StudioRecipeImage | None = None
+    detail: StudioRecipeImage | None = None
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StudioIngredientInput(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+    amount: float | None = Field(default=None, gt=0)
+    unit: str = Field(default='', max_length=50)
+    notes: str | None = Field(default=None, max_length=200)
+
+
 class StudioContentUpsert(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=1000)
@@ -135,8 +172,11 @@ class StudioContentUpsert(BaseModel):
     prep_time_minutes: int = Field(default=0, alias='prepTimeMinutes', ge=0)
     cook_time_minutes: int = Field(default=0, alias='cookTimeMinutes', ge=0)
     servings: int = Field(default=1, ge=1)
+    ingredients: list[StudioIngredientInput] = Field(default_factory=list)
     instructions: list[str] = Field(default_factory=list)
     images: list[str] = Field(default_factory=list)
+    image_presentation: StudioImagePresentation | None = Field(
+        default=None, alias='imagePresentation')
     video_url: str | None = Field(default=None, alias='videoUrl', max_length=1000)
     video_file_path: str | None = Field(default=None, alias='videoFilePath', max_length=1000)
     tags: list[str] = Field(default_factory=list)
@@ -147,8 +187,6 @@ class StudioContentUpsert(BaseModel):
 
     @model_validator(mode='after')
     def validate_kind(self):
-        if self.content_kind == 'recipe' and not self.instructions:
-            raise ValueError('Recipe content requires at least one instruction')
         if self.content_kind == 'video' and not (self.video_url or self.video_file_path):
             raise ValueError('Video content requires videoUrl or videoFilePath')
         return self

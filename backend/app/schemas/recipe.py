@@ -38,6 +38,23 @@ class Nutrition(NutritionBase):
     class Config:
         from_attributes = True
 
+
+class ImageFocalPoint(BaseModel):
+    x: float = Field(default=0.5, ge=0, le=1)
+    y: float = Field(default=0.5, ge=0, le=1)
+
+
+class RecipeImageSource(BaseModel):
+    url: str
+    alt_text: str = ''
+    focal: ImageFocalPoint = Field(default_factory=ImageFocalPoint)
+
+
+class RecipeImagePresentation(BaseModel):
+    primary: RecipeImageSource
+    featured: Optional[RecipeImageSource] = None
+    detail: Optional[RecipeImageSource] = None
+
 class RecipeBase(BaseModel):
     content_kind: Literal['recipe', 'technique', 'process', 'video'] = 'recipe'
     title: str = Field(..., min_length=1, max_length=200)
@@ -52,6 +69,7 @@ class RecipeBase(BaseModel):
     # enforced by RecipeCreate below.
     instructions: List[str] = Field(default_factory=list)
     images: List[str] = Field(default_factory=list)
+    image_presentation: Optional[RecipeImagePresentation] = None
     video_url: Optional[str] = Field(None, description="External video URL (YouTube, TikTok, etc.)")
     video_file_path: Optional[str] = Field(None, description="Path to uploaded video file in storage")
     tags: List[str] = Field(default_factory=list)

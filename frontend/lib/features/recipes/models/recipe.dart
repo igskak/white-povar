@@ -2,12 +2,114 @@ import 'package:equatable/equatable.dart';
 
 enum ContentKind { recipe, technique, process, video }
 
+enum RecipeImageRole { primary, list, grid, featured, detail }
+
 ContentKind _contentKindFromJson(dynamic value) => switch (value) {
       'technique' => ContentKind.technique,
       'process' => ContentKind.process,
       'video' => ContentKind.video,
       _ => ContentKind.recipe,
     };
+
+class RecipeFocalPoint extends Equatable {
+  const RecipeFocalPoint({this.x = .5, this.y = .5});
+
+  final double x;
+  final double y;
+
+  factory RecipeFocalPoint.fromJson(dynamic value) {
+    final json = value is Map ? value : const {};
+    return RecipeFocalPoint(
+      x: (_parseDouble(json['x']) ?? .5).clamp(0, 1),
+      y: (_parseDouble(json['y']) ?? .5).clamp(0, 1),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'x': x, 'y': y};
+
+  @override
+  List<Object?> get props => [x, y];
+}
+
+class RecipeImageSource extends Equatable {
+  const RecipeImageSource({
+    required this.url,
+    this.altText = '',
+    this.focal = const RecipeFocalPoint(),
+    this.assetId,
+  });
+
+  final String url;
+  final String altText;
+  final RecipeFocalPoint focal;
+  final String? assetId;
+
+  factory RecipeImageSource.fromJson(dynamic value) {
+    final json = value is Map ? value : const {};
+    return RecipeImageSource(
+      url: json['url']?.toString() ?? '',
+      altText:
+          json['alt_text']?.toString() ?? json['altText']?.toString() ?? '',
+      focal: RecipeFocalPoint.fromJson(json['focal']),
+      assetId: json['asset_id']?.toString() ?? json['assetId']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (assetId != null) 'asset_id': assetId,
+        'url': url,
+        'alt_text': altText,
+        'focal': focal.toJson(),
+      };
+
+  @override
+  List<Object?> get props => [url, altText, focal, assetId];
+}
+
+class RecipeImagePresentation extends Equatable {
+  const RecipeImagePresentation({
+    required this.primary,
+    this.featured,
+    this.detail,
+  });
+
+  final RecipeImageSource primary;
+  final RecipeImageSource? featured;
+  final RecipeImageSource? detail;
+
+  factory RecipeImagePresentation.fromJson(dynamic value) {
+    final json = value is Map ? value : const {};
+    return RecipeImagePresentation(
+      primary: RecipeImageSource.fromJson(json['primary']),
+      featured: json['featured'] == null
+          ? null
+          : RecipeImageSource.fromJson(json['featured']),
+      detail: json['detail'] == null
+          ? null
+          : RecipeImageSource.fromJson(json['detail']),
+    );
+  }
+
+  RecipeImageSource forRole(RecipeImageRole role) => switch (role) {
+        RecipeImageRole.featured => featured ?? primary,
+        RecipeImageRole.detail => detail ?? primary,
+        _ => primary,
+      };
+
+  Map<String, dynamic> toJson() => {
+        'primary': primary.toJson(),
+        'featured': featured?.toJson(),
+        'detail': detail?.toJson(),
+      };
+
+  @override
+  List<Object?> get props => [primary, featured, detail];
+}
+
+double? _parseDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
+}
 
 class Recipe extends Equatable {
   final String id;
@@ -25,6 +127,7 @@ class Recipe extends Equatable {
   final List<Ingredient> ingredients;
   final List<String> instructions;
   final List<String> images;
+  final RecipeImagePresentation? imagePresentation;
   final String? videoUrl;
   final String? videoFilePath;
   final List<String> tags;
@@ -50,6 +153,7 @@ class Recipe extends Equatable {
     required this.ingredients,
     required this.instructions,
     required this.images,
+    this.imagePresentation,
     this.videoUrl,
     this.videoFilePath,
     required this.tags,
@@ -61,6 +165,15 @@ class Recipe extends Equatable {
   });
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
+    final images = _parseStringList(json['images']);
+    final rawPresentation = json['image_presentation'];
+    final presentation = rawPresentation is Map
+        ? RecipeImagePresentation.fromJson(rawPresentation)
+        : images.isEmpty
+            ? null
+            : RecipeImagePresentation(
+                primary: RecipeImageSource(url: images.first),
+              );
     return Recipe(
       id: json['id'].toString(), // Handle UUID conversion
       title: json['title']?.toString() ?? '',
@@ -79,7 +192,8 @@ class Recipe extends Equatable {
               .toList() ??
           [],
       instructions: _parseStringList(json['instructions']),
-      images: _parseStringList(json['images']),
+      images: images,
+      imagePresentation: presentation,
       videoUrl: json['video_url']?.toString(),
       videoFilePath: json['video_file_path']?.toString(),
       tags: _parseStringList(json['tags']),
@@ -137,6 +251,7 @@ class Recipe extends Equatable {
       'ingredients': ingredients.map((e) => e.toJson()).toList(),
       'instructions': instructions,
       'images': images,
+      'image_presentation': imagePresentation?.toJson(),
       'video_url': videoUrl,
       'video_file_path': videoFilePath,
       'tags': tags,
@@ -165,6 +280,7 @@ class Recipe extends Equatable {
         ingredients,
         instructions,
         images,
+        imagePresentation,
         videoUrl,
         videoFilePath,
         tags,
@@ -174,6 +290,14 @@ class Recipe extends Equatable {
         createdAt,
         updatedAt,
       ];
+
+  RecipeImageSource? imageFor(RecipeImageRole role) {
+    final presentation = imagePresentation;
+    if (presentation != null && presentation.primary.url.isNotEmpty) {
+      return presentation.forRole(role);
+    }
+    return images.isEmpty ? null : RecipeImageSource(url: images.first);
+  }
 }
 
 class Ingredient extends Equatable {

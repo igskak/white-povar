@@ -92,6 +92,10 @@ def test_canonical_row_maps_back_to_frontend_contract():
 
     assert recipe.instructions == ['Boil water', 'Cook pasta']
     assert recipe.images == ['https://example.com/pasta.jpg']
+    assert recipe.image_presentation.primary.url == (
+        'https://example.com/pasta.jpg'
+    )
+    assert recipe.image_presentation.primary.focal.x == 0.5
     assert recipe.ingredients[0].name == 'Pasta'
     assert recipe.ingredients[0].unit == 'g'
     assert recipe.nutrition.calories == 450

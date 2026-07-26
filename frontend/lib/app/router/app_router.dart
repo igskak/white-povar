@@ -29,6 +29,7 @@ import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/subscription/screens/subscription_screen.dart';
 import '../../features/studio/presentation/pages/studio_brand_page.dart';
 import '../../features/studio/presentation/pages/studio_content_page.dart';
+import '../../features/studio/presentation/pages/studio_recipe_editor_page.dart';
 import 'route_guards.dart';
 import 'route_models.dart';
 
@@ -57,6 +58,8 @@ class AppRoutePaths {
   static const legacySubscription = '/subscription';
   static const studioBrand = '/studio/brand';
   static const studioContent = '/studio/content';
+  static const studioRecipeNew = '/studio/content/new';
+  static const studioRecipeEdit = '/studio/content/:id/edit';
 
   static const tabLocations = <String>[home, search, saved, profile];
 }
@@ -98,6 +101,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutePaths.studioContent,
         builder: (_, __) => const StudioContentPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.studioRecipeNew,
+        builder: (_, __) => const StudioRecipeEditorPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.studioRecipeEdit,
+        builder: (_, state) => StudioRecipeEditorPage(
+          recipeId: state.pathParameters['id'],
+        ),
       ),
       GoRoute(
         path: AppRoutePaths.legacySubscription,
