@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +18,8 @@ import 'package:frontend/features/recipes/providers/recipe_provider.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
 import 'package:frontend/features/saved/presentation/pages/saved_page.dart';
 import 'package:frontend/features/studio/studio_brand_draft_service.dart';
+import 'package:frontend/features/subscription/paywall_provider.dart';
+import 'package:frontend/features/subscription/purchase_adapter.dart';
 import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
 void main() {
@@ -134,6 +138,7 @@ void main() {
       overrides: [
         currentUserProvider.overrideWithValue(user),
         isPremiumProvider.overrideWithValue(true),
+        profileAccountDataLoadingProvider.overrideWithValue(false),
         studioSessionProvider.overrideWith((ref) async => null),
       ],
       child: MaterialApp(
@@ -146,6 +151,51 @@ void main() {
     expect(find.byType(AppBar), findsNothing);
     expect(find.text('Premium активна'), findsOneWidget);
     expect(find.text('Premium доступ активний'), findsOneWidget);
+  });
+
+  testWidgets('profile reveals Studio and account content in the same frame',
+      (tester) async {
+    const user = User(
+      id: 'admin-1',
+      email: 'admin@example.com',
+      appMetadata: {},
+      userMetadata: {},
+      aud: 'authenticated',
+      createdAt: '2026-07-15T00:00:00Z',
+    );
+    final studio = Completer<StudioSession?>();
+    final paywall = PaywallNotifier(
+      FakePurchaseAdapter(),
+      () async => const PaywallSnapshot(phase: PaywallPhase.idle),
+    );
+    await paywall.refreshEntitlement();
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        currentUserProvider.overrideWithValue(user),
+        isPremiumProvider.overrideWithValue(false),
+        paywallProvider.overrideWith((_) => paywall),
+        studioSessionProvider.overrideWith((_) => studio.future),
+      ],
+      child: MaterialApp(
+        theme: AppThemeV2.light(_brand),
+        home: const ProfilePage(),
+      ),
+    ));
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Підписка'), findsNothing);
+    expect(find.text('Creator Studio'), findsNothing);
+
+    studio.complete(
+      const StudioSession(role: 'admin', tenantSlug: 'ohorodnik-oleksandr'),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Підписка'), findsOneWidget);
+    expect(find.text('Creator Studio'), findsOneWidget);
+    expect(find.text('Адміністратор'), findsOneWidget);
   });
 
   testWidgets('profile guest goldens at design breakpoints', (tester) async {

@@ -55,6 +55,7 @@ Widget _profileApp(
         isPremiumProvider.overrideWithValue(
           state == _ProfileFixtureState.premium,
         ),
+        profileAccountDataLoadingProvider.overrideWithValue(false),
         studioSessionProvider.overrideWith((_) async => null),
       ],
       child: MaterialApp(
