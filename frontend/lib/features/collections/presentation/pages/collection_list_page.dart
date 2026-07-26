@@ -103,7 +103,6 @@ class _CollectionPageIntro extends StatelessWidget {
                 key: const ValueKey('collections-brand-hero'),
                 brand: brand,
                 role: 'collection',
-                height: 152,
               ),
               const SizedBox(height: AppSpacing.md),
             ],

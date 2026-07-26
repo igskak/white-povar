@@ -323,7 +323,6 @@ class _DesktopHomeContent extends StatelessWidget {
                         key: const ValueKey('home-brand-hero'),
                         brand: brand,
                         role: 'home',
-                        height: 260,
                       ),
                       const SizedBox(height: 28),
                     ],

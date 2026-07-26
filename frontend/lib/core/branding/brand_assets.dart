@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../app/theme/brand_theme.dart';
@@ -98,21 +100,36 @@ class BrandHeroBanner extends StatelessWidget {
     super.key,
     required this.brand,
     required this.role,
-    this.height = 172,
+    this.aspectRatio = 2,
+    this.maxHeight = 300,
   });
 
   final BrandDetails brand;
   final String role;
-  final double height;
+
+  /// Height follows the width so the banner keeps its shape across
+  /// breakpoints. A fixed height turns into a 9:1 letterbox on a desktop
+  /// column, which crops a portrait to a band.
+  final double aspectRatio;
+
+  /// Ceiling for wide columns, so the banner stays a banner.
+  final double maxHeight;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: height,
-        width: double.infinity,
-        child: ClipRRect(
-          borderRadius: AppRadius.lg,
-          child: BrandHero(brand: brand, role: role),
-        ),
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width;
+          return SizedBox(
+            height: math.min(width / aspectRatio, maxHeight),
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: AppRadius.lg,
+              child: BrandHero(brand: brand, role: role),
+            ),
+          );
+        },
       );
 }
 
