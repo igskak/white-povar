@@ -7,7 +7,16 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../features/studio/studio_brand_draft_service.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../subscription/paywall_provider.dart';
+import '../../../subscription/purchase_adapter.dart';
 import '../../../subscription/providers/subscription_provider.dart';
+
+final profileAccountDataLoadingProvider = Provider<bool>((ref) {
+  final studioSession = ref.watch(studioSessionProvider);
+  final entitlement = ref.watch(paywallProvider);
+  return studioSession.isLoading ||
+      entitlement.phase == PaywallPhase.productsLoading;
+});
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key, this.embeddedInDesktopShell = false});
@@ -105,6 +114,10 @@ class _SignedInProfile extends ConsumerWidget {
     final theme = Theme.of(context);
     final studioSession = ref.watch(studioSessionProvider);
     final isPremium = ref.watch(isPremiumProvider);
+    final accountDataLoading = ref.watch(profileAccountDataLoadingProvider);
+    if (accountDataLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final content = ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [

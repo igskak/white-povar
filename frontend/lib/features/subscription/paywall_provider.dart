@@ -38,12 +38,7 @@ final paywallProvider = StateNotifierProvider<PaywallNotifier, PaywallSnapshot>(
 
 class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
   PaywallNotifier(this._adapter, this._readEntitlement)
-      : super(const PaywallSnapshot(phase: PaywallPhase.productsLoading)) {
-    // Premium gates can be opened without visiting the paywall first. Read the
-    // server-issued entitlement as soon as the shared notifier is created;
-    // the catalogue is still loaded lazily by the paywall screen.
-    Future<void>.microtask(refreshEntitlement);
-  }
+      : super(const PaywallSnapshot(phase: PaywallPhase.productsLoading));
 
   final PurchaseAdapter _adapter;
   final Future<PaywallSnapshot> Function() _readEntitlement;
@@ -51,8 +46,15 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
 
   Future<void> load() async {
     state = const PaywallSnapshot(phase: PaywallPhase.productsLoading);
-    final catalogue = await _adapter.load();
-    final entitlement = await _readActiveEntitlement();
+    // Catalogue and account access are independent server reads. Waiting for
+    // them serially made the subscription screen sit in its loading state for
+    // an extra round trip (especially visible while the API wakes up).
+    final results = await Future.wait<Object?>([
+      _adapter.load(),
+      _readActiveEntitlement(),
+    ]);
+    final catalogue = results[0] as PaywallSnapshot;
+    final entitlement = results[1] as PaywallSnapshot?;
     state = entitlement == null
         ? catalogue
         : PaywallSnapshot(
@@ -108,12 +110,21 @@ class PaywallNotifier extends StateNotifier<PaywallSnapshot> {
 
   Future<void> refreshEntitlement() async {
     final entitlement = await _readActiveEntitlement();
-    if (entitlement == null) return;
-    state = PaywallSnapshot(
-      phase: entitlement.phase,
-      products: state.products,
-      renewsOn: entitlement.renewsOn,
-    );
+    if (entitlement != null) {
+      state = PaywallSnapshot(
+        phase: entitlement.phase,
+        products: state.products,
+        renewsOn: entitlement.renewsOn,
+      );
+    } else if (state.phase == PaywallPhase.productsLoading) {
+      // A successful "no entitlement" read is a resolved Free account, not a
+      // perpetual loading state. Profile uses this boundary to reveal all of
+      // its account-dependent content in one frame.
+      state = PaywallSnapshot(
+        phase: PaywallPhase.idle,
+        products: state.products,
+      );
+    }
   }
 
   void clearEntitlement() {
