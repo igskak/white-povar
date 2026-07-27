@@ -59,6 +59,11 @@ class _StudioContentPageState extends ConsumerState<StudioContentPage> {
     await _load();
   }
 
+  Future<void> _publishCollection(StudioCollectionItem item) async {
+    await ref.read(studioBrandDraftServiceProvider).publishCollection(item.id);
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final narrow = MediaQuery.sizeOf(context).width < 700;
@@ -114,6 +119,16 @@ class _StudioContentPageState extends ConsumerState<StudioContentPage> {
                     onSelectionChanged: (value) =>
                         setState(() => _tab = value.first)),
                 const SizedBox(height: 16),
+                if (_tab == 'Колекції')
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: AppButton(
+                      label: 'Нова колекція',
+                      icon: Icons.add,
+                      onPressed: () => context.go('/studio/collections/new'),
+                    ),
+                  ),
+                if (_tab == 'Колекції') const SizedBox(height: 16),
                 if (_error != null) Text('Не вдалося оновити Studio: $_error'),
                 if (_tab == 'Матеріали')
                   ..._content.map(_contentCard)
@@ -155,11 +170,19 @@ class _StudioContentPageState extends ConsumerState<StudioContentPage> {
   Widget _collectionCard(StudioCollectionItem item) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: ContentCard(
+            semanticLabel: 'Колекція ${item.title}',
+            onTap: () => context.go('/studio/collections/${item.id}/edit'),
             child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.collections_bookmark_outlined),
                 title: Text(item.title),
-                subtitle:
-                    Text('${item.itemCount} матеріалів · ${item.status}'))),
+                subtitle: Text(
+                    '${item.itemCount} матеріалів · ${item.status == 'published' ? 'опубліковано' : 'чернетка'}'),
+                trailing: item.status == 'published'
+                    ? const Icon(Icons.chevron_right)
+                    : AppButton(
+                        label: 'Опублікувати',
+                        onPressed: () => _publishCollection(item),
+                      ))),
       );
 }
