@@ -10,7 +10,7 @@ void main() {
   test('rewrites a public object URL to the render endpoint', () {
     expect(
       sizedRemoteImageUrl('$_object/recipe-images/Beetroot.png', width: 640),
-      '$_render/recipe-images/Beetroot.png?width=640&quality=70',
+      '$_render/recipe-images/Beetroot.png?width=640&quality=70&resize=contain',
     );
   });
 
@@ -18,7 +18,7 @@ void main() {
     expect(
       sizedRemoteImageUrl('$_object/recipe-images/Capreze%202.0.png',
           width: 640),
-      '$_render/recipe-images/Capreze%202.0.png?width=640&quality=70',
+      '$_render/recipe-images/Capreze%202.0.png?width=640&quality=70&resize=contain',
     );
   });
 
@@ -26,7 +26,7 @@ void main() {
     expect(
       sizedRemoteImageUrl('$_object/studio-brand-assets/brands/a/b.webp?',
           width: 320),
-      '$_render/studio-brand-assets/brands/a/b.webp?width=320&quality=70',
+      '$_render/studio-brand-assets/brands/a/b.webp?width=320&quality=70&resize=contain',
     );
   });
 

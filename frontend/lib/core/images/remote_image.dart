@@ -47,7 +47,7 @@ String sizedRemoteImageUrl(String url, {required int width, int quality = 70}) {
   if (objectPath.isEmpty) return url;
 
   return '${url.substring(0, marker)}$_renderPrefix$objectPath'
-      '?width=${renderWidthFor(width)}&quality=$quality';
+      '?width=${renderWidthFor(width)}&quality=$quality&resize=contain';
 }
 
 /// Clamps and snaps a pixel width to the buckets the render endpoint is asked
