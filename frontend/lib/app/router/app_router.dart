@@ -29,6 +29,7 @@ import '../../features/search/presentation/pages/search_page.dart';
 import '../../features/subscription/screens/subscription_screen.dart';
 import '../../features/studio/presentation/pages/studio_brand_page.dart';
 import '../../features/studio/presentation/pages/studio_content_page.dart';
+import '../../features/studio/presentation/pages/studio_collection_editor_page.dart';
 import '../../features/studio/presentation/pages/studio_recipe_editor_page.dart';
 import 'route_guards.dart';
 import 'route_models.dart';
@@ -60,6 +61,8 @@ class AppRoutePaths {
   static const studioContent = '/studio/content';
   static const studioRecipeNew = '/studio/content/new';
   static const studioRecipeEdit = '/studio/content/:id/edit';
+  static const studioCollectionNew = '/studio/collections/new';
+  static const studioCollectionEdit = '/studio/collections/:id/edit';
 
   static const tabLocations = <String>[home, search, saved, profile];
 }
@@ -110,6 +113,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutePaths.studioRecipeEdit,
         builder: (_, state) => StudioRecipeEditorPage(
           recipeId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutePaths.studioCollectionNew,
+        builder: (_, __) => const StudioCollectionEditorPage(),
+      ),
+      GoRoute(
+        path: AppRoutePaths.studioCollectionEdit,
+        builder: (_, state) => StudioCollectionEditorPage(
+          collectionId: state.pathParameters['id'],
         ),
       ),
       GoRoute(

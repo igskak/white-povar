@@ -168,6 +168,32 @@ class StudioBrandDraftService {
             Map<String, dynamic>.from(value as Map)))
         .toList();
   }
+
+  Future<Map<String, dynamic>> collection(String id) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '/api/v1/studio/collections/$id',
+    );
+    return response.data!;
+  }
+
+  Future<Map<String, dynamic>> saveCollection(
+    Map<String, dynamic> payload, {
+    String? id,
+  }) async {
+    final response = id == null
+        ? await _client.post<Map<String, dynamic>>(
+            '/api/v1/studio/collections',
+            data: payload,
+          )
+        : await _client.put<Map<String, dynamic>>(
+            '/api/v1/studio/collections/$id',
+            data: payload,
+          );
+    return response.data!;
+  }
+
+  Future<void> publishCollection(String id) async => _client
+      .post<Map<String, dynamic>>('/api/v1/studio/collections/$id/publish');
 }
 
 class StudioSession {

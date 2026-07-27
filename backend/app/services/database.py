@@ -768,6 +768,20 @@ class SupabaseService:
         result = self.get_client(use_service_key=True).table('collections').select('*, collection_items(recipe_id,position,is_preview)').eq('chef_id', chef_id).order('updated_at', desc=True).execute()
         return result.data or []
 
+    async def studio_collection_row(
+        self, chef_id: str, collection_id: str
+    ) -> Optional[Dict[str, Any]]:
+        result = (
+            self.get_client(use_service_key=True)
+            .table('collections')
+            .select('*, collection_items(recipe_id,position,is_preview)')
+            .eq('chef_id', chef_id)
+            .eq('id', collection_id)
+            .limit(1)
+            .execute()
+        )
+        return (result.data or [None])[0]
+
     async def studio_save_content(self, *, chef_id: str, user_id: str, content_id: str | None, values: Dict[str, Any]) -> Dict[str, Any]:
         result = self.get_client(use_service_key=True).rpc('studio_save_content', {
             'p_chef_id': chef_id, 'p_user_id': user_id, 'p_content_id': content_id, 'p_values': values,

@@ -397,6 +397,22 @@ async def list_studio_collections(membership: tuple[User, TenantContext, str] = 
     return {'collections': [_studio_row(row) for row in await supabase_service.studio_collection_rows(tenant.chef_id)]}
 
 
+@router.get('/collections/{collection_id}')
+async def get_studio_collection(
+    collection_id: str,
+    membership: tuple[User, TenantContext, str] = Depends(require_studio_member),
+):
+    _, tenant, _ = membership
+    row = await supabase_service.studio_collection_row(
+        tenant.chef_id, collection_id)
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail='Collection was not found for this tenant',
+        )
+    return _studio_row(row)
+
+
 @router.post('/collections')
 async def create_collection(payload: StudioCollectionUpsert, membership: tuple[User, TenantContext, str] = Depends(require_studio_member)):
     user, tenant, _ = membership
