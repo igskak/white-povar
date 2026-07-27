@@ -188,16 +188,21 @@ class StudioContentItem {
       required this.title,
       required this.kind,
       required this.isPublic,
-      required this.isPremium});
+      required this.isPremium,
+      this.tags = const []});
   final String id, title, kind;
   final bool isPublic, isPremium;
+  final List<String> tags;
   factory StudioContentItem.fromJson(Map<String, dynamic> json) =>
       StudioContentItem(
           id: json['id'].toString(),
           title: json['title']?.toString() ?? '',
           kind: json['content_kind']?.toString() ?? 'recipe',
           isPublic: json['is_public'] == true,
-          isPremium: json['is_premium'] == true);
+          isPremium: json['is_premium'] == true,
+          tags: (json['tags'] as List<dynamic>? ?? const [])
+              .map((value) => value.toString())
+              .toList(growable: false));
 }
 
 class StudioCollectionItem {

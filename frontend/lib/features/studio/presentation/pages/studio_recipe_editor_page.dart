@@ -27,10 +27,11 @@ class _StudioRecipeEditorPageState
   final _prep = TextEditingController(text: '10');
   final _cook = TextEditingController(text: '20');
   final _servings = TextEditingController(text: '2');
-  final _tags = TextEditingController();
   final _altText = TextEditingController();
   final List<_IngredientDraft> _ingredients = [_IngredientDraft()];
   final List<TextEditingController> _steps = [TextEditingController()];
+  final List<String> _selectedTags = [];
+  List<String> _availableTags = const [];
 
   String _category = 'Інше';
   int _difficulty = 1;
@@ -51,6 +52,7 @@ class _StudioRecipeEditorPageState
     super.initState();
     _id = widget.recipeId;
     if (_id != null) _load();
+    _loadAvailableTags();
   }
 
   @override
@@ -61,7 +63,6 @@ class _StudioRecipeEditorPageState
     _prep.dispose();
     _cook.dispose();
     _servings.dispose();
-    _tags.dispose();
     _altText.dispose();
     for (final ingredient in _ingredients) {
       ingredient.dispose();
@@ -70,6 +71,23 @@ class _StudioRecipeEditorPageState
       step.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadAvailableTags() async {
+    try {
+      final content = await ref.read(studioBrandDraftServiceProvider).content();
+      if (!mounted) return;
+      setState(() {
+        _availableTags = {
+          for (final item in content)
+            for (final tag in item.tags)
+              if (tag.trim().isNotEmpty) tag.trim(),
+        }.toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      });
+    } catch (_) {
+      // Creating a new tag remains available if suggestions cannot be loaded.
+    }
   }
 
   Future<void> _load() async {
@@ -95,7 +113,9 @@ class _StudioRecipeEditorPageState
           .toList();
       if (tags.isNotEmpty) {
         _cuisine.text = tags.last;
-        _tags.text = tags.take(tags.length - 1).join(', ');
+        _selectedTags
+          ..clear()
+          ..addAll(tags.take(tags.length - 1));
       }
 
       final steps = json['instructions_structured'] as List<dynamic>? ??
@@ -261,11 +281,7 @@ class _StudioRecipeEditorPageState
             .map((step) => step.text.trim())
             .where((step) => step.isNotEmpty)
             .toList(growable: false),
-        'tags': _tags.text
-            .split(',')
-            .map((tag) => tag.trim())
-            .where((tag) => tag.isNotEmpty)
-            .toList(),
+        'tags': _selectedTags,
         'isFeatured': _isFeatured,
         'isPremium': _isPremium,
         if (_primary != null)
@@ -492,15 +508,30 @@ class _StudioRecipeEditorPageState
               Text('$_difficulty/5'),
             ],
           ),
-          TextFormField(
-            controller: _tags,
-            decoration: const InputDecoration(
-              labelText: 'Теги',
-              helperText: 'Розділяйте комами',
-            ),
+          _TagSelector(
+            selected: _selectedTags,
+            options: _availableTags,
+            onAdd: _addTag,
+            onRemove: (tag) => setState(() => _selectedTags.remove(tag)),
           ),
         ],
       );
+
+  void _addTag(String rawValue) {
+    final value = rawValue.trim();
+    if (value.isEmpty ||
+        _selectedTags.any((tag) => tag.toLowerCase() == value.toLowerCase())) {
+      return;
+    }
+    setState(() {
+      _selectedTags.add(value);
+      if (!_availableTags
+          .any((tag) => tag.toLowerCase() == value.toLowerCase())) {
+        _availableTags = [..._availableTags, value]
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      }
+    });
+  }
 
   Widget _mediaFields() => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -739,49 +770,146 @@ class _FocalEditor extends StatelessWidget {
   final ValueChanged<Offset> onChanged;
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          AspectRatio(
-            aspectRatio: 4 / 3,
-            child: LayoutBuilder(
-              builder: (context, constraints) => GestureDetector(
-                onTapDown: (event) => onChanged(Offset(
-                  (event.localPosition.dx / constraints.maxWidth)
-                      .clamp(0, 1)
-                      .toDouble(),
-                  (event.localPosition.dy / constraints.maxHeight)
-                      .clamp(0, 1)
-                      .toDouble(),
-                )),
-                onPanUpdate: (event) => onChanged(Offset(
-                  (event.localPosition.dx / constraints.maxWidth)
-                      .clamp(0, 1)
-                      .toDouble(),
-                  (event.localPosition.dy / constraints.maxHeight)
-                      .clamp(0, 1)
-                      .toDouble(),
-                )),
-                child: ClipRRect(
-                  borderRadius: AppRadius.lg,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.network(image.url, fit: BoxFit.cover),
-                      Align(
-                        alignment: Alignment(
-                          image.focal.dx * 2 - 1,
-                          image.focal.dy * 2 - 1,
-                        ),
-                        child: const _FocalMarker(),
+  Widget build(BuildContext context) {
+    final hasDimensions =
+        image.width != null && image.height != null && image.height! > 0;
+    final aspectRatio = hasDimensions ? image.width! / image.height! : 4 / 3;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.sm),
+        AspectRatio(
+          aspectRatio: aspectRatio,
+          child: LayoutBuilder(
+            builder: (context, constraints) => GestureDetector(
+              onTapDown: (event) => onChanged(Offset(
+                (event.localPosition.dx / constraints.maxWidth)
+                    .clamp(0, 1)
+                    .toDouble(),
+                (event.localPosition.dy / constraints.maxHeight)
+                    .clamp(0, 1)
+                    .toDouble(),
+              )),
+              onPanUpdate: (event) => onChanged(Offset(
+                (event.localPosition.dx / constraints.maxWidth)
+                    .clamp(0, 1)
+                    .toDouble(),
+                (event.localPosition.dy / constraints.maxHeight)
+                    .clamp(0, 1)
+                    .toDouble(),
+              )),
+              child: ClipRRect(
+                borderRadius: AppRadius.lg,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                       ),
-                    ],
-                  ),
+                      child: Image.network(image.url, fit: BoxFit.contain),
+                    ),
+                    Align(
+                      alignment: Alignment(
+                        image.focal.dx * 2 - 1,
+                        image.focal.dy * 2 - 1,
+                      ),
+                      child: const _FocalMarker(),
+                    ),
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TagSelector extends StatefulWidget {
+  const _TagSelector({
+    required this.selected,
+    required this.options,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<String> selected;
+  final List<String> options;
+  final ValueChanged<String> onAdd;
+  final ValueChanged<String> onRemove;
+
+  @override
+  State<_TagSelector> createState() => _TagSelectorState();
+}
+
+class _TagSelectorState extends State<_TagSelector> {
+  TextEditingController? _fieldController;
+  FocusNode? _focusNode;
+
+  void _select(String value) {
+    widget.onAdd(value);
+    _fieldController?.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.selected.isNotEmpty) ...[
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: widget.selected
+                  .map(
+                    (tag) => InputChip(
+                      label: Text(tag),
+                      onDeleted: () => widget.onRemove(tag),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Autocomplete<String>(
+            optionsBuilder: (value) {
+              final query = value.text.trim().toLowerCase();
+              return widget.options.where(
+                (tag) =>
+                    !widget.selected.any((selectedTag) =>
+                        selectedTag.toLowerCase() == tag.toLowerCase()) &&
+                    (query.isEmpty || tag.toLowerCase().contains(query)),
+              );
+            },
+            onSelected: _select,
+            fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+              _fieldController = controller;
+              _focusNode = focusNode;
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Теги',
+                  hintText: 'Знайдіть або створіть тег',
+                  helperText:
+                      'Оберіть існуючий варіант або введіть новий і натисніть Enter.',
+                  suffixIcon: IconButton(
+                    tooltip: 'Показати існуючі теги',
+                    onPressed: () => _focusNode?.requestFocus(),
+                    icon: const Icon(Icons.arrow_drop_down),
+                  ),
+                ),
+                onSubmitted: (value) {
+                  widget.onAdd(value);
+                  controller.clear();
+                },
+              );
+            },
           ),
         ],
       );
