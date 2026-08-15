@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
-import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
@@ -13,7 +11,6 @@ import '../../../auth/providers/auth_provider.dart';
 import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
-import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../widgets/home_scene.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
@@ -140,7 +137,7 @@ class _MobileHome extends StatelessWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(
-                child: _HomeIntro(
+                child: HomeIntro(
                   brand: brand,
                   userName: userName,
                   onProfileTap: onProfileTap,
@@ -175,44 +172,15 @@ class _MobileHome extends StatelessWidget {
               ),
             ];
           }
-          final featured = recipes.firstWhere(
-            (recipe) => recipe.isFeatured,
-            orElse: () => recipes.first,
-          );
-          final feed =
-              recipes.where((recipe) => recipe.id != featured.id).toList();
           return [
             SliverToBoxAdapter(
-              child: ResponsiveContainer(
-                maxWidth: 480,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RecipeCard.featured(
-                      key: const ValueKey('mobile-featured-recipe-hero'),
-                      recipe: featured,
-                      compact: true,
-                      onTap: () => onOpenRecipe(featured),
-                    ),
-                    if (brand.voice.courseName != null &&
-                        brand.courseTag != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      BrandCourseCard(
-                        courseName: brand.voice.courseName!,
-                        locked: courseLocked,
-                        onOpen: onCollectionTap,
-                        onUnlock: onUnlockCourse,
-                      ),
-                    ],
-                    if (feed.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Text('Свіже від автора',
-                          style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: AppSpacing.sm),
-                      _RecipeFeed(recipes: feed, onOpen: onOpenRecipe),
-                    ],
-                  ],
-                ),
+              child: HomeFeedSections(
+                brand: brand,
+                recipes: recipes,
+                courseLocked: courseLocked,
+                onOpenRecipe: onOpenRecipe,
+                onCollectionTap: onCollectionTap,
+                onUnlockCourse: onUnlockCourse,
               ),
             ),
           ];
@@ -302,82 +270,25 @@ class _DesktopHomeContent extends StatelessWidget {
   final bool courseLocked;
 
   @override
-  Widget build(BuildContext context) {
-    final featured = recipes.firstWhere(
-      (recipe) => recipe.isFeatured,
-      orElse: () => recipes.first,
-    );
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.only(top: 32, bottom: 48),
-          sliver: SliverToBoxAdapter(
-            child: ResponsiveContainer(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (brand.heroFor('home') != null) ...[
-                    BrandHeroBanner(
-                      key: const ValueKey('home-brand-hero'),
-                      brand: brand,
-                      role: 'home',
-                    ),
-                    const SizedBox(height: 28),
-                  ],
-                  RecipeCard.featured(
-                    recipe: featured,
-                    onTap: () => onOpenRecipe(featured),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text('Від шефа',
-                            style: Theme.of(context).textTheme.headlineSmall),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => context.go('/search'),
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        label: const Text('Усі рецепти'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      crossAxisSpacing: AppSpacing.md,
-                      mainAxisSpacing: AppSpacing.md,
-                      childAspectRatio: .60,
-                    ),
-                    itemCount: recipes.length,
-                    itemBuilder: (context, index) => RecipeCard(
-                      recipe: recipes[index],
-                      onTap: () => onOpenRecipe(recipes[index]),
-                    ),
-                  ),
-                  if (brand.voice.courseName != null &&
-                      brand.courseTag != null) ...[
-                    const SizedBox(height: AppSpacing.xl),
-                    BrandCourseCard(
-                      courseName: brand.voice.courseName!,
-                      locked: courseLocked,
-                      onOpen: onCollectionTap,
-                      onUnlock: onUnlockCourse,
-                    ),
-                  ],
-                ],
+  Widget build(BuildContext context) => CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: HomeDesktopSections.pagePadding,
+            sliver: SliverToBoxAdapter(
+              child: HomeDesktopSections(
+                brand: brand,
+                recipes: recipes,
+                courseLocked: courseLocked,
+                onOpenRecipe: onOpenRecipe,
+                onSeeAll: () => context.go('/search'),
+                onCollectionTap: onCollectionTap,
+                onUnlockCourse: onUnlockCourse,
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
+        ],
+      );
 }
 
 class _DesktopHomeSkeleton extends StatelessWidget {
@@ -399,96 +310,6 @@ class _DesktopHomeSkeleton extends StatelessWidget {
             ],
           ),
         ),
-      );
-}
-
-class _HomeIntro extends StatelessWidget {
-  const _HomeIntro({
-    required this.brand,
-    required this.userName,
-    required this.onProfileTap,
-    required this.onScanTap,
-    required this.onTypeTap,
-  });
-
-  final BrandDetails brand;
-  final String? userName;
-  final VoidCallback onProfileTap;
-  final VoidCallback onScanTap;
-  final VoidCallback onTypeTap;
-
-  @override
-  Widget build(BuildContext context) => ResponsiveContainer(
-        maxWidth: 480,
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                BrandHeader(
-                  brand: brand,
-                  trailing: InkResponse(
-                    onTap: onProfileTap,
-                    radius: 28,
-                    child: UserAvatar(name: userName),
-                  ),
-                ),
-                // The brand's own photo, when it published one for Home.
-                if (brand.heroFor('home') != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  BrandHeroBanner(
-                    key: const ValueKey('home-brand-hero'),
-                    brand: brand,
-                    role: 'home',
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  brand.voice.greeting,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontFamily: context.brandTheme.displayFontFamily,
-                        fontWeight: FontWeight.w700,
-                        height: 1.05,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                ScanBanner(onTap: onScanTap),
-                const SizedBox(height: AppSpacing.xs),
-                // Secondary path for anyone who would rather type than shoot.
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: AppButton(
-                    label: 'Ввести вручну',
-                    icon: Icons.keyboard_alt_outlined,
-                    variant: AppButtonVariant.text,
-                    onPressed: onTypeTap,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class _RecipeFeed extends StatelessWidget {
-  const _RecipeFeed({required this.recipes, required this.onOpen});
-  final List<Recipe> recipes;
-  final ValueChanged<Recipe> onOpen;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          for (final recipe in recipes) ...[
-            RecipeCard.list(recipe: recipe, onTap: () => onOpen(recipe)),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ],
       );
 }
 
