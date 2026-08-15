@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../theme/brand_theme.dart';
+import '../theme/tokens/app_tokens.dart';
 import '../../core/branding/brand_assets.dart';
 import '../../core/branding/brand_config.dart';
 import '../../core/branding/brand_providers.dart';
@@ -442,14 +443,10 @@ class _DesktopNavigationShell extends StatelessWidget {
             child: Column(
               children: [
                 _DesktopTopBar(dividerColor: dividerColor, brand: brand),
-                Expanded(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1280),
-                      child: child,
-                    ),
-                  ),
-                ),
+                // No cap here: each page centres its own column via
+                // ResponsiveContainer, and a second cap at the shell only made
+                // those columns narrower than the page asked for.
+                Expanded(child: child),
               ],
             ),
           ),
@@ -520,53 +517,116 @@ class _DesktopRailDestination extends StatelessWidget {
   }
 }
 
+/// Brand on the left, search in the middle, actions on the right.
+///
+/// The side zones carry equal flex so the search box stays optically centred
+/// instead of drifting to the right edge of a wide monitor, and the bar is
+/// sized to its tallest control rather than to a fixed 76px band.
 class _DesktopTopBar extends StatelessWidget {
   const _DesktopTopBar({required this.dividerColor, required this.brand});
 
   final Color dividerColor;
   final BrandDetails brand;
 
+  static const double height = 60;
+  static const double _searchMaxWidth = 480;
+
   @override
   Widget build(BuildContext context) => Container(
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+        height: height,
+        padding: EdgeInsets.symmetric(
+          horizontal: AppLayout.gutter(MediaQuery.sizeOf(context).width),
+        ),
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: dividerColor)),
         ),
         child: Row(
           children: [
             Expanded(
-              child: BrandLogo(
-                brand: brand,
-                height: 30,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: BrandLogo(brand: brand, height: 24),
               ),
             ),
-            SizedBox(
-              width: 320,
-              child: OutlinedButton.icon(
-                onPressed: () => context.go(AppRoutePaths.search),
-                icon: const Icon(Icons.search),
-                label: const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('Назва, інгредієнт або кухня'),
+            Expanded(
+              flex: 2,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: _searchMaxWidth),
+                  child: _TopBarSearchField(
+                    onTap: () => context.go(AppRoutePaths.search),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () => context.push(AppRoutePaths.camera),
-              icon: const Icon(Icons.photo_camera_outlined),
-              label: const Text('Сканувати'),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              tooltip: 'Профіль',
-              onPressed: () => context.go(AppRoutePaths.profile),
-              icon: const Icon(Icons.account_circle_outlined, size: 32),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => context.push(AppRoutePaths.camera),
+                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                    label: const Text('Сканувати'),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  IconButton(
+                    tooltip: 'Профіль',
+                    onPressed: () => context.go(AppRoutePaths.profile),
+                    icon: const Icon(Icons.account_circle_outlined, size: 24),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       );
+}
+
+/// Search affordance in the top bar. Looks like a field, behaves like a link
+/// to the search page — which is what it always did, but at the height of a
+/// real input instead of a stretched button.
+class _TopBarSearchField extends StatelessWidget {
+  const _TopBarSearchField({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    return Semantics(
+      button: true,
+      label: 'Пошук',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.md,
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: semantic.surface,
+            borderRadius: AppRadius.md,
+            border: Border.all(color: theme.colorScheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 18, color: semantic.textSecondary),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'Назва, інгредієнт або кухня',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: semantic.textSecondary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 const _navigationRailDestinations = <NavigationRailDestination>[

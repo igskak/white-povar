@@ -18,6 +18,45 @@ class AppRadius {
   static const BorderRadius xl = BorderRadius.all(Radius.circular(24));
 }
 
+/// Page width scale.
+///
+/// Screens used to hard-code their own cap (1180 here, 1280 there, 1120 on the
+/// profile), so a wide monitor showed a narrow column stranded in the middle of
+/// an empty page and no two screens agreed on how narrow. Widths are resolved
+/// from the viewport instead: the column grows with the window until it hits a
+/// cap chosen for readability, and the leftover space becomes an even margin.
+class AppLayout {
+  /// Below this the layout is single-column and gutters collapse to [tight].
+  static const double desktopBreakpoint = 1024;
+
+  /// Widest a content column may grow. Past this, line length stops being
+  /// comfortable and extra pixels are better spent on the margin.
+  static const double contentMax = 1440;
+
+  /// Cap for reading-first content: forms, settings, a column of prose. Wider
+  /// than this a paragraph runs past a comfortable line length.
+  static const double narrowMax = 760;
+
+  /// Width of the ingredients column beside the steps on a wide recipe page.
+  static const double sideColumn = 340;
+
+  /// Phone margin. Unchanged from the pre-token layout so handsets keep their
+  /// existing edge spacing; only desktop widths open up.
+  static const double compact = AppSpacing.md;
+  static const double tight = 24;
+  static const double regular = 32;
+  static const double roomy = 48;
+
+  /// Horizontal page margin for a viewport of [width].
+  static double gutter(double width) => width >= 1600
+      ? roomy
+      : width >= 1280
+          ? regular
+          : width >= desktopBreakpoint
+              ? tight
+              : compact;
+}
+
 class AppElevation {
   static const double level0 = 0;
   static const double level1 = 1;

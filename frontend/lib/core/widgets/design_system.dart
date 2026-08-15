@@ -563,23 +563,38 @@ class FlowStepper extends StatelessWidget {
   }
 }
 
+/// Centres [child] in a page column that grows with the window up to
+/// [maxWidth], with the horizontal gutter taken from [AppLayout].
+///
+/// [maxWidth] is the width of the column *including* its gutters, so a page
+/// never renders a narrow strip stranded in the middle of a wide monitor.
 class ResponsiveContainer extends StatelessWidget {
   const ResponsiveContainer({
     super.key,
     required this.child,
-    this.maxWidth = 1200,
-    this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    this.maxWidth = AppLayout.contentMax,
+    this.padding,
   });
 
   final Widget child;
   final double maxWidth;
-  final EdgeInsetsGeometry padding;
+
+  /// Overrides the viewport-derived gutter. Pass [EdgeInsets.zero] when the
+  /// caller already owns its horizontal padding.
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) => Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Padding(padding: padding, child: child),
+          child: Padding(
+            padding: padding ??
+                EdgeInsets.symmetric(
+                  horizontal:
+                      AppLayout.gutter(MediaQuery.sizeOf(context).width),
+                ),
+            child: child,
+          ),
         ),
       );
 }

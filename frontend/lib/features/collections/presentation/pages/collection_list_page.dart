@@ -21,7 +21,6 @@ class CollectionListPage extends ConsumerWidget {
           child: Column(
             children: [
               ResponsiveContainer(
-                maxWidth: 1180,
                 child: _CollectionPageIntro(
                   brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
                 ),
@@ -42,7 +41,6 @@ class CollectionListPage extends ConsumerWidget {
                               icon: Icons.collections_bookmark_outlined,
                             )
                           : ResponsiveContainer(
-                              maxWidth: 1180,
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
                                   final columns = constraints.maxWidth >= 1024

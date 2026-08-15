@@ -240,7 +240,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             final content = Column(
               children: [
                 ResponsiveContainer(
-                  maxWidth: 1280,
                   child: Padding(
                     padding: EdgeInsets.only(
                       top: isDesktop ? AppSpacing.sm : AppSpacing.md,
@@ -283,7 +282,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
                 if (searchState.filters.isActive)
                   ResponsiveContainer(
-                    maxWidth: 1280,
                     child: _ActiveFilterChips(
                       filters: searchState.filters,
                       onChanged: _removeFilter,

@@ -57,7 +57,6 @@ class _SavedRecipesBody extends ConsumerWidget {
           );
         }
         return ResponsiveContainer(
-          maxWidth: 1180,
           child: RefreshIndicator(
             onRefresh: () async => ref.refresh(favoriteRecipesProvider.future),
             child: CustomScrollView(
@@ -128,7 +127,6 @@ class _SavedSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ResponsiveContainer(
-        maxWidth: 1180,
         child: CustomScrollView(
           physics: const NeverScrollableScrollPhysics(),
           slivers: [

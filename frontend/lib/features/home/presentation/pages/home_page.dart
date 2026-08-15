@@ -310,69 +310,66 @@ class _DesktopHomeContent extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(40, 32, 40, 48),
+          padding: const EdgeInsets.only(top: 32, bottom: 48),
           sliver: SliverToBoxAdapter(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (brand.heroFor('home') != null) ...[
-                      BrandHeroBanner(
-                        key: const ValueKey('home-brand-hero'),
-                        brand: brand,
-                        role: 'home',
-                      ),
-                      const SizedBox(height: 28),
-                    ],
-                    RecipeCard.featured(
-                      recipe: featured,
-                      onTap: () => onOpenRecipe(featured),
+            child: ResponsiveContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (brand.heroFor('home') != null) ...[
+                    BrandHeroBanner(
+                      key: const ValueKey('home-brand-hero'),
+                      brand: brand,
+                      role: 'home',
                     ),
                     const SizedBox(height: 28),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text('Від шефа',
-                              style: Theme.of(context).textTheme.headlineSmall),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => context.go('/search'),
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                          label: const Text('Усі рецепти'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        crossAxisSpacing: AppSpacing.md,
-                        mainAxisSpacing: AppSpacing.md,
-                        childAspectRatio: .60,
+                  ],
+                  RecipeCard.featured(
+                    recipe: featured,
+                    onTap: () => onOpenRecipe(featured),
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Від шефа',
+                            style: Theme.of(context).textTheme.headlineSmall),
                       ),
-                      itemCount: recipes.length,
-                      itemBuilder: (context, index) => RecipeCard(
-                        recipe: recipes[index],
-                        onTap: () => onOpenRecipe(recipes[index]),
-                      ),
-                    ),
-                    if (brand.voice.courseName != null &&
-                        brand.courseTag != null) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      BrandCourseCard(
-                        courseName: brand.voice.courseName!,
-                        locked: courseLocked,
-                        onOpen: onCollectionTap,
-                        onUnlock: onUnlockCourse,
+                      TextButton.icon(
+                        onPressed: () => context.go('/search'),
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: const Text('Усі рецепти'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: AppSpacing.md,
+                      mainAxisSpacing: AppSpacing.md,
+                      childAspectRatio: .60,
+                    ),
+                    itemCount: recipes.length,
+                    itemBuilder: (context, index) => RecipeCard(
+                      recipe: recipes[index],
+                      onTap: () => onOpenRecipe(recipes[index]),
+                    ),
+                  ),
+                  if (brand.voice.courseName != null &&
+                      brand.courseTag != null) ...[
+                    const SizedBox(height: AppSpacing.xl),
+                    BrandCourseCard(
+                      courseName: brand.voice.courseName!,
+                      locked: courseLocked,
+                      onOpen: onCollectionTap,
+                      onUnlock: onUnlockCourse,
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -386,22 +383,19 @@ class _DesktopHomeSkeleton extends StatelessWidget {
   const _DesktopHomeSkeleton();
 
   @override
-  Widget build(BuildContext context) => const Center(
-        child: SizedBox(
-          width: 1180,
-          child: Padding(
-            padding: EdgeInsets.all(40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: AppSkeleton(height: 340, borderRadius: AppRadius.xl),
-                ),
-                SizedBox(height: 28),
-                AppSkeleton(width: 180, height: 32, borderRadius: AppRadius.md),
-              ],
-            ),
+  Widget build(BuildContext context) => const ResponsiveContainer(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: AppSkeleton(height: 340, borderRadius: AppRadius.xl),
+              ),
+              SizedBox(height: 28),
+              AppSkeleton(width: 180, height: 32, borderRadius: AppRadius.md),
+            ],
           ),
         ),
       );
