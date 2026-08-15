@@ -549,7 +549,6 @@ class _DesktopTopBar extends StatelessWidget {
               ),
             ),
             Expanded(
-              flex: 2,
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: _searchMaxWidth),
