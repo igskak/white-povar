@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/brand_theme.dart';
@@ -7,17 +8,54 @@ import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/presentation/widgets/login_scene.dart';
+import '../../../auth/providers/auth_provider.dart';
 import '../../../home/presentation/widgets/home_scene.dart';
 import '../../../recipes/models/recipe.dart';
-import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../subscription/purchase_adapter.dart';
 import '../../../subscription/widgets/paywall_scene.dart';
 
 /// Which consumer scene the Studio preview frame is showing.
 enum StudioPreviewTab { home, login, paywall }
 
-/// The design's 390-wide preview frame (13m): «рендер тим самим кодом
-/// застосунку, без скриншотів».
+/// Which window the preview frame stands in for.
+///
+/// Home is laid out twice — the compact composition and, past
+/// [AppLayout.contentDesktopBreakpoint], the desktop one — and a photo cropped
+/// against the phone frame is not the crop a 1280 window shows. The editor
+/// therefore offers both rather than implying the phone is the whole truth.
+enum StudioPreviewViewport {
+  phone(label: 'Телефон', window: Size(390, 720), page: Size(390, 720)),
+
+  /// A 1280 window: the page keeps what the branded rail and the top bar leave
+  /// it, and reads the *window* width for its gutters, exactly as in the app.
+  desktop(
+    label: 'Десктоп',
+    window: Size(BrandMediaAspectRatio.desktopWindowWidth, 800),
+    page: Size(
+      BrandMediaAspectRatio.desktopWindowWidth - AppLayout.railWidth - 1,
+      800 - _desktopTopBarHeight,
+    ),
+  );
+
+  const StudioPreviewViewport({
+    required this.label,
+    required this.window,
+    required this.page,
+  });
+
+  final String label;
+
+  /// What `MediaQuery.sizeOf` reports inside the frame.
+  final Size window;
+
+  /// The area the shell leaves the page, which is what the frame draws.
+  final Size page;
+}
+
+const double _desktopTopBarHeight = 60;
+
+/// The design's preview frame (13m): «рендер тим самим кодом застосунку, без
+/// скриншотів».
 ///
 /// Every scene is composed from the widgets the consumer app itself renders, so
 /// a brand change cannot look right here and wrong in the app. Optional fields
@@ -28,13 +66,18 @@ class StudioBrandPreview extends StatefulWidget {
     super.key,
     required this.config,
     required this.tab,
+    this.viewport = StudioPreviewViewport.phone,
   });
 
   final BrandConfig config;
   final StudioPreviewTab tab;
+  final StudioPreviewViewport viewport;
 
-  /// Design frame: 390 logical px wide, scaled down to the editor column.
-  static const Size frame = Size(390, 720);
+  /// Login and the paywall are still composed inside their pages rather than
+  /// in shared scene widgets, so the preview can only tell the truth about
+  /// their compact layout. Home is offered at both widths.
+  static bool supportsViewportChoice(StudioPreviewTab tab) =>
+      tab == StudioPreviewTab.home;
 
   @override
   State<StudioBrandPreview> createState() => _StudioBrandPreviewState();
@@ -64,20 +107,25 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
         ? AppThemeV2.light(widget.config)
         // Login and paywall are dark scenes in both app themes.
         : AppThemeV2.dark(widget.config);
+    final viewport = StudioBrandPreview.supportsViewportChoice(widget.tab)
+        ? widget.viewport
+        : StudioPreviewViewport.phone;
 
     return AspectRatio(
-      aspectRatio:
-          StudioBrandPreview.frame.width / StudioBrandPreview.frame.height,
+      aspectRatio: viewport.page.width / viewport.page.height,
       child: ClipRRect(
         borderRadius: AppRadius.lg,
         child: FittedBox(
           fit: BoxFit.fitWidth,
           alignment: Alignment.topCenter,
           child: SizedBox.fromSize(
-            size: StudioBrandPreview.frame,
+            size: viewport.page,
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                size: StudioBrandPreview.frame,
+                // The window, not the frame: page gutters are resolved from the
+                // viewport width in the app, and the frame is only the slice
+                // the shell leaves behind.
+                size: viewport.window,
                 padding: EdgeInsets.zero,
                 viewPadding: EdgeInsets.zero,
                 viewInsets: EdgeInsets.zero,
@@ -85,11 +133,18 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
               ),
               child: Theme(
                 data: theme,
-                // A preview is a picture of the app, not a second copy of it:
-                // nothing here should steal focus or accept a tap.
-                child: IgnorePointer(
-                  child: ExcludeFocus(
-                    child: Builder(builder: _scene),
+                // The app's recipe cards carry their own save affordance, which
+                // reads the session. The preview is a picture of the app as a
+                // visitor meets it, so it answers "signed out" locally instead
+                // of reaching for the editor's own account.
+                child: ProviderScope(
+                  overrides: [currentUserProvider.overrideWithValue(null)],
+                  // A preview is a picture of the app, not a second copy of it:
+                  // nothing here should steal focus or accept a tap.
+                  child: IgnorePointer(
+                    child: ExcludeFocus(
+                      child: Builder(builder: _scene),
+                    ),
                   ),
                 ),
               ),
@@ -101,70 +156,63 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
   }
 
   Widget _scene(BuildContext context) => switch (widget.tab) {
-        StudioPreviewTab.home => _home(context),
+        StudioPreviewTab.home =>
+          widget.viewport == StudioPreviewViewport.desktop
+              ? _desktopHome(context)
+              : _home(context),
         StudioPreviewTab.login => _login(context),
         StudioPreviewTab.paywall => _paywall(context),
       };
 
-  Widget _home(BuildContext context) {
-    final brand = widget.config.brand;
-    return Scaffold(
-      body: SingleChildScrollView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            BrandHeader(
-              brand: brand,
-              trailing: const UserAvatar(),
-            ),
-            // 13j/13d: no photo assigned to Home → no banner, not a placeholder.
-            if (brand.heroFor('home') != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              BrandHeroBanner(brand: brand, role: 'home'),
-            ],
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              brand.voice.greeting,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontFamily: context.brandTheme.displayFontFamily,
-                    fontWeight: FontWeight.w700,
-                    height: 1.05,
-                  ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ScanBanner(onTap: () {}),
-            const SizedBox(height: AppSpacing.xs),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppButton(
-                label: 'Ввести вручну',
-                icon: Icons.keyboard_alt_outlined,
-                variant: AppButtonVariant.text,
-                onPressed: () {},
+  /// The compact Home, section for section: the app's own [HomeIntro] and
+  /// [HomeFeedSections], not a second arrangement of them. 13j/13d fallbacks
+  /// (no Home photo → no banner, no courseName → no course card) come along
+  /// with the widgets.
+  Widget _home(BuildContext context) => Scaffold(
+        body: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              HomeIntro(
+                brand: widget.config.brand,
+                userName: null,
+                onProfileTap: () {},
+                onScanTap: () {},
+                onTypeTap: () {},
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            RecipeCard.featured(recipe: _sampleRecipe, compact: true),
-            // 13g/13j: no courseName published → no course card at all.
-            if (brand.voice.courseName != null && brand.courseTag != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              BrandCourseCard(
-                courseName: brand.voice.courseName!,
-                locked: true,
-                onOpen: () {},
-                onUnlock: () {},
+              HomeFeedSections(
+                brand: widget.config.brand,
+                recipes: _sampleRecipes,
+                courseLocked: true,
+                onOpenRecipe: (_) {},
+                onCollectionTap: () {},
+                onUnlockCourse: () {},
               ),
+              const SizedBox(height: AppSpacing.xxl),
             ],
-          ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+
+  /// Home as a 1280 window draws it: the shell owns the brand header and the
+  /// capture entry point, the page opens on the photo, and the banner takes
+  /// the crop a wide column gives it — which is not the phone's crop.
+  Widget _desktopHome(BuildContext context) => Scaffold(
+        body: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: HomeDesktopSections.pagePadding,
+          child: HomeDesktopSections(
+            brand: widget.config.brand,
+            recipes: _sampleRecipes,
+            courseLocked: true,
+            onOpenRecipe: (_) {},
+            onSeeAll: () {},
+            onCollectionTap: () {},
+            onUnlockCourse: () {},
+          ),
+        ),
+      );
 
   Widget _login(BuildContext context) {
     final brand = widget.config.brand;
@@ -248,28 +296,47 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
   }
 }
 
-/// A neutral stand-in for the tenant's own feed. It carries no image so the
-/// preview shows the app's honest image fallback rather than borrowed stock.
-final Recipe _sampleRecipe = Recipe(
-  id: 'studio-preview',
-  title: 'Лосось із зеленою сальсою',
-  description: 'Приклад картки рецепта у вашому бренді.',
-  chefId: 'studio-preview',
-  cuisine: 'Вечеря',
-  category: 'Основні страви',
-  difficulty: 2,
-  prepTimeMinutes: 10,
-  cookTimeMinutes: 20,
-  totalTimeMinutes: 30,
-  servings: 2,
-  ingredients: const [],
-  instructions: const [],
-  images: const [],
-  tags: const [],
-  isFeatured: true,
-  createdAt: DateTime.utc(2026),
-  updatedAt: DateTime.utc(2026),
-);
+/// A neutral stand-in for the tenant's own feed. The cards carry no image so
+/// the preview shows the app's honest image fallback rather than borrowed
+/// stock, and there are enough of them for the desktop grid to read as a grid.
+final List<Recipe> _sampleRecipes = [
+  _sampleRecipe(
+    id: 'studio-preview',
+    title: 'Лосось із зеленою сальсою',
+    featured: true,
+  ),
+  for (var index = 1; index < 5; index++)
+    _sampleRecipe(
+      id: 'studio-preview-$index',
+      title: 'Приклад рецепта $index',
+    ),
+];
+
+Recipe _sampleRecipe({
+  required String id,
+  required String title,
+  bool featured = false,
+}) =>
+    Recipe(
+      id: id,
+      title: title,
+      description: 'Приклад картки рецепта у вашому бренді.',
+      chefId: 'studio-preview',
+      cuisine: 'Вечеря',
+      category: 'Основні страви',
+      difficulty: 2,
+      prepTimeMinutes: 10,
+      cookTimeMinutes: 20,
+      totalTimeMinutes: 30,
+      servings: 2,
+      ingredients: const [],
+      instructions: const [],
+      images: const [],
+      tags: const [],
+      isFeatured: featured,
+      createdAt: DateTime.utc(2026),
+      updatedAt: DateTime.utc(2026),
+    );
 
 /// Example store prices (13m: «ціни-приклад зі стора»). Real prices come from
 /// App Store / Google Play at runtime, never from BrandConfig.

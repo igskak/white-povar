@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/core/branding/brand_assets.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/features/home/presentation/widgets/home_scene.dart';
 import 'package:frontend/features/studio/presentation/pages/studio_brand_page.dart';
@@ -139,6 +140,79 @@ void main() {
     expect(find.byType(BrandCourseCard), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('each preview viewport shows the composition that width renders',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.physicalSize = const Size(1280, 2400);
+    tester.view.devicePixelRatio = 1;
+
+    final config = _config(heroPhotos: const [
+      BrandHeroPhoto(url: 'https://assets.example/home.jpg', roles: {'home'}),
+    ]);
+
+    await tester.pumpWidget(_previewApp(config, tab: StudioPreviewTab.home));
+    await tester.pump();
+
+    // The phone keeps the brand header and the capture entry points…
+    expect(find.byType(HomeIntro), findsOneWidget);
+    expect(find.byType(HomeDesktopSections), findsNothing);
+    final phoneBanner = tester.getSize(find.byType(BrandHeroBanner).first);
+
+    await tester.pumpWidget(_previewApp(config,
+        tab: StudioPreviewTab.home, viewport: StudioPreviewViewport.desktop));
+    await tester.pump();
+
+    // …while the desktop leaves both to the shell and opens on the photo.
+    expect(find.byType(HomeDesktopSections), findsOneWidget);
+    expect(find.byType(HomeIntro), findsNothing);
+    expect(find.text('Від шефа'), findsOneWidget);
+
+    // The point of the second viewport: the published crop is not the phone's.
+    // A wide column clamps the banner's height, so its shape is flatter.
+    final desktopBanner = tester.getSize(find.byType(BrandHeroBanner).first);
+    expect(phoneBanner.aspectRatio, closeTo(BrandMediaAspectRatio.banner, .01));
+    expect(desktopBanner.aspectRatio, greaterThan(3));
+
+    // …and the crop thumbnail promises exactly that shape, so a frame kept
+    // inside the desktop thumbnail is a frame the page really shows.
+    expect(desktopBanner.aspectRatio,
+        closeTo(BrandMediaAspectRatio.bannerOnDesktop(), .01));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the crop stack covers both banner shapes', (tester) async {
+    await _pumpStudio(tester);
+
+    double ratioOf(String slot) => tester
+        .widget<AspectRatio>(find.byKey(ValueKey('studio-crop-$slot')))
+        .aspectRatio;
+
+    expect(ratioOf('banner'), BrandMediaAspectRatio.banner);
+    expect(ratioOf('banner-desktop'), BrandMediaAspectRatio.bannerOnDesktop());
+    expect(ratioOf('banner-desktop'), greaterThan(ratioOf('banner')),
+        reason: 'the desktop column crops the same photo flatter');
+  });
+
+  testWidgets('login has no desktop composition to promise', (tester) async {
+    for (final tab in StudioPreviewTab.values) {
+      expect(
+        StudioBrandPreview.supportsViewportChoice(tab),
+        tab == StudioPreviewTab.home,
+        reason: '$tab',
+      );
+    }
+
+    // Asking for it anyway still renders the compact scene rather than a
+    // stretched invention of one.
+    await tester.pumpWidget(_previewApp(_config(),
+        tab: StudioPreviewTab.login, viewport: StudioPreviewViewport.desktop));
+    await tester.pump();
+
+    expect(find.text('Готуйте з Олександром'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pumpStudio(
@@ -175,14 +249,21 @@ BrandDetails _publishedBrand(WidgetTester tester) => tester
     .config
     .brand;
 
-Widget _previewApp(BrandConfig config,
-        {StudioPreviewTab tab = StudioPreviewTab.login}) =>
+Widget _previewApp(
+  BrandConfig config, {
+  StudioPreviewTab tab = StudioPreviewTab.login,
+  StudioPreviewViewport viewport = StudioPreviewViewport.phone,
+}) =>
     ProviderScope(
       child: MaterialApp(
         home: Scaffold(
           body: SizedBox(
             width: 360,
-            child: StudioBrandPreview(config: config, tab: tab),
+            child: StudioBrandPreview(
+              config: config,
+              tab: tab,
+              viewport: viewport,
+            ),
           ),
         ),
       ),

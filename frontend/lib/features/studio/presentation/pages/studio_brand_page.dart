@@ -43,6 +43,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   late final TextEditingController _rollbackVersion = TextEditingController();
   String _font = 'serif';
   StudioPreviewTab _preview = StudioPreviewTab.home;
+  StudioPreviewViewport _previewViewport = StudioPreviewViewport.phone;
   bool _uploadingAsset = false;
   bool _releasing = false;
   StudioReleaseStatus? _releaseStatus;
@@ -958,27 +959,40 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
         ),
       ]);
 
-  /// The three crops derived from one master, all centred on focal.
+  /// The four crops derived from one master, all centred on focal.
   ///
-  /// These ratios intentionally mirror the real compact Studio scenes. The
-  /// old 390/300 and 390/280 placeholders were much taller than the live
-  /// slots, which made the thumbnails promise a crop the app could not show.
+  /// These ratios intentionally mirror the real Studio scenes. The old 390/300
+  /// and 390/280 placeholders were much taller than the live slots, which made
+  /// the thumbnails promise a crop the app could not show — and a banner shown
+  /// only at its phone shape made the same promise for desktop, where the
+  /// column is wide enough to cut the photo to a band.
   Widget _focalCrops(BrandHeroPhoto photo) => SizedBox(
         width: 92,
         child: Column(children: [
           _crop(photo,
-              label: 'Логін', aspectRatio: BrandMediaAspectRatio.login),
+              slot: 'login',
+              label: 'Логін',
+              aspectRatio: BrandMediaAspectRatio.login),
           _crop(photo,
-              label: 'Пейвол', aspectRatio: BrandMediaAspectRatio.paywall),
+              slot: 'paywall',
+              label: 'Пейвол',
+              aspectRatio: BrandMediaAspectRatio.paywall),
           _crop(photo,
-              label: 'Курс',
+              slot: 'banner',
+              label: 'Банер',
               aspectRatio: BrandMediaAspectRatio.banner,
+              borderRadius: AppRadius.md),
+          _crop(photo,
+              slot: 'banner-desktop',
+              label: 'Десктоп',
+              aspectRatio: BrandMediaAspectRatio.bannerOnDesktop(),
               borderRadius: AppRadius.md),
         ]),
       );
 
   Widget _crop(
     BrandHeroPhoto photo, {
+    required String slot,
     required String label,
     required double aspectRatio,
     BorderRadius borderRadius = AppRadius.sm,
@@ -991,6 +1005,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           ClipRRect(
             borderRadius: borderRadius,
             child: AspectRatio(
+              key: ValueKey('studio-crop-$slot'),
               aspectRatio: aspectRatio,
               child: _croppedImage(
                 photo.url,
@@ -1044,14 +1059,43 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             },
             onSelectionChanged: (value) =>
                 setState(() => _preview = value.first)),
+        // Home is laid out twice by the app, so the editor lets you look at
+        // both. Login and the paywall have no shared desktop composition yet,
+        // and offering the choice there would only promise one.
+        if (StudioBrandPreview.supportsViewportChoice(_preview)) ...[
+          const SizedBox(height: AppSpacing.xs),
+          SegmentedButton<StudioPreviewViewport>(
+              segments: [
+                for (final viewport in StudioPreviewViewport.values)
+                  ButtonSegment(value: viewport, label: Text(viewport.label)),
+              ],
+              selected: {
+                _previewViewport
+              },
+              onSelectionChanged: (value) =>
+                  setState(() => _previewViewport = value.first)),
+        ],
         const SizedBox(height: AppSpacing.sm),
-        StudioBrandPreview(config: config, tab: _preview),
+        StudioBrandPreview(
+            config: config, tab: _preview, viewport: _previewViewport),
         const SizedBox(height: AppSpacing.xs),
-        Text(
-            'Рендер тими самими віджетами, що й застосунок. Ціни на пейволі — '
-            'приклад: справжні приходять з App Store і Google Play.',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(_previewCaption(), style: Theme.of(context).textTheme.bodySmall),
       ]);
+
+  String _previewCaption() {
+    const shared = 'Рендер тими самими віджетами, що й застосунок.';
+    if (_preview == StudioPreviewTab.paywall) {
+      return '$shared Ціни — приклад: справжні приходять з App Store і '
+          'Google Play.';
+    }
+    if (StudioBrandPreview.supportsViewportChoice(_preview) &&
+        _previewViewport == StudioPreviewViewport.desktop) {
+      return '$shared Десктоп — це вікно 1280: бічна панель і верхня смуга '
+          'беруть на себе шапку бренду й «Сканувати», а банер отримує ширший '
+          'кроп, ніж на телефоні.';
+    }
+    return shared;
+  }
 }
 
 bool _isRemoteAsset(String value) =>

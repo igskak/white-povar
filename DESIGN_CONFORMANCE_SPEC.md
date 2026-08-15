@@ -233,6 +233,18 @@ Course card states (13g): **hidden** when `voice.courseName`/`courseTag` are abs
 > `/search?tag=…`. The collection is a real, richer destination already in the app and
 > needs no new route.
 
+> **Accepted divergence.** Past `AppLayout.contentDesktopBreakpoint` Home drops the
+> brand header, greeting, scan banner and the "Ввести вручну" CTA — the desktop rail
+> and top bar already carry brand, profile and capture — and shows the photo, the
+> featured recipe and a four-column "Від шефа" grid instead. This is the one place the
+> §7 "no desktop-only IA" rule is knowingly bent, and the published photo takes a
+> flatter crop there than on the phone, because `BrandHeroBanner` caps its height at
+> 300 while a desktop column keeps growing. So the author is not surprised by it,
+> Creator Studio previews Home at both widths (`StudioPreviewViewport`), renders each
+> from the app's own `HomeIntro` / `HomeFeedSections` / `HomeDesktopSections`, and
+> shows a fourth crop thumbnail for the desktop banner whose ratio is derived from the
+> layout tokens (`BrandMediaAspectRatio.bannerOnDesktop`) rather than written down.
+
 States: shimmer skeleton · empty · error + retry · pull-to-refresh.
 
 ### Discover `/search`

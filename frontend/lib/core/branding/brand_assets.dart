@@ -18,6 +18,24 @@ abstract final class BrandMediaAspectRatio {
   static const double paywall = (studioViewportWidth - 22 * 2) / 130;
   static const double banner = 2;
   static const double avatar = 1;
+
+  /// The window the Studio previews and crops desktop against — the same
+  /// reference width the responsive goldens use.
+  static const double desktopWindowWidth = 1280;
+
+  /// The banner's shape on a desktop page of [windowWidth].
+  ///
+  /// [BrandHeroBanner] holds [banner] until its height reaches the ceiling, and
+  /// a desktop column keeps widening past that — so the same photo is cropped
+  /// to a flatter band there than on a phone. Derived rather than written down,
+  /// so the crop thumbnail cannot promise a shape the page stopped rendering.
+  static double bannerOnDesktop([double windowWidth = desktopWindowWidth]) {
+    // What the branded rail, its divider and the page gutters leave.
+    final page = windowWidth - AppLayout.railWidth - 1;
+    final column = math.min(page, AppLayout.contentMax) -
+        AppLayout.gutter(windowWidth) * 2;
+    return column / math.min(column / banner, BrandHeroBanner.maxBannerHeight);
+  }
 }
 
 class BrandAvatar extends StatelessWidget {
@@ -149,8 +167,11 @@ class BrandHeroBanner extends StatelessWidget {
     required this.brand,
     required this.role,
     this.aspectRatio = BrandMediaAspectRatio.banner,
-    this.maxHeight = 300,
+    this.maxHeight = maxBannerHeight,
   });
+
+  /// Ceiling a banner grows to before the column stops giving it height.
+  static const double maxBannerHeight = 300;
 
   final BrandDetails brand;
   final String role;
