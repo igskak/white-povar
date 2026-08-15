@@ -309,7 +309,7 @@ class AdaptiveNavigationShell extends ConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth >= 600) {
-          final isDesktop = constraints.maxWidth >= 1024;
+          final isDesktop = constraints.maxWidth >= AppLayout.desktopBreakpoint;
           if (isDesktop) {
             return _DesktopNavigationShell(
               selectedIndex: selectedIndex,
@@ -400,7 +400,7 @@ class _DesktopNavigationShell extends StatelessWidget {
       body: Row(
         children: [
           SizedBox(
-            width: 92,
+            width: AppLayout.railWidth,
             child: ColoredBox(
               color: railColor,
               child: Column(

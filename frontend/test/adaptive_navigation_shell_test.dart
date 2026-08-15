@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:frontend/app/router/app_router.dart';
 import 'package:frontend/app/theme/app_theme.dart';
+import 'package:frontend/app/theme/tokens/app_tokens.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
@@ -54,6 +55,33 @@ void main() {
     expect(find.byTooltip('Налаштування'), findsOneWidget);
     expect(find.byType(ConstrainedBox), findsWidgets);
     expect(find.text('Збережений стан вкладки'), findsOneWidget);
+  });
+
+  testWidgets('a page still gets desktop width at the chrome breakpoint',
+      (tester) async {
+    double? pageWidth;
+    await tester.binding
+        .setSurfaceSize(const Size(AppLayout.desktopBreakpoint, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [tenantBootstrapProvider.overrideWithValue(_bootstrap)],
+      child: MaterialApp(
+        theme: AppThemeV2.light(_bootstrap.brandConfig),
+        home: AdaptiveNavigationShell(
+          selectedIndex: 1,
+          onDestinationSelected: (_) {},
+          child: LayoutBuilder(builder: (context, constraints) {
+            pageWidth = constraints.maxWidth;
+            return const SizedBox.shrink();
+          }),
+        ),
+      ),
+    ));
+
+    // The rail eats into the page, so a page measuring itself against the
+    // window breakpoint would draw its narrow layout inside desktop chrome.
+    expect(pageWidth, isNotNull);
+    expect(pageWidth, greaterThanOrEqualTo(AppLayout.contentDesktopBreakpoint));
   });
 }
 

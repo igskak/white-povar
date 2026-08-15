@@ -53,39 +53,40 @@ class _HomePageState extends ConsumerState<HomePage> {
         .firstOrNull;
 
     return LayoutBuilder(
-      builder: (context, constraints) => constraints.maxWidth >= 1024
-          ? _DesktopHome(
-              brand: brand,
-              recipes: recipes,
-              onRefresh: () =>
-                  ref.read(recipeListProvider.notifier).loadRecipes(),
-              onOpenRecipe: _openRecipe,
-              onCollectionTap: () => _openCollection(
-                context,
-                courseTag: brand.courseTag,
-                collectionId: featuredCollectionId,
-              ),
-              onUnlockCourse: () => context.push('/subscription'),
-              courseLocked: courseLocked,
-            )
-          : _MobileHome(
-              brand: brand,
-              recipes: recipes,
-              userName: user?.email,
-              onRefresh: () =>
-                  ref.read(recipeListProvider.notifier).loadRecipes(),
-              onOpenRecipe: _openRecipe,
-              onProfileTap: () => context.go('/profile'),
-              onScanTap: () => context.go('/camera'),
-              onTypeTap: () => context.go('/search'),
-              onCollectionTap: () => _openCollection(
-                context,
-                courseTag: brand.courseTag,
-                collectionId: featuredCollectionId,
-              ),
-              onUnlockCourse: () => context.push('/subscription'),
-              courseLocked: courseLocked,
-            ),
+      builder: (context, constraints) =>
+          constraints.maxWidth >= AppLayout.contentDesktopBreakpoint
+              ? _DesktopHome(
+                  brand: brand,
+                  recipes: recipes,
+                  onRefresh: () =>
+                      ref.read(recipeListProvider.notifier).loadRecipes(),
+                  onOpenRecipe: _openRecipe,
+                  onCollectionTap: () => _openCollection(
+                    context,
+                    courseTag: brand.courseTag,
+                    collectionId: featuredCollectionId,
+                  ),
+                  onUnlockCourse: () => context.push('/subscription'),
+                  courseLocked: courseLocked,
+                )
+              : _MobileHome(
+                  brand: brand,
+                  recipes: recipes,
+                  userName: user?.email,
+                  onRefresh: () =>
+                      ref.read(recipeListProvider.notifier).loadRecipes(),
+                  onOpenRecipe: _openRecipe,
+                  onProfileTap: () => context.go('/profile'),
+                  onScanTap: () => context.go('/camera'),
+                  onTypeTap: () => context.go('/search'),
+                  onCollectionTap: () => _openCollection(
+                    context,
+                    courseTag: brand.courseTag,
+                    collectionId: featuredCollectionId,
+                  ),
+                  onUnlockCourse: () => context.push('/subscription'),
+                  courseLocked: courseLocked,
+                ),
     );
   }
 

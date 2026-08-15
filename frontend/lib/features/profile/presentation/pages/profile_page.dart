@@ -232,7 +232,7 @@ class _SignedInProfile extends ConsumerWidget {
       ],
     );
     return LayoutBuilder(builder: (context, constraints) {
-      if (constraints.maxWidth < 1024) {
+      if (constraints.maxWidth < AppLayout.contentDesktopBreakpoint) {
         return Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(

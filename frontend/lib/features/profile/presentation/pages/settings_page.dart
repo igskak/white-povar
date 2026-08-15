@@ -99,7 +99,9 @@ class SettingsPage extends ConsumerWidget {
                                 style:
                                     Theme.of(context).textTheme.labelMedium)),
                       ])));
-          if (constraints.maxWidth < 1024) return content;
+          if (constraints.maxWidth < AppLayout.contentDesktopBreakpoint) {
+            return content;
+          }
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1120),

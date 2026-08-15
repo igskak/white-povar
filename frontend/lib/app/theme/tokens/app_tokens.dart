@@ -26,8 +26,27 @@ class AppRadius {
 /// from the viewport instead: the column grows with the window until it hits a
 /// cap chosen for readability, and the leftover space becomes an even margin.
 class AppLayout {
-  /// Below this the layout is single-column and gutters collapse to [tight].
+  /// Window width at which the desktop chrome — branded rail plus top bar —
+  /// replaces the tablet rail.
   static const double desktopBreakpoint = 1024;
+
+  /// The branded rail, plus the hairline divider beside it.
+  static const double railWidth = 92;
+  static const double _railAndDivider = railWidth + 1;
+
+  /// Width at which a *page* adopts its desktop composition.
+  ///
+  /// A page inside the shell is a rail narrower than the window, so at the
+  /// window breakpoint it never sees more than this. Measuring page layout
+  /// against [desktopBreakpoint] instead left a band of window sizes where the
+  /// chrome said desktop while the page inside it was still drawing its
+  /// phone-shaped, single-column self.
+  static const double contentDesktopBreakpoint =
+      desktopBreakpoint - _railAndDivider;
+
+  /// Narrowest a page column can be and still carry [sideColumn] next to a
+  /// usable second column.
+  static const double twoColumnMin = 700;
 
   /// Widest a content column may grow. Past this, line length stops being
   /// comfortable and extra pixels are better spent on the margin.

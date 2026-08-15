@@ -22,11 +22,18 @@ class ContentDetailSections extends StatelessWidget {
   final Widget? leading;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+        // Decided from the space this widget actually has, not the window: the
+        // same page column is a rail narrower inside the navigation shell.
+        builder: (context, constraints) => _build(
+          context,
+          useColumns: constraints.maxWidth >= AppLayout.twoColumnMin,
+        ),
+      );
+
+  Widget _build(BuildContext context, {required bool useColumns}) {
     final ingredientsSection = _IngredientsSection(ingredients: ingredients);
     final stepsSection = _StepsSection(steps: steps);
-    final useColumns =
-        MediaQuery.sizeOf(context).width >= AppLayout.desktopBreakpoint;
 
     if (!useColumns) {
       return Column(
