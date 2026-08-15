@@ -15,35 +15,67 @@ class ContentDetailSections extends StatelessWidget {
 
   final List<Ingredient> ingredients;
   final List<String> steps;
+
+  /// Media that belongs with the recipe — today, the video. On a wide layout
+  /// it heads the ingredients column; on a narrow one it sits above both
+  /// sections as before.
   final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     final ingredientsSection = _IngredientsSection(ingredients: ingredients);
     final stepsSection = _StepsSection(steps: steps);
-    final useColumns = MediaQuery.sizeOf(context).width >= 1024;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (leading != null) ...[
-          leading!,
-          const SizedBox(height: AppSpacing.xl),
-        ],
-        if (useColumns)
-          Row(
-            key: const ValueKey('recipe-sections-two-column'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: ingredientsSection),
-              const SizedBox(width: AppSpacing.xl),
-              Expanded(child: stepsSection),
-            ],
-          )
-        else ...[
+    final useColumns =
+        MediaQuery.sizeOf(context).width >= AppLayout.desktopBreakpoint;
+
+    if (!useColumns) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(height: AppSpacing.xl),
+          ],
           ingredientsSection,
           const SizedBox(height: AppSpacing.xl),
           stepsSection,
         ],
+      );
+    }
+
+    // A short ingredient list and a long method do not deserve equal halves:
+    // the old 50/50 split left the left column mostly empty while the right
+    // one ran to an uncomfortable line length on a wide monitor.
+    return Row(
+      key: const ValueKey('recipe-sections-two-column'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: AppLayout.sideColumn,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(height: AppSpacing.xl),
+              ],
+              ingredientsSection,
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xxl),
+        // Align loosens the tight width Expanded hands down, so the cap can
+        // actually bite: past ~760px a step reads as a wall of text no matter
+        // how much room the window has.
+        Expanded(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: AppLayout.narrowMax),
+              child: stepsSection,
+            ),
+          ),
+        ),
       ],
     );
   }

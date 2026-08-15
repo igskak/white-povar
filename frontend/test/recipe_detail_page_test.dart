@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/theme/app_theme.dart';
+import 'package:frontend/app/theme/tokens/app_tokens.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
@@ -51,7 +52,7 @@ void main() {
       }
     });
 
-    testWidgets('desktop has 4:3 hero, two-column header and sticky actions',
+    testWidgets('desktop has 4:3 hero, two-column body and in-header actions',
         (tester) async {
       tester.view.physicalSize = const Size(1280, 1000);
       tester.view.devicePixelRatio = 1;
@@ -70,10 +71,49 @@ void main() {
       expect(heroSize.width, greaterThan(500));
       expect(find.byKey(const ValueKey('recipe-sections-two-column')),
           findsOneWidget);
-      expect(find.byKey(const ValueKey('desktop-recipe-action-bar')),
-          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('desktop-recipe-actions')), findsOneWidget);
       expect(find.byTooltip('Поділитися'), findsOneWidget);
       expect(find.text('Почати готувати'), findsOneWidget);
+    });
+
+    testWidgets('the page column tracks the window instead of a fixed cap',
+        (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      tester.view.devicePixelRatio = 1;
+
+      final heroWidths = <double, double>{};
+      for (final width in [1280.0, 1920.0]) {
+        tester.view.physicalSize = Size(width, 1000);
+        await tester.pumpWidget(_app(
+          recipe: _recipe(isPremium: false),
+          hasPremiumAccess: true,
+        ));
+        await tester.pump();
+        heroWidths[width] = tester
+            .getSize(find.byKey(const ValueKey('desktop-recipe-hero-pane')))
+            .width;
+      }
+
+      expect(heroWidths[1920], greaterThan(heroWidths[1280]!));
+    });
+
+    testWidgets('the steps column stays inside a readable line length',
+        (tester) async {
+      tester.view.physicalSize = const Size(2560, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(_app(
+        recipe: _recipe(isPremium: false),
+        hasPremiumAccess: true,
+      ));
+      await tester.pump();
+
+      final steps = tester.getSize(find.text('Приготування'));
+      expect(steps.width, lessThanOrEqualTo(AppLayout.narrowMax));
     });
   });
 }

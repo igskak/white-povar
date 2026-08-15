@@ -8,14 +8,19 @@ import '../../../../core/config/app_config.dart';
 class RecipeVideoWidget extends StatefulWidget {
   final String? videoUrl;
   final String? videoFilePath;
-  final double? height;
+
+  /// Tallest the player may render. The frame takes its width from the clip's
+  /// own aspect ratio rather than filling the column: creators upload 9:16
+  /// phone video, and a full-width fixed-height box turned that into a thin
+  /// strip of picture between two wide grey bars.
+  final double maxHeight;
   final BorderRadius? borderRadius;
 
   const RecipeVideoWidget({
     super.key,
     this.videoUrl,
     this.videoFilePath,
-    this.height,
+    this.maxHeight = 420,
     this.borderRadius,
   });
 
@@ -266,17 +271,30 @@ class _RecipeVideoWidgetState extends State<RecipeVideoWidget> {
       return _buildExternalVideoLink();
     }
 
-    final height = widget.height ?? 200.0;
+    // Until the controller reports the real ratio, hold the space with a
+    // landscape frame — the common case, and it keeps the layout from jumping
+    // more than necessary once the metadata lands.
+    final aspectRatio = _videoController?.value.isInitialized ?? false
+        ? _videoController!.value.aspectRatio
+        : 16 / 9;
 
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        color: AppColorsV2.ink.withOpacity(.12),
-      ),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: _buildVideoContent(),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: widget.maxHeight),
+        child: AspectRatio(
+          aspectRatio: aspectRatio,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              color: AppColorsV2.ink.withOpacity(.12),
+            ),
+            child: ClipRRect(
+              borderRadius: borderRadius,
+              child: _buildVideoContent(),
+            ),
+          ),
+        ),
       ),
     );
   }
