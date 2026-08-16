@@ -147,6 +147,14 @@ Fallbacks (13j): optional fields degrade quietly (serif preset, gradient instead
 hero photo, monogram instead of a broken avatar, no course card). No config on first
 launch → neutral White Povar theme; on a later launch → last valid cached config.
 
+Reaching readers: one action in Studio — «Опублікувати зміни» — saves the draft and
+publishes it, and the editor keeps saving on its own a few seconds after each edit.
+A running session re-reads published config when Studio publishes and when the app
+returns to the foreground, so an author never has to restart the app to see their own
+change. A startup request that outran its budget applies to that same session when it
+lands rather than waiting for the next launch: the API sleeps between sessions, and
+waiting used to cost two reloads before anything visibly changed.
+
 Persona boundary (12c) — the brand may only touch: header, greeting, accent, brand
 photography, and the course/paywall/login copy. Permanently neutral: navigation and
 routes, the camera flow, loading/empty/error states, spacing/radius, premium gold, and

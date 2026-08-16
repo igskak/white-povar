@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/api/api_error.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
+import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../studio_brand_draft_service.dart';
 import '../../studio_brand_validation.dart';
@@ -46,6 +48,16 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   StudioPreviewViewport _previewViewport = StudioPreviewViewport.phone;
   bool _uploadingAsset = false;
   bool _releasing = false;
+  bool _publishing = false;
+
+  /// What the last publish did, in the author's words. Cleared by the next edit.
+  String? _publishState;
+  DateTime? _savedAt;
+  Timer? _autosave;
+
+  /// Long enough that typing a sentence or dragging a crop handle is one save,
+  /// short enough that closing the tab rarely loses anything.
+  static const Duration _autosaveDelay = Duration(seconds: 3);
   StudioReleaseStatus? _releaseStatus;
   String? _avatarUrl;
   BrandCrop _avatarCrop = const BrandCrop();
@@ -136,27 +148,112 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     }
   }
 
-  Future<void> _save() async {
+  /// Saves the draft. Returns false when the change did not reach the server,
+  /// so the caller does not go on to publish a draft that is still stale.
+  ///
+  /// Unlike [_setDraft] this leaves the editors alone: an autosave that landed
+  /// mid-sentence used to rewrite every controller and send the caret to the
+  /// end of the field.
+  Future<bool> _save() async {
+    _autosave?.cancel();
     final config = _previewConfig;
     final draft = _draft;
-    if (config == null || draft == null) return;
+    if (config == null || draft == null) return false;
     setState(() => _saving = true);
     try {
-      _setDraft(await ref
+      final saved = await ref
           .read(studioBrandDraftServiceProvider)
-          .save(StudioBrandDraft(config: config, version: draft.version)));
+          .save(StudioBrandDraft(config: config, version: draft.version));
+      if (mounted) {
+        setState(() {
+          _draft = saved;
+          _dirty = false;
+          _error = null;
+          _savedAt = DateTime.now();
+        });
+      }
+      return true;
     } on ApiError catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _error = error);
       if (error.type == ApiErrorType.conflict) _load();
+      return false;
     } catch (error) {
       if (mounted) setState(() => _error = error);
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _changed() => setState(() => _dirty = true);
+  /// Saves the draft and makes it the configuration users get, in one step.
+  ///
+  /// The two-button dance — save the draft, then publish it — was the single
+  /// most confusing thing in Studio: publishing a draft you had not saved
+  /// republished the previous one and looked like nothing happened at all.
+  Future<void> _publish() async {
+    if (_publishing) return;
+    setState(() {
+      _publishing = true;
+      _publishState = null;
+    });
+    try {
+      if (_dirty && !await _save()) return;
+      final service = ref.read(studioBrandDraftServiceProvider);
+      final result = await service.publish();
+      final status = await service.releaseStatus();
+      // Publishing is only half the job: the session the author is looking at
+      // still renders the configuration it started with. Re-read it here so
+      // "опубліковано" and "видно на екрані" are the same moment.
+      final applied = await _refreshRuntimeBrand();
+      if (!mounted) return;
+      setState(() {
+        _releaseStatus = status;
+        _publishState = applied
+            ? 'Опубліковано · версія ${result.version}. Застосунок уже показує ці зміни.'
+            : 'Опубліковано · версія ${result.version}. Користувачі побачать їх, '
+                'щойно застосунок зв’яжеться з сервером.';
+      });
+    } on ApiError catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.type == ApiErrorType.forbidden ? null : error;
+        _publishState = error.type == ApiErrorType.forbidden
+            ? 'Чернетку збережено. Публікація доступна лише Studio admin — '
+                'попросіть адміністратора натиснути «Опублікувати зміни».'
+            : null;
+      });
+    } catch (error) {
+      if (mounted) setState(() => _error = error);
+    } finally {
+      if (mounted) setState(() => _publishing = false);
+    }
+  }
+
+  /// Re-reads published configuration into the running session. False when the
+  /// app was not started through `bootstrap()` (tests, previews) or the API did
+  /// not answer — publishing itself still succeeded either way.
+  Future<bool> _refreshRuntimeBrand() async {
+    try {
+      final controller = ref.read(tenantBrandControllerProvider.notifier);
+      return await controller.refresh() != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _changed() {
+    setState(() {
+      _dirty = true;
+      _publishState = null;
+    });
+    // Crop handles and colour fields emit a change per frame of a drag, so the
+    // timer restarts until the author actually pauses.
+    _autosave?.cancel();
+    _autosave = Timer(_autosaveDelay, () {
+      if (mounted && _dirty && !_saving && !_publishing) _save();
+    });
+  }
 
   /// The order of [_photos] is the rotation order the app publishes as-is.
   void _reorderPhotos(int oldIndex, int newIndex) => setState(() {
@@ -260,6 +357,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
 
   @override
   void dispose() {
+    _autosave?.cancel();
     for (final c in [
       _name,
       _creator,
@@ -310,17 +408,20 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                 variant: AppButtonVariant.text,
                 onPressed: () => context.go('/studio/content'),
               ),
-              if (_dirty)
-                const Padding(
-                    padding: EdgeInsets.only(right: 8),
-                    child: Center(child: Text('Незбережені зміни'))),
+              Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Center(child: Text(_saveState))),
               Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: AppButton(
-                      label: 'Зберегти чернетку',
-                      icon: Icons.save_outlined,
-                      isLoading: _saving,
-                      onPressed: _saving ? null : _save)),
+                      label: 'Опублікувати зміни',
+                      icon: Icons.publish_outlined,
+                      isLoading: _publishing,
+                      // One action, not two: it saves whatever is unsaved and
+                      // then makes it the configuration users get.
+                      onPressed: _publishing || !_checks.canPublish
+                          ? null
+                          : _publish)),
             ]),
         body: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
@@ -345,6 +446,15 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                 )),
       ),
     );
+  }
+
+  /// The saving half of the story, kept next to the publish button so the
+  /// author never has to wonder whether an edit is safe.
+  String get _saveState {
+    if (_saving) return 'Зберігаємо…';
+    if (_dirty) return 'Чернетка · зміни ще не збережені';
+    if (_savedAt != null) return 'Чернетка збережена';
+    return '';
   }
 
   /// Section validity, recomputed from the live controllers on every build so
@@ -525,101 +635,121 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
 
   Widget _releasePanel({required bool canPublish}) {
     final status = _releaseStatus;
+    final published = status?.configVersion;
+    return _section('Публікація', [
+      Text(
+        published == null
+            ? 'Користувачі поки не бачать жодних змін: нічого не опубліковано.'
+            : 'Користувачі бачать версію $published.',
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      const SizedBox(height: 4),
+      Text(canPublish
+          // 13m: publishing stays closed until every required section is green.
+          // The server refuses an invalid config anyway; blocking the button
+          // turns a failed request into a visible checklist.
+          ? 'Кнопка «Опублікувати зміни» вгорі сторінки зберігає чернетку і '
+              'одразу віддає її користувачам. Фото, тексти й кольори більше '
+              'нічого не потребують.'
+          : 'Спочатку заповніть секції, позначені знаком уваги вище: '
+              'публікація вимагає всіх 7 обов’язкових полів.'),
+      if (_publishState != null) ...[
+        const SizedBox(height: 8),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.check_circle_outline, size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_publishState!)),
+        ]),
+      ],
+      const SizedBox(height: 12),
+      _teamPanel(status),
+    ]);
+  }
+
+  /// Everything that is not "show my change to readers": store builds, site
+  /// deploys, rollback. Folded away because a chef needs none of it, and its
+  /// presence beside the publish button is what made the page read as a
+  /// four-step process.
+  Widget _teamPanel(StudioReleaseStatus? status) {
     String label(StudioRelease? release, String fallback) =>
         release == null ? fallback : release.status;
-    return _section('Публікація та реліз', [
-      const Text('Після зміни фото або тексту'),
-      const Text('1. Натисніть «Зберегти чернетку» вгорі сторінки.\n'
-          '2. Натисніть «Опублікувати зміни» нижче.\n'
-          'Для нових фото, текстів і кольорів цього достатньо.'),
-      const Divider(),
-      Text(
-          'Зміни для користувачів: ${status?.configVersion == null ? 'ще не опубліковані' : 'опубліковані · версія ${status!.configVersion}'}'),
-      Text('Оновлення сайту: ${label(status?.web, 'не запитано')}'),
-      Text(
-          'Оновлення мобільних застосунків: ${label(status?.mobile, 'не запитано')}'),
-      Text(
-          'Відправлення у магазини: ${status?.store?.storeStatus ?? 'не подано'}'),
-      const Text(
-          'Запит на оновлення лише ставить завдання команді; він не означає, що сайт або застосунок уже оновлено.'),
-      const Divider(),
-      _releaseAction(
-        icon: Icons.publish_outlined,
-        title: 'Застосувати зміни для користувачів',
-        description: canPublish
-            ? 'Публікує збережені фото, тексти, кольори та інші налаштування бренду. Це наступний крок після «Зберегти чернетку».'
-            // 13m: publishing stays closed until every required section is
-            // green. The server refuses an invalid config anyway; blocking the
-            // button here turns a failed request into a visible checklist.
-            : 'Спочатку заповніть секції, позначені знаком уваги вище: '
-                'публікація вимагає всіх 7 обов’язкових полів.',
-        buttonLabel: 'Опублікувати зміни',
-        onPressed: _releasing || !canPublish
-            ? null
-            : () => _release((s) async {
-                  await s.publish();
-                }),
-      ),
-      _releaseAction(
-        icon: Icons.language_outlined,
-        title: 'Оновити сайт',
-        description:
-            'Потрібно лише коли команда змінила сам сайт або його файли. Для зміни фото й текстів зазвичай не потрібно.',
-        buttonLabel: 'Запросити оновлення сайту',
-        onPressed: _releasing
-            ? null
-            : () => _release((s) async {
-                  await s.requestRelease(kind: 'web_deploy');
-                }),
-      ),
-      _releaseAction(
-        icon: Icons.phone_android_outlined,
-        title: 'Зібрати Android-застосунок',
-        description:
-            'Потрібно, якщо команда змінила функції або вбудовані елементи Android-застосунку. Не потрібно для фото й текстів.',
-        buttonLabel: 'Запросити Android-збірку',
-        onPressed: _releasing
-            ? null
-            : () => _release((s) async {
-                  await s.requestRelease(
-                      kind: 'mobile_build', platform: 'android');
-                }),
-      ),
-      _releaseAction(
-        icon: Icons.phone_iphone_outlined,
-        title: 'Зібрати iPhone-застосунок',
-        description:
-            'Потрібно, якщо команда змінила функції або вбудовані елементи iPhone-застосунку. Не потрібно для фото й текстів.',
-        buttonLabel: 'Запросити iPhone-збірку',
-        onPressed: _releasing
-            ? null
-            : () => _release((s) async {
-                  await s.requestRelease(kind: 'mobile_build', platform: 'ios');
-                }),
-      ),
-      Row(children: [
-        SizedBox(
-            width: 140,
-            child: AppTextField(
-                controller: _rollbackVersion, label: 'Версія rollback')),
-        const SizedBox(width: 8),
-        OutlinedButton(
-            onPressed: _releasing
-                ? null
-                : () {
-                    final version = int.tryParse(_rollbackVersion.text);
-                    if (version != null) {
-                      _release((s) async {
-                        await s.rollback(version);
-                      });
-                    }
-                  },
-            child: const Text('Відкотити config')),
-      ]),
-      if (status != null && status.history.isNotEmpty)
-        ...status.history.take(5).map((job) => Text(
-            '${job.kind} · v${job.configVersion} · ${job.status}${job.storeStatus == 'not_submitted' ? '' : ' · store ${job.storeStatus}'}')),
-    ]);
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      title: const Text('Для команди · збірки та відкат'),
+      subtitle: const Text(
+          'Не потрібно для фото, текстів і кольорів — вони вже опубліковані.'),
+      children: [
+        Text('Оновлення сайту: ${label(status?.web, 'не запитано')}'),
+        Text(
+            'Оновлення мобільних застосунків: ${label(status?.mobile, 'не запитано')}'),
+        Text(
+            'Відправлення у магазини: ${status?.store?.storeStatus ?? 'не подано'}'),
+        const Text(
+            'Запит на оновлення лише ставить завдання команді; він не означає, що сайт або застосунок уже оновлено.'),
+        const Divider(),
+        _releaseAction(
+          icon: Icons.language_outlined,
+          title: 'Оновити сайт',
+          description:
+              'Потрібно лише коли команда змінила сам сайт або його файли. Для зміни фото й текстів зазвичай не потрібно.',
+          buttonLabel: 'Запросити оновлення сайту',
+          onPressed: _releasing
+              ? null
+              : () => _release((s) async {
+                    await s.requestRelease(kind: 'web_deploy');
+                  }),
+        ),
+        _releaseAction(
+          icon: Icons.phone_android_outlined,
+          title: 'Зібрати Android-застосунок',
+          description:
+              'Потрібно, якщо команда змінила функції або вбудовані елементи Android-застосунку. Не потрібно для фото й текстів.',
+          buttonLabel: 'Запросити Android-збірку',
+          onPressed: _releasing
+              ? null
+              : () => _release((s) async {
+                    await s.requestRelease(
+                        kind: 'mobile_build', platform: 'android');
+                  }),
+        ),
+        _releaseAction(
+          icon: Icons.phone_iphone_outlined,
+          title: 'Зібрати iPhone-застосунок',
+          description:
+              'Потрібно, якщо команда змінила функції або вбудовані елементи iPhone-застосунку. Не потрібно для фото й текстів.',
+          buttonLabel: 'Запросити iPhone-збірку',
+          onPressed: _releasing
+              ? null
+              : () => _release((s) async {
+                    await s.requestRelease(
+                        kind: 'mobile_build', platform: 'ios');
+                  }),
+        ),
+        Row(children: [
+          SizedBox(
+              width: 140,
+              child: AppTextField(
+                  controller: _rollbackVersion, label: 'Версія rollback')),
+          const SizedBox(width: 8),
+          OutlinedButton(
+              onPressed: _releasing
+                  ? null
+                  : () {
+                      final version = int.tryParse(_rollbackVersion.text);
+                      if (version != null) {
+                        _release((s) async {
+                          await s.rollback(version);
+                        });
+                      }
+                    },
+              child: const Text('Відкотити config')),
+        ]),
+        if (status != null && status.history.isNotEmpty)
+          ...status.history.take(5).map((job) => Text(
+              '${job.kind} · v${job.configVersion} · ${job.status}${job.storeStatus == 'not_submitted' ? '' : ' · store ${job.storeStatus}'}')),
+      ],
+    );
   }
 
   Widget _releaseAction({

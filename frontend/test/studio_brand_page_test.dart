@@ -9,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/api/api_client.dart';
 import 'package:frontend/core/branding/brand_assets.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/core/branding/brand_providers.dart';
+import 'package:frontend/core/branding/tenant_bootstrap.dart';
+import 'package:frontend/core/widgets/design_system.dart';
 import 'package:frontend/features/home/presentation/widgets/home_scene.dart';
 import 'package:frontend/features/studio/presentation/pages/studio_brand_page.dart';
 import 'package:frontend/features/studio/presentation/widgets/studio_preview.dart';
@@ -104,10 +107,7 @@ void main() {
       (tester) async {
     await _pumpStudio(tester);
 
-    OutlinedButton publish() => tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, 'Опублікувати зміни'));
-
-    expect(publish().onPressed, isNotNull,
+    expect(_publishButton(tester).onPressed, isNotNull,
         reason: 'the seeded draft has all 7 required fields');
 
     // Emptying one required field must close the gate, not fail at the server.
@@ -115,7 +115,61 @@ void main() {
         find.widgetWithText(TextFormField, 'Огороднік Олександр'), '');
     await tester.pump();
 
-    expect(publish().onPressed, isNull);
+    expect(_publishButton(tester).onPressed, isNull);
+  });
+
+  testWidgets('publishing carries the unsaved edit with it', (tester) async {
+    final service = await _pumpStudio(tester);
+
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Ой, друзі, ну це щось...'),
+        'Нове привітання');
+    await tester.pump();
+    expect(find.text('Чернетка · зміни ще не збережені'), findsOneWidget);
+
+    await tester.tap(find.byWidget(_publishButton(tester)));
+    await tester.pump();
+    await tester.pump();
+
+    // The old two-step flow published whatever had last been saved, so an
+    // unsaved edit silently republished the previous config.
+    expect(service.calls, ['load', 'save', 'publish']);
+    expect(find.textContaining('Опубліковано · версія'), findsOneWidget);
+  });
+
+  testWidgets('an edit saves itself once the author pauses', (tester) async {
+    final service = await _pumpStudio(tester);
+
+    await tester.enterText(
+        find.widgetWithText(TextFormField, 'Ой, друзі, ну це щось...'), 'Хай');
+    await tester.pump();
+    expect(service.calls, ['load'], reason: 'not while the author is typing');
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pump();
+
+    expect(service.calls, ['load', 'save']);
+    expect(find.text('Чернетка збережена'), findsOneWidget);
+  });
+
+  testWidgets('publishing re-reads the config the app is rendering',
+      (tester) async {
+    final published = _bootstrap('16');
+    final brand = TenantBrandController(
+      initial: _bootstrap('15'),
+      refresher: () async => published,
+    );
+
+    await _pumpStudio(tester, brand: brand);
+    await tester.tap(find.byWidget(_publishButton(tester)));
+    await tester.pump();
+    await tester.pump();
+
+    // Without this the author had to reload the page — twice, if the API had
+    // to wake up — before seeing what they had just published.
+    expect(brand.state.configVersion, '16');
+    expect(
+        find.textContaining('Застосунок уже показує ці зміни'), findsOneWidget);
   });
 
   testWidgets('preview falls back to the gradient login without heroPhotos',
@@ -215,27 +269,41 @@ void main() {
   });
 }
 
-Future<void> _pumpStudio(
+Future<_FakeStudioService> _pumpStudio(
   WidgetTester tester, {
   List<BrandHeroPhoto> photos = const [
     BrandHeroPhoto(url: 'https://assets.example/a.jpg', roles: {'login'}),
   ],
+  TenantBrandController? brand,
 }) async {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   tester.view.physicalSize = const Size(1280, 2400);
   tester.view.devicePixelRatio = 1;
 
+  final service = _FakeStudioService(photos);
   await tester.pumpWidget(ProviderScope(
     overrides: [
-      studioBrandDraftServiceProvider
-          .overrideWithValue(_FakeStudioService(photos)),
+      studioBrandDraftServiceProvider.overrideWithValue(service),
+      if (brand != null)
+        tenantBrandControllerProvider.overrideWith((ref) => brand),
     ],
     child: const MaterialApp(home: StudioBrandPage()),
   ));
   await tester.pump();
   await tester.pump();
+  return service;
 }
+
+AppButton _publishButton(WidgetTester tester) =>
+    tester.widget<AppButton>(find.byWidgetPredicate((widget) =>
+        widget is AppButton && widget.label == 'Опублікувати зміни'));
+
+TenantBootstrap _bootstrap(String version) => TenantBootstrap(
+      tenantSlug: 'ohorodnik-oleksandr',
+      brandConfig: _config(),
+      configVersion: version,
+    );
 
 /// The frames exactly as the draft would publish them.
 List<BrandHeroPhoto> _publishedPhotos(WidgetTester tester) => tester
@@ -280,13 +348,36 @@ class _FakeStudioService extends StudioBrandDraftService {
 
   final List<BrandHeroPhoto> photos;
 
-  @override
-  Future<StudioBrandDraft> load() async =>
-      StudioBrandDraft(config: _config(heroPhotos: photos), version: 1);
+  /// Ordered record of what the page asked the server to do, so a test can
+  /// assert that publishing carried the unsaved edit with it.
+  final List<String> calls = [];
+  int version = 1;
+  int publishedVersion = 0;
 
   @override
-  Future<StudioReleaseStatus> releaseStatus() async =>
-      const StudioReleaseStatus();
+  Future<StudioBrandDraft> load() async {
+    calls.add('load');
+    return StudioBrandDraft(
+        config: _config(heroPhotos: photos), version: version);
+  }
+
+  @override
+  Future<StudioBrandDraft> save(StudioBrandDraft draft) async {
+    calls.add('save');
+    version = draft.version + 1;
+    return StudioBrandDraft(config: draft.config, version: version);
+  }
+
+  @override
+  Future<StudioPublishResult> publish() async {
+    calls.add('publish');
+    publishedVersion = version;
+    return StudioPublishResult(version: version);
+  }
+
+  @override
+  Future<StudioReleaseStatus> releaseStatus() async => StudioReleaseStatus(
+      configVersion: publishedVersion == 0 ? null : publishedVersion);
 }
 
 const _threePhotos = [
