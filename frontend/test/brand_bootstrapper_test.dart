@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/branding/brand_bootstrapper.dart';
+import 'package:frontend/core/branding/tenant_bootstrap.dart';
 
 const _tenant = 'ohorodnik-oleksandr';
 
@@ -66,6 +67,40 @@ void main() {
 
     final second = await _bootstrap(storage, _ThrowingRemote()).load();
     expect(second.configVersion, 'remote-v2');
+  });
+
+  test('a late response is handed back to the session that asked for it',
+      () async {
+    final storage = _MemoryStorage();
+    final remote = _DeferredRemote(_remote);
+    TenantBootstrap? late;
+
+    final started = await _bootstrap(
+      storage,
+      remote,
+      budget: const Duration(milliseconds: 10),
+    ).load(onLateArrival: (arrived) => late = arrived);
+
+    // The API sleeps between sessions, so the wake-up routinely outruns the
+    // budget. Publishing looked broken because this answer used to be kept for
+    // the *next* cold start only.
+    expect(started.configVersion, 'bundled-pilot-1');
+    expect(late, isNull);
+
+    remote.deliver();
+    await pumpEventQueue();
+
+    expect(late?.configVersion, 'remote-v2');
+  });
+
+  test('refresh re-reads published configuration for a running session',
+      () async {
+    final storage = _MemoryStorage();
+    final bootstrapper = _bootstrap(storage, _StaticRemote(_remote));
+
+    expect((await bootstrapper.refresh())?.configVersion, 'remote-v2');
+    // An unreachable API leaves the caller with what it already had.
+    expect(await _bootstrap(storage, _ThrowingRemote()).refresh(), isNull);
   });
 
   test('retries once before falling back, so a cold API still refreshes',

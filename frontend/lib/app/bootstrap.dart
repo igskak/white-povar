@@ -25,15 +25,30 @@ Future<void> bootstrap() async {
 
   await Hive.initFlutter();
 
-  final tenantBootstrap = await BrandBootstrapper(
+  final bootstrapper = BrandBootstrapper(
     tenantSlug: AppConfig.tenantSlug,
     storage: const SharedPreferencesBrandBootstrapStorage(),
     remoteLoader: HttpBrandBootstrapRemoteLoader(),
-  ).load();
+  );
+
+  // Null only for the instant before the controller exists; the late arrival
+  // cannot fire before then, and dropping it would be harmless anyway.
+  TenantBrandController? brand;
+  final tenantBootstrap = await bootstrapper.load(
+    // A wake-up that outran the startup budget still applies to this session.
+    onLateArrival: (arrived) => brand?.adopt(arrived),
+  );
+  final controller = TenantBrandController(
+    initial: tenantBootstrap,
+    refresher: bootstrapper.refresh,
+  );
+  brand = controller;
 
   runApp(
     ProviderScope(
-      overrides: [tenantBootstrapProvider.overrideWithValue(tenantBootstrap)],
+      overrides: [
+        tenantBrandControllerProvider.overrideWith((ref) => controller),
+      ],
       child: const WhitePovarAppV2(),
     ),
   );

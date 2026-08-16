@@ -99,7 +99,9 @@ class BrandBootstrapper {
   /// immediately when they arrive inside the startup budget; a slower response
   /// still refreshes the cache in the background, so the next cold start picks
   /// it up rather than the session changing brand mid-flight.
-  Future<TenantBootstrap> load() async {
+  Future<TenantBootstrap> load({
+    ValueChanged<TenantBootstrap>? onLateArrival,
+  }) async {
     final bundled = _parseForTenant(await _bundledLoader());
     final cached = await _loadCached();
 
@@ -107,9 +109,23 @@ class BrandBootstrapper {
     // persists whatever it eventually gets.
     final refresh = _refreshFromRemote();
     final fresh = await refresh.timeout(_startupBudget, onTimeout: () => null);
+    if (fresh == null && onLateArrival != null) {
+      // The API sleeps between sessions, so a wake-up routinely outruns the
+      // startup budget. Handing the late answer back means a just-published
+      // change lands in this session instead of waiting for the next start —
+      // which read as "publishing does nothing" for anyone who reloaded once.
+      unawaited(refresh.then((late) {
+        if (late != null) onLateArrival(late);
+      }));
+    }
 
     return fresh ?? cached ?? bundled;
   }
+
+  /// Re-reads published configuration now, for a session already running.
+  /// Returns null when the API could not be reached; the caller keeps what it
+  /// has rather than falling back to something older.
+  Future<TenantBootstrap?> refresh() => _refreshFromRemote();
 
   /// Never throws; a failed refresh simply leaves the cache untouched.
   Future<TenantBootstrap?> _refreshFromRemote() async {
