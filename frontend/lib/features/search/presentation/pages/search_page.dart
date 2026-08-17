@@ -12,6 +12,8 @@ import '../../../recipes/models/recipe.dart';
 import '../../../recipes/repositories/recipe_repository.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/providers/recipe_provider.dart';
+import '../../../collections/providers/collection_provider.dart';
+import '../../../../core/branding/brand_providers.dart';
 import '../../providers/search_provider.dart';
 import '../../../voice/providers/voice_input_provider.dart';
 import '../widgets/voice_input_status.dart';
@@ -153,13 +155,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _performSearch(value);
   }
 
-  void _applyTag(String tag) {
-    setState(() {
-      _activeTag = tag;
-      _searchController.text = tag;
-    });
-    _updateLocation();
-    _performSearch(tag);
+  /// The course is a collection, not a recipe tag: filtering the catalogue by
+  /// `courseTag` matched no recipe and answered "нічого не знайшли" over a
+  /// collection that has eight items.
+  void _openCourse() {
+    final collectionId = ref.read(courseCollectionIdProvider);
+    context.push(
+        collectionId == null ? '/collections' : '/collections/$collectionId');
   }
 
   void _updateLocation() {
@@ -331,7 +333,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         recentSearches: _recentSearches,
         suggestions: _suggestions,
         onSelected: _applySuggestion,
-        onTagSelected: _applyTag,
+        courseName: ref
+            .watch(tenantBootstrapProvider)
+            .brandConfig
+            .brand
+            .voice
+            .courseName,
+        onOpenCourse: _openCourse,
       );
     }
 
@@ -726,11 +734,16 @@ class _DiscoveryStart extends StatelessWidget {
       {required this.recentSearches,
       required this.suggestions,
       required this.onSelected,
-      required this.onTagSelected});
+      required this.courseName,
+      required this.onOpenCourse});
   final List<String> recentSearches;
   final List<String> suggestions;
   final ValueChanged<String> onSelected;
-  final ValueChanged<String> onTagSelected;
+
+  /// The brand's course, or null when it publishes none. This is a white-label
+  /// app, so neither the name nor the collection behind it can be a literal.
+  final String? courseName;
+  final VoidCallback onOpenCourse;
   @override
   Widget build(BuildContext context) =>
       ListView(padding: const EdgeInsets.all(AppSpacing.md), children: [
@@ -766,22 +779,24 @@ class _DiscoveryStart extends StatelessWidget {
                 .map((item) =>
                     AppChip(label: item, onSelected: (_) => onSelected(item)))
                 .toList()),
-        const SizedBox(height: AppSpacing.lg),
-        ContentCard(
-            onTap: () => onTagSelected('maisternia-oleksandra'),
-            semanticLabel: 'Відкрити добірку Майстерня Олександра',
-            child: Row(children: [
-              const Icon(Icons.workspace_premium_outlined),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text('Майстерня Олександра',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const Text('Відкрити рецепти з добірки')
-                  ]))
-            ]))
+        if (courseName != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          ContentCard(
+              onTap: onOpenCourse,
+              semanticLabel: 'Відкрити добірку $courseName',
+              child: Row(children: [
+                const Icon(Icons.workspace_premium_outlined),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text(courseName!,
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const Text('Відкрити рецепти з добірки')
+                    ]))
+              ]))
+        ]
       ]);
 }
 

@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/router/route_models.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/core/branding/brand_providers.dart';
+import 'package:frontend/core/branding/tenant_bootstrap.dart';
 import 'package:frontend/core/api/api_client.dart';
 import 'package:frontend/features/ai/models/generated_recipe.dart';
 import 'package:frontend/features/ai/services/recipe_generation_service.dart';
@@ -35,6 +37,52 @@ void main() {
       expect(find.text('Тег: maisternia-oleksandra'), findsOneWidget);
     });
 
+    testWidgets('the course card opens the collection, not a tag search',
+        (tester) async {
+      // The card used to filter the catalogue by `courseTag`. No recipe
+      // carries that tag — it names a collection — so the course answered
+      // "нічого не знайшли" over a collection holding eight items.
+      final repository = _SearchRepository();
+      final routes = <String>[];
+      final router = GoRouter(
+        initialLocation: '/search',
+        routes: [
+          GoRoute(
+            path: '/search',
+            builder: (_, state) => ProviderScope(
+              overrides: [
+                tenantBootstrapProvider.overrideWithValue(_bootstrap),
+                recipeRepositoryProvider.overrideWithValue(repository),
+                authProvider.overrideWith((ref) => AuthNotifier.testing()),
+              ],
+              child: SearchPage(
+                initialRoute: SearchRouteLocation.fromUri(state.uri),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/collections',
+            builder: (_, state) {
+              routes.add(state.uri.toString());
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      );
+      await tester.pumpWidget(MaterialApp.router(
+        theme: AppThemeV2.light(_brandConfig),
+        routerConfig: router,
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Майстерня Олександра'));
+      await tester.pumpAndSettle();
+
+      expect(routes, ['/collections']);
+      expect(repository.queries, isEmpty);
+      expect(find.text('Тег: maisternia-oleksandra'), findsNothing);
+    });
+
     testWidgets('query changes are serialized into the web route',
         (tester) async {
       final router = GoRouter(
@@ -44,6 +92,7 @@ void main() {
             path: '/search',
             builder: (_, state) => ProviderScope(
               overrides: [
+                tenantBootstrapProvider.overrideWithValue(_bootstrap),
                 recipeRepositoryProvider.overrideWithValue(_SearchRepository()),
                 authProvider.overrideWith((ref) => AuthNotifier.testing()),
               ],
@@ -253,6 +302,7 @@ Widget _testApp({
 }) =>
     ProviderScope(
       overrides: [
+        tenantBootstrapProvider.overrideWithValue(_bootstrap),
         recipeRepositoryProvider.overrideWithValue(repository),
         authProvider.overrideWith((ref) => AuthNotifier.testing()),
         if (speechRecognitionService != null)
@@ -432,6 +482,12 @@ Recipe _recipe(String id) => Recipe(
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );
+
+const _bootstrap = TenantBootstrap(
+  tenantSlug: 'ohorodnik-oleksandr',
+  configVersion: 'test',
+  brandConfig: _brandConfig,
+);
 
 const _brandConfig = BrandConfig(
   schemaVersion: 1,

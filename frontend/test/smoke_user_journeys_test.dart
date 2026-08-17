@@ -93,6 +93,7 @@ void main() {
         ProviderScope(
           overrides: [
             recipeRepositoryProvider.overrideWithValue(_FakeRecipeRepository()),
+            tenantBootstrapProvider.overrideWithValue(_tenantBootstrap),
           ],
           child: const MaterialApp(
             home: SearchPage(),

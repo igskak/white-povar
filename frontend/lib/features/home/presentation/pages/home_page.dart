@@ -40,14 +40,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final brand = bootstrap.brandConfig.brand;
     final recipes = ref.watch(recipeListProvider);
     final user = ref.watch(currentUserProvider);
-    final collections = ref.watch(collectionListProvider);
     // 13g: the course card is locked for guests and free users, active for
     // premium, and hidden entirely when the brand publishes no course.
     final courseLocked = !ref.watch(isPremiumProvider);
-    final featuredCollectionId = collections.valueOrNull
-        ?.where((collection) => collection.slug == brand.courseTag)
-        .map((collection) => collection.id)
-        .firstOrNull;
+    final featuredCollectionId = ref.watch(courseCollectionIdProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) =>
