@@ -63,6 +63,17 @@ class StudioBrandDraftService {
     return StudioBrandDraft.fromJson(response.data!);
   }
 
+  /// Every ready asset of this tenant, so the editor can measure frames it did
+  /// not upload in this session. Pending and rejected rows carry no URL yet.
+  Future<List<StudioAsset>> assets() async {
+    final response = await _client.get<List<dynamic>>('/api/v1/studio/assets');
+    return (response.data ?? const [])
+        .map((value) => Map<String, dynamic>.from(value as Map))
+        .where((json) => json['url'] is String && json['state'] == 'ready')
+        .map(StudioAsset.fromJson)
+        .toList(growable: false);
+  }
+
   Future<StudioAsset> upload(
     PlatformFile file, {
     required String altText,

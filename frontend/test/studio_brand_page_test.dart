@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:frontend/core/api/api_client.dart';
+import 'package:frontend/core/api/api_error.dart';
 import 'package:frontend/core/branding/brand_assets.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/core/branding/brand_providers.dart';
@@ -101,6 +104,87 @@ void main() {
       'https://assets.example/b.jpg', 'https://assets.example/c.jpg', //
       'https://assets.example/a.jpg'
     ]);
+  });
+
+  testWidgets('a frame under the master minimum is refused before the upload',
+      (tester) async {
+    final service = await _pumpStudio(tester);
+    // The shape that produced the silent failure: wide enough, far too short.
+    await _pick(tester, 'kitchen.jpg', 800, 337);
+
+    expect(find.textContaining('800×337'), findsWidgets,
+        reason: 'the refusal names the frame it refused');
+    expect(find.textContaining('1600×900'), findsWidgets);
+    expect(service.calls, ['load'],
+        reason: 'nothing is uploaded once the frame is known to be refused');
+    expect(_publishedPhotos(tester).length, 1, reason: 'the list is unchanged');
+  });
+
+  testWidgets('a refused frame reports itself next to the upload buttons',
+      (tester) async {
+    await _pumpStudio(tester);
+    await _pick(tester, 'kitchen.jpg', 800, 337);
+
+    // Above the avatar crop editor, which is tall enough to push anything
+    // after it off the screen the author is looking at.
+    final notice = tester.getRect(find.textContaining('800×337').first);
+    final cropEditor =
+        tester.getRect(find.byKey(const ValueKey('studio-avatar-crop-picker')));
+    expect(notice.top, lessThan(cropEditor.top));
+    expect(find.byType(SnackBar), findsOneWidget);
+  });
+
+  testWidgets('a band takes every role except the desktop login',
+      (tester) async {
+    await _pumpStudio(
+      tester,
+      photos: const [
+        BrandHeroPhoto(url: 'https://assets.example/a.jpg', roles: {'home'})
+      ],
+      sizes: const {
+        'https://assets.example/a.jpg': [2000, 843]
+      },
+    );
+
+    await _tapRole(tester, 'login');
+
+    expect(_publishedPhotos(tester).single.roles, {'home'},
+        reason: '843px would be stretched into the full-height login panel');
+    expect(find.textContaining('Роль login не призначено'), findsWidgets);
+
+    // The band shape it does fit stays available.
+    await _tapRole(tester, 'paywall');
+
+    expect(_publishedPhotos(tester).single.roles, {'home', 'paywall'});
+  });
+
+  testWidgets('a tall frame still takes the login role', (tester) async {
+    await _pumpStudio(
+      tester,
+      photos: const [
+        BrandHeroPhoto(url: 'https://assets.example/a.jpg', roles: {'home'})
+      ],
+      sizes: const {
+        'https://assets.example/a.jpg': [2000, 1500]
+      },
+    );
+
+    await _tapRole(tester, 'login');
+
+    expect(_publishedPhotos(tester).single.roles, {'home', 'login'});
+  });
+
+  testWidgets('an upload that fails at the server says why', (tester) async {
+    final service = await _pumpStudio(tester);
+    service.uploadError = const ApiError(
+        type: ApiErrorType.unknown,
+        statusCode: 422,
+        message: 'Asset rejected: Unsupported image format');
+    await _pick(tester, 'kitchen.jpg', 1800, 1400);
+
+    expect(service.calls, ['load', 'upload']);
+    expect(find.textContaining('Unsupported image format'), findsWidgets);
+    expect(find.textContaining('422'), findsWidgets);
   });
 
   testWidgets('publishing is gated on the required sections being green',
@@ -274,6 +358,7 @@ Future<_FakeStudioService> _pumpStudio(
   List<BrandHeroPhoto> photos = const [
     BrandHeroPhoto(url: 'https://assets.example/a.jpg', roles: {'login'}),
   ],
+  Map<String, List<int>> sizes = const {},
   TenantBrandController? brand,
 }) async {
   addTearDown(tester.view.resetPhysicalSize);
@@ -281,7 +366,7 @@ Future<_FakeStudioService> _pumpStudio(
   tester.view.physicalSize = const Size(1280, 2400);
   tester.view.devicePixelRatio = 1;
 
-  final service = _FakeStudioService(photos);
+  final service = _FakeStudioService(photos, sizes);
   await tester.pumpWidget(ProviderScope(
     overrides: [
       studioBrandDraftServiceProvider.overrideWithValue(service),
@@ -338,7 +423,7 @@ Widget _previewApp(
     );
 
 class _FakeStudioService extends StudioBrandDraftService {
-  _FakeStudioService(this.photos)
+  _FakeStudioService(this.photos, [this.sizes = const {}])
       : super(ApiClient(
           baseUrl: 'https://example.invalid',
           tokenProvider: () async => null,
@@ -347,6 +432,21 @@ class _FakeStudioService extends StudioBrandDraftService {
         ));
 
   final List<BrandHeroPhoto> photos;
+
+  /// Frame sizes the assets endpoint reports, as `url: [width, height]`.
+  final Map<String, List<int>> sizes;
+
+  @override
+  Future<List<StudioAsset>> assets() async => [
+        for (final entry in sizes.entries)
+          StudioAsset(
+              id: entry.key,
+              url: entry.key,
+              altText: 'кадр',
+              assetKind: 'brand',
+              width: entry.value.first,
+              height: entry.value.last),
+      ];
 
   /// Ordered record of what the page asked the server to do, so a test can
   /// assert that publishing carried the unsaved edit with it.
@@ -378,6 +478,82 @@ class _FakeStudioService extends StudioBrandDraftService {
   @override
   Future<StudioReleaseStatus> releaseStatus() async => StudioReleaseStatus(
       configVersion: publishedVersion == 0 ? null : publishedVersion);
+
+  /// What the asset endpoints throw, when the test wants them to fail.
+  Object? uploadError;
+
+  @override
+  Future<StudioAsset> upload(PlatformFile file,
+      {required String altText, String assetKind = 'brand'}) async {
+    calls.add('upload');
+    if (uploadError != null) throw uploadError!;
+    return const StudioAsset(
+        id: 'asset-1',
+        url: 'https://assets.example/new.webp',
+        altText: 'кадр',
+        assetKind: 'brand',
+        width: 1800,
+        height: 1400);
+  }
+}
+
+/// Taps a role chip on the first frame. The editor is a long scroll, so the
+/// chips sit well below the fold at any test viewport.
+Future<void> _tapRole(WidgetTester tester, String role) async {
+  final chip = find.widgetWithText(AppChip, role);
+  await tester.ensureVisible(chip);
+  await tester.pump();
+  await tester.tap(chip);
+  await tester.pump();
+}
+
+/// Picks a real PNG of the requested size and lets the page act on it.
+///
+/// Encoding and decoding an image are engine work, so both the fixture and the
+/// page's own probe of it have to run outside the fake clock.
+Future<void> _pick(
+    WidgetTester tester, String name, int width, int height) async {
+  final bytes = await tester.runAsync(() async {
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawRect(
+        Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+        Paint()..color = const Color(0xFF16130F));
+    final image = await recorder.endRecording().toImage(width, height);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  });
+  FilePicker.platform =
+      _FakePicker(PlatformFile(name: name, size: bytes!.length, bytes: bytes));
+
+  await tester.runAsync(() async {
+    await tester.tap(find.text('Додати кадр'));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  });
+  await tester.pump();
+  await tester.pump();
+}
+
+class _FakePicker extends FilePicker {
+  _FakePicker(this.file);
+
+  final PlatformFile file;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    bool allowCompression = true,
+    int compressionQuality = 30,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+  }) async =>
+      FilePickerResult([file]);
 }
 
 const _threePhotos = [

@@ -12,13 +12,11 @@ import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
 import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
+import '../../studio_asset_precheck.dart';
 import '../../studio_brand_draft_service.dart';
 import '../../studio_brand_validation.dart';
 import '../widgets/studio_preview.dart';
 
-/// 13d master frame minimum; the count bounds live in studio_brand_validation.
-const int _minPhotoWidth = 1600;
-const int _minPhotoHeight = 1200;
 const List<String> _photoRoles = ['home', 'login', 'paywall', 'collection'];
 
 class StudioBrandPage extends ConsumerStatefulWidget {
@@ -66,6 +64,10 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
   /// Upload-time facts the published config does not carry (13m frame states).
   /// Keyed by asset URL and deliberately not persisted.
   final Map<String, String> _photoMeta = {};
+
+  /// Frame sizes, so a role can be refused with numbers rather than a shrug.
+  /// Filled from the tenant's assets on load and from each upload.
+  final Map<String, StudioImageSize> _photoSize = {};
   String? _rejectedPhoto;
 
   @override
@@ -84,6 +86,7 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       _setDraft(draft);
       _releaseStatus =
           await ref.read(studioBrandDraftServiceProvider).releaseStatus();
+      await _loadFrameSizes();
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -91,6 +94,25 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           _loading = false;
         });
       }
+    }
+  }
+
+  /// Sizes for frames this session did not upload. Best effort: a frame of
+  /// unknown size keeps every role, and the server still validates the publish.
+  Future<void> _loadFrameSizes() async {
+    try {
+      final assets = await ref.read(studioBrandDraftServiceProvider).assets();
+      if (!mounted) return;
+      setState(() {
+        for (final asset in assets) {
+          final width = asset.width, height = asset.height;
+          if (width == null || height == null) continue;
+          _photoSize[asset.url] = StudioImageSize(width, height);
+          _photoMeta.putIfAbsent(asset.url, () => '$width×$height');
+        }
+      });
+    } catch (_) {
+      // Frame sizes are a courtesy; the editor works without them.
     }
   }
 
@@ -301,6 +323,19 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     }
   }
 
+  /// A refusal the author cannot miss: it stays in the photo section next to
+  /// the buttons, and passes once through the snackbar so it is seen even when
+  /// the section has scrolled away under a tall crop editor.
+  void _rejectAsset(String message) {
+    if (!mounted) return;
+    setState(() => _rejectedPhoto = message);
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 8),
+      backgroundColor: Theme.of(context).colorScheme.error,
+    ));
+  }
+
   Future<void> _uploadAsset({required bool avatar}) async {
     final picked = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -313,33 +348,55 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       _rejectedPhoto = null;
     });
     try {
+      // 13d master rules, checked before the upload rather than after it: the
+      // frame that fails them is named here instead of dying silently between
+      // a finished progress label and an unchanged list.
+      final bytes = file.bytes;
+      final size = bytes == null ? null : await probeImageSize(bytes);
+      final rejection = assetRejection(
+            fileName: file.name,
+            extension: file.extension,
+            sizeBytes: file.size,
+            bytes: bytes,
+            size: size,
+          ) ??
+          (avatar
+              ? null
+              : heroFrameRejection(fileName: file.name, size: size!));
+      if (rejection != null) {
+        _rejectAsset(rejection);
+        return;
+      }
       final asset = await ref
           .read(studioBrandDraftServiceProvider)
           .upload(file, altText: 'Фото бренду ${_name.text.trim()}');
       if (!mounted) return;
       final width = asset.width, height = asset.height;
-      // 13d master rules. The server is the authority at publish time; this is
-      // the early, local «відхилено» so a too-small frame never reaches a hero.
-      if (!avatar &&
-          width != null &&
-          height != null &&
-          (width < _minPhotoWidth || height < _minPhotoHeight)) {
-        setState(() => _rejectedPhoto = '${file.name} відхилено: '
-            '$width×$height — менше мінімуму '
-            '$_minPhotoWidth×$_minPhotoHeight. Завантажте кадр більшої роздільності.');
+      // The server re-decodes the file and may see a size the local probe did
+      // not (EXIF rotation, a downscale at finalize). It wins.
+      if (!avatar && width != null && height != null) {
+        final serverRejection = heroFrameRejection(
+            fileName: file.name, size: StudioImageSize(width, height));
+        if (serverRejection != null) {
+          _rejectAsset(serverRejection);
+          return;
+        }
+      }
+      // Frames are keyed by URL, so the same asset cannot appear twice — say so
+      // rather than letting the list quietly stay as it was.
+      if (!avatar && _photos.any((photo) => photo.url == asset.url)) {
+        _rejectAsset('«${file.name}» не додано: цей кадр уже є в списку.');
         return;
       }
       setState(() {
         if (avatar) {
           _avatarUrl = asset.url;
           _avatarCrop = const BrandCrop();
-        } else if (_photos.any((photo) => photo.url == asset.url)) {
-          // Frames are keyed by URL, so the same asset cannot appear twice.
-          return;
         } else {
           if (width != null && height != null) {
             _photoMeta[asset.url] =
                 '$width×$height · ${(file.size / 1024).round()} КБ';
+            _photoSize[asset.url] = StudioImageSize(width, height);
           }
           _photos = [
             ..._photos,
@@ -348,8 +405,12 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
         }
         _dirty = true;
       });
+    } on ApiError catch (error) {
+      _rejectAsset('«${file.name}» не додано: ${error.message}'
+          '${error.statusCode == null ? '' : ' (${error.statusCode})'}');
     } catch (error) {
-      if (mounted) setState(() => _error = error);
+      _rejectAsset('«${file.name}» не додано: '
+          '${error is FormatException ? error.message : error}');
     } finally {
       if (mounted) setState(() => _uploadingAsset = false);
     }
@@ -539,8 +600,11 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
           '4 · Фото бренду',
           [
             const Text(
-                'JPEG ≥ 1600×1200 (4:3), до 600 КБ після стиснення. Людина або процес у кадрі, '
-                'без тексту й логотипів, темніший нижній край.'),
+                'JPEG ≥ $kMinHeroPhotoWidth×$kMinHeroPhotoHeight, до 600 КБ після стиснення. '
+                'Людина або процес у кадрі, без тексту й логотипів, темніший нижній край. '
+                'Home, колекції та пейвол — широкі банери; роль login на широкому '
+                'екрані вертикальна, тож для неї кадр має бути ще й від '
+                '$kMinLoginPhotoHeight px заввишки. Аватар приймається меншим.'),
             Wrap(spacing: AppSpacing.xs, children: [
               OutlinedButton.icon(
                   onPressed:
@@ -554,11 +618,16 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                   icon: const Icon(Icons.add_photo_alternate_outlined),
                   label: Text(_uploadingAsset ? 'Обробка…' : 'Додати кадр')),
             ]),
+            // Directly under the buttons: the crop editor below is tall enough
+            // to push anything after it off the screen the author is looking at.
+            if (_rejectedPhoto != null)
+              _photoNotice(
+                  icon: Icons.error_outline,
+                  message: _rejectedPhoto!,
+                  colour: context.semantic.error),
             if (_avatarUrl != null && _isRemoteAsset(_avatarUrl!))
               _avatarCropEditor(),
             _photoCounter(),
-            if (_rejectedPhoto != null)
-              _photoNotice(icon: Icons.error_outline, message: _rejectedPhoto!),
             if (_photos.isEmpty)
               _photoNotice(
                   icon: Icons.gradient_outlined,
@@ -585,7 +654,10 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
       if (_error != null)
         Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Text(_error.toString(),
+            child: Text(
+                _error is ApiError
+                    ? (_error as ApiError).message
+                    : _error.toString(),
                 style: TextStyle(color: Theme.of(context).colorScheme.error))),
     ]);
   }
@@ -989,6 +1061,16 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
                       label: role,
                       selected: photo.roles.contains(role),
                       onSelected: (selected) {
+                        final size = _photoSize[photo.url];
+                        // Only the desktop login asks a frame for more than the
+                        // upload minimum, so the check lives on the role.
+                        final refusal = !selected || size == null
+                            ? null
+                            : heroRoleRejection(role: role, size: size);
+                        if (refusal != null) {
+                          _rejectAsset(refusal);
+                          return;
+                        }
                         final roles = Set<String>.from(photo.roles);
                         selected ? roles.add(role) : roles.remove(role);
                         // A frame with no role would never be rendered.
@@ -1161,15 +1243,24 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
     );
   }
 
-  Widget _photoNotice({required IconData icon, required String message}) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: context.semantic.textSecondary),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-              child:
-                  Text(message, style: Theme.of(context).textTheme.bodySmall)),
-        ],
+  Widget _photoNotice(
+          {required IconData icon, required String message, Color? colour}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon,
+                size: 18, color: colour ?? context.semantic.textSecondary),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+                child: Text(message,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: colour))),
+          ],
+        ),
       );
 
   Widget _previews(BrandConfig config) =>
