@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/app/theme/tokens/app_tokens.dart';
+import 'package:frontend/core/api/api_client.dart';
 import 'package:frontend/core/branding/brand_config.dart';
+import 'package:frontend/features/auth/models/auth_state.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/presentation/pages/recipe_detail_page.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
+import 'package:frontend/features/recipes/services/recipe_service.dart';
 import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
 void main() {
@@ -115,17 +119,122 @@ void main() {
       final steps = tester.getSize(find.text('Приготування'));
       expect(steps.width, lessThanOrEqualTo(AppLayout.narrowMax));
     });
+
+    testWidgets(
+        'a technique drops the ingredients section instead of '
+        'promising one', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final width in [390.0, 1280.0]) {
+        tester.view.physicalSize = Size(width, 1000);
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(_app(
+          recipe: _recipe(
+            isPremium: false,
+            contentKind: ContentKind.technique,
+            ingredients: const [],
+          ),
+          hasPremiumAccess: true,
+        ));
+        await tester.pump();
+
+        expect(find.text('Інгредієнти'), findsNothing, reason: 'width: $width');
+        expect(find.text('Список інгредієнтів ще готується.'), findsNothing,
+            reason: 'width: $width');
+        expect(find.text('Приготування'), findsOneWidget,
+            reason: 'width: $width');
+      }
+    });
+
+    testWidgets('a technique offers no shopping action', (tester) async {
+      await _openSecondaryActions(tester, ContentKind.technique);
+
+      expect(find.text('Додати до покупок'), findsNothing);
+      // The menu itself survives: planning still applies to a technique.
+      expect(find.text('Запланувати'), findsOneWidget);
+    });
+
+    testWidgets('a recipe keeps the shopping action', (tester) async {
+      await _openSecondaryActions(tester, ContentKind.recipe);
+
+      expect(find.text('Додати до покупок'), findsOneWidget);
+      expect(find.text('Запланувати'), findsOneWidget);
+    });
+
+    testWidgets('a recipe still shows the section while its list is empty',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        recipe: _recipe(isPremium: false, ingredients: const []),
+        hasPremiumAccess: true,
+      ));
+      await tester.pump();
+
+      expect(find.text('Інгредієнти'), findsOneWidget);
+      expect(find.text('Список інгредієнтів ще готується.'), findsOneWidget);
+    });
   });
 }
 
-Widget _app({required Recipe recipe, bool hasPremiumAccess = false}) =>
+/// Opens the "Покупки та план" menu of a signed-in, unlocked detail page.
+Future<void> _openSecondaryActions(
+  WidgetTester tester,
+  ContentKind kind,
+) async {
+  await tester.pumpWidget(_app(
+    recipe: _recipe(isPremium: false, contentKind: kind),
+    hasPremiumAccess: true,
+    authenticated: true,
+  ));
+  await tester.pump();
+
+  final menu = find.byTooltip('Інші дії');
+  await tester.ensureVisible(menu);
+  await tester.pumpAndSettle();
+  await tester.tap(menu);
+  await tester.pumpAndSettle();
+}
+
+class _SilentRecipeService extends RecipeService {
+  _SilentRecipeService()
+      : super(ApiClient(
+          baseUrl: 'https://example.invalid',
+          tokenProvider: () async => null,
+          tenantSlug: 'ohorodnik-oleksandr',
+          locale: 'uk',
+        ));
+
+  @override
+  Future<void> recordHistory(String recipeId, String event) async {}
+}
+
+const _signedIn = AppAuthState.authenticated(
+  User(
+    id: 'user-1',
+    appMetadata: {},
+    userMetadata: null,
+    aud: 'authenticated',
+    createdAt: '2026-07-15T00:00:00Z',
+  ),
+);
+
+Widget _app({
+  required Recipe recipe,
+  bool hasPremiumAccess = false,
+  bool authenticated = false,
+}) =>
     ProviderScope(
       overrides: [
         recipeDetailProvider(recipe.id).overrideWith((_) async => recipe),
         isPremiumProvider.overrideWithValue(hasPremiumAccess),
         authProvider.overrideWith(
-          (ref) => AuthNotifier.testing(),
+          (ref) => AuthNotifier.testing(
+            authenticated ? _signedIn : const AppAuthState.unauthenticated(),
+          ),
         ),
+        // A signed-in view records history on open, which would otherwise
+        // reach for a tenant bootstrap this page-level test never loads.
+        recipeServiceProvider.overrideWithValue(_SilentRecipeService()),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brand),
@@ -133,28 +242,35 @@ Widget _app({required Recipe recipe, bool hasPremiumAccess = false}) =>
       ),
     );
 
-Recipe _recipe({required bool isPremium}) => Recipe(
+Recipe _recipe({
+  required bool isPremium,
+  ContentKind contentKind = ContentKind.recipe,
+  List<Ingredient>? ingredients,
+}) =>
+    Recipe(
       id: 'recipe-1',
       title: 'Тестовий рецепт',
       description: 'Опис рецепта',
       chefId: 'chef',
       cuisine: 'Українська',
       category: 'Вечеря',
+      contentKind: contentKind,
       difficulty: 2,
       prepTimeMinutes: 5,
       cookTimeMinutes: 10,
       totalTimeMinutes: 15,
       servings: 2,
-      ingredients: const [
-        Ingredient(
-          id: 'ingredient',
-          recipeId: 'recipe-1',
-          name: 'Секретний інгредієнт',
-          amount: 1,
-          unit: 'шт.',
-          order: 0,
-        ),
-      ],
+      ingredients: ingredients ??
+          const [
+            Ingredient(
+              id: 'ingredient',
+              recipeId: 'recipe-1',
+              name: 'Секретний інгредієнт',
+              amount: 1,
+              unit: 'шт.',
+              order: 0,
+            ),
+          ],
       instructions: const ['Не показувати цей крок'],
       images: const [],
       tags: const [],

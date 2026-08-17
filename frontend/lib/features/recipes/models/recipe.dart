@@ -2,6 +2,14 @@ import 'package:equatable/equatable.dart';
 
 enum ContentKind { recipe, technique, process, video }
 
+extension ContentKindIngredients on ContentKind {
+  /// Whether this kind of content is expected to carry an ingredient list at
+  /// all. A technique is a method rather than a dish, so everything built on
+  /// its ingredients — the detail section, the shopping-list action — has
+  /// nothing to work from and is dropped instead of offered empty.
+  bool get hasIngredients => this != ContentKind.technique;
+}
+
 enum RecipeImageRole { primary, list, grid, featured, detail }
 
 ContentKind _contentKindFromJson(dynamic value) => switch (value) {

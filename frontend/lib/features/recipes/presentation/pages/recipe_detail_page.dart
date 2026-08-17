@@ -331,6 +331,7 @@ class _DesktopRecipeContent extends StatelessWidget {
                           primaryActionLabel: primaryActionLabel,
                           primaryActionIcon: primaryActionIcon,
                           onPrimaryAction: onPrimaryAction,
+                          showAddToShopping: recipe.contentKind.hasIngredients,
                           onAddToShopping: onAddToShopping,
                           onAddToPlan: onAddToPlan,
                         ),
@@ -342,6 +343,7 @@ class _DesktopRecipeContent extends StatelessWidget {
             if (!locked) ...[
               const SizedBox(height: AppSpacing.xxxl),
               ContentDetailSections(
+                contentKind: recipe.contentKind,
                 ingredients: recipe.ingredients,
                 steps: recipe.instructions,
                 leading: _hasVideo(recipe)
@@ -386,6 +388,7 @@ class _DesktopRecipeActions extends StatelessWidget {
     required this.primaryActionLabel,
     required this.primaryActionIcon,
     required this.onPrimaryAction,
+    required this.showAddToShopping,
     this.onAddToShopping,
     this.onAddToPlan,
   });
@@ -394,6 +397,7 @@ class _DesktopRecipeActions extends StatelessWidget {
   final String primaryActionLabel;
   final IconData primaryActionIcon;
   final VoidCallback? onPrimaryAction;
+  final bool showAddToShopping;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
@@ -416,6 +420,7 @@ class _DesktopRecipeActions extends StatelessWidget {
             icon: const Icon(Icons.share_outlined),
           ),
           _SecondaryRecipeActions(
+            showAddToShopping: showAddToShopping,
             onAddToShopping: onAddToShopping,
             onAddToPlan: onAddToPlan,
           ),
@@ -472,6 +477,7 @@ class _RecipeBody extends StatelessWidget {
               if (!locked) ...[
                 const SizedBox(height: AppSpacing.sm),
                 _SecondaryRecipeActions(
+                  showAddToShopping: recipe.contentKind.hasIngredients,
                   onAddToShopping: onAddToShopping,
                   onAddToPlan: onAddToPlan,
                 ),
@@ -487,6 +493,7 @@ class _RecipeBody extends StatelessWidget {
                 )
               else
                 ContentDetailSections(
+                  contentKind: recipe.contentKind,
                   ingredients: recipe.ingredients,
                   steps: recipe.instructions,
                   leading: _hasVideo(recipe)
@@ -503,17 +510,24 @@ enum _RecipeSecondaryAction { shopping, plan }
 
 class _SecondaryRecipeActions extends StatelessWidget {
   const _SecondaryRecipeActions({
+    required this.showAddToShopping,
     this.onAddToShopping,
     this.onAddToPlan,
   });
 
+  /// Whether the shopping action applies to this content at all. A disabled
+  /// handler means "not right now" — locked, or signed out — and stays visible
+  /// as a greyed entry; this instead removes an action the content can never
+  /// perform, having no ingredients to add.
+  final bool showAddToShopping;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<_RecipeSecondaryAction>(
         tooltip: 'Інші дії',
-        enabled: onAddToShopping != null || onAddToPlan != null,
+        enabled: (showAddToShopping && onAddToShopping != null) ||
+            onAddToPlan != null,
         onSelected: (action) {
           switch (action) {
             case _RecipeSecondaryAction.shopping:
@@ -525,14 +539,15 @@ class _SecondaryRecipeActions extends StatelessWidget {
           }
         },
         itemBuilder: (_) => [
-          PopupMenuItem(
-            value: _RecipeSecondaryAction.shopping,
-            enabled: onAddToShopping != null,
-            child: const ListTile(
-              leading: Icon(Icons.add_shopping_cart_outlined),
-              title: Text('Додати до покупок'),
+          if (showAddToShopping)
+            PopupMenuItem(
+              value: _RecipeSecondaryAction.shopping,
+              enabled: onAddToShopping != null,
+              child: const ListTile(
+                leading: Icon(Icons.add_shopping_cart_outlined),
+                title: Text('Додати до покупок'),
+              ),
             ),
-          ),
           PopupMenuItem(
             value: _RecipeSecondaryAction.plan,
             enabled: onAddToPlan != null,

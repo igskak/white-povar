@@ -8,11 +8,16 @@ import '../../models/recipe.dart';
 class ContentDetailSections extends StatelessWidget {
   const ContentDetailSections({
     super.key,
+    required this.contentKind,
     required this.ingredients,
     required this.steps,
     this.leading,
   });
 
+  /// Decides which sections the content is expected to have at all: a kind
+  /// without ingredients drops the section rather than showing it waiting for
+  /// a list that will never arrive.
+  final ContentKind contentKind;
   final List<Ingredient> ingredients;
   final List<String> steps;
 
@@ -31,11 +36,17 @@ class ContentDetailSections extends StatelessWidget {
         ),
       );
 
+  bool get _hasIngredientsSection => contentKind.hasIngredients;
+
   Widget _build(BuildContext context, {required bool useColumns}) {
-    final ingredientsSection = _IngredientsSection(ingredients: ingredients);
     final stepsSection = _StepsSection(steps: steps);
 
-    if (!useColumns) {
+    // With neither the video nor an ingredient list there is nothing to put
+    // beside the steps, so the two-column split would only narrow them for no
+    // gain.
+    final hasSideColumn = leading != null || _hasIngredientsSection;
+
+    if (!useColumns || !hasSideColumn) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -43,8 +54,10 @@ class ContentDetailSections extends StatelessWidget {
             leading!,
             const SizedBox(height: AppSpacing.xl),
           ],
-          ingredientsSection,
-          const SizedBox(height: AppSpacing.xl),
+          if (_hasIngredientsSection) ...[
+            _IngredientsSection(ingredients: ingredients),
+            const SizedBox(height: AppSpacing.xl),
+          ],
           stepsSection,
         ],
       );
@@ -64,9 +77,11 @@ class ContentDetailSections extends StatelessWidget {
             children: [
               if (leading != null) ...[
                 leading!,
-                const SizedBox(height: AppSpacing.xl),
+                if (_hasIngredientsSection)
+                  const SizedBox(height: AppSpacing.xl),
               ],
-              ingredientsSection,
+              if (_hasIngredientsSection)
+                _IngredientsSection(ingredients: ingredients),
             ],
           ),
         ),
