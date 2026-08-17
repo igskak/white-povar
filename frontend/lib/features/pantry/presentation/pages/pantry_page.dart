@@ -12,7 +12,7 @@ class PantryPage extends ConsumerWidget {
       length: 2,
       child: Scaffold(
           appBar: AppBar(
-              title: const Text('Кладова і покупки'),
+              title: const Text('Комора і покупки'),
               actions: [
                 IconButton(
                     tooltip: 'Меню на тиждень',
@@ -20,7 +20,7 @@ class PantryPage extends ConsumerWidget {
                     onPressed: () => context.push('/menu-plan'))
               ],
               bottom: const TabBar(
-                  tabs: [Tab(text: 'Кладова'), Tab(text: 'Покупки')])),
+                  tabs: [Tab(text: 'Комора'), Tab(text: 'Покупки')])),
           floatingActionButton: FloatingActionButton.extended(
               onPressed: () => _add(context, ref),
               icon: const Icon(Icons.add),
@@ -48,7 +48,7 @@ class PantryPage extends ConsumerWidget {
                   TextButton(
                       onPressed: () =>
                           Navigator.pop(context, ['pantry', controller.text]),
-                      child: const Text('До кладової'))
+                      child: const Text('До комори'))
                 ]));
     if (result == null || result[1].trim().isEmpty) return;
     if (result[0] == 'pantry') {
@@ -73,11 +73,11 @@ class _PantryTab extends StatelessWidget {
     return value.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => StateView.error(
-            title: 'Не вдалося завантажити кладову',
+            title: 'Не вдалося завантажити комору',
             onRetry: () => ref.invalidate(pantryProvider)),
         data: (items) => items.isEmpty
             ? const StateView.empty(
-                title: 'Кладова порожня',
+                title: 'Комора порожня',
                 subtitle:
                     'Додайте продукти вручну або після підтвердження фото.',
                 icon: Icons.kitchen_outlined)

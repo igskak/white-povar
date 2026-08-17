@@ -338,7 +338,7 @@ class BrandCourseCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Преміум-колекція',
+                Text('Premium-колекція',
                     style: Theme.of(context).textTheme.labelLarge),
                 Text(courseName,
                     maxLines: 2,

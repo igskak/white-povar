@@ -589,8 +589,8 @@ class _StudioBrandPageState extends ConsumerState<StudioBrandPage> {
             _field(_greeting, 'Привітання Home', kGreetingLimit),
             _field(_login, 'Заголовок логіна', kLoginTitleLimit),
             _field(_paywall, 'Заголовок пейвола', kPaywallTitleLimit),
-            _field(_course, 'Назва колекції · optional', kCourseNameLimit),
-            _field(_tag, 'Course tag · optional')
+            _field(_course, 'Назва колекції · необов’язково', kCourseNameLimit),
+            _field(_tag, 'Тег колекції · необов’язково')
           ],
           status: checks.voice,
           summary: _course.text.trim().isEmpty

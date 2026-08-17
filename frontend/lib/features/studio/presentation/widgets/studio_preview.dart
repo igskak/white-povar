@@ -323,7 +323,7 @@ Recipe _sampleRecipe({
       description: 'Приклад картки рецепта у вашому бренді.',
       chefId: 'studio-preview',
       cuisine: 'Вечеря',
-      category: 'Основні страви',
+      category: 'Другі страви',
       difficulty: 2,
       prepTimeMinutes: 10,
       cookTimeMinutes: 20,

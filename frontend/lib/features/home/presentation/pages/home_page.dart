@@ -166,7 +166,7 @@ class _MobileHome extends StatelessWidget {
                 child: StateView.empty(
                   title: 'На кухні поки тихо',
                   subtitle:
-                      'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
+                      'Свіжі рецепти з’являться тут після оновлення каталогу.',
                   icon: Icons.menu_book_outlined,
                 ),
               ),
@@ -191,7 +191,7 @@ class _MobileHome extends StatelessWidget {
             hasScrollBody: false,
             child: StateView.error(
               title: 'Не вдалося завантажити рецепти',
-              subtitle: 'Перевірте зʼєднання та спробуйте ще раз.',
+              subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
               onRetry: onRefresh,
             ),
           ),
@@ -226,7 +226,7 @@ class _DesktopHome extends StatelessWidget {
             loading: () => const _DesktopHomeSkeleton(),
             error: (_, __) => StateView.error(
               title: 'Не вдалося завантажити рецепти',
-              subtitle: 'Перевірте зʼєднання та спробуйте ще раз.',
+              subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
               onRetry: onRefresh,
             ),
             data: (items) {
@@ -234,7 +234,7 @@ class _DesktopHome extends StatelessWidget {
                 return const StateView.empty(
                   title: 'На кухні поки тихо',
                   subtitle:
-                      'Свіжі рецепти зʼявляться тут після оновлення каталогу.',
+                      'Свіжі рецепти з’являться тут після оновлення каталогу.',
                   icon: Icons.menu_book_outlined,
                 );
               }

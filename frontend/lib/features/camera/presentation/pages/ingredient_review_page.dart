@@ -69,7 +69,7 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
                       ? null
                       : _addConfirmedToPantry,
                   icon: const Icon(Icons.kitchen_outlined),
-                  label: const Text('До кладової'))),
+                  label: const Text('До комори'))),
           const SizedBox(width: 8),
           Expanded(
               child: ElevatedButton.icon(
@@ -221,7 +221,7 @@ class _IngredientReviewPageState extends ConsumerState<IngredientReviewPage> {
     ref.invalidate(pantryProvider);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Підтверджені продукти додано до кладової')));
+          content: Text('Підтверджені продукти додано до комори')));
     }
   }
 }

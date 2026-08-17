@@ -232,7 +232,7 @@ class UpgradePrompt extends Equatable {
 
   factory UpgradePrompt.fromJson(Map<String, dynamic> json) {
     return UpgradePrompt(
-      title: json['title']?.toString() ?? 'Преміум-доступ',
+      title: json['title']?.toString() ?? 'Premium-доступ',
       message: json['message']?.toString() ?? '',
       features: (json['features'] as List<dynamic>?)
               ?.map((e) => e.toString())

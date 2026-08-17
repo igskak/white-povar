@@ -50,7 +50,7 @@ class _SavedRecipesBody extends ConsumerWidget {
           return StateView.empty(
             title: 'Ваша колекція починається тут',
             subtitle:
-                'Збережіть рецепт зі сторінки рецепта, і він зʼявиться в цій добірці.',
+                'Збережіть рецепт зі сторінки рецепта, і він з’явиться в цій добірці.',
             icon: Icons.bookmark_add_outlined,
             actionLabel: 'Знайти рецепт',
             onRetry: () => context.go('/search'),

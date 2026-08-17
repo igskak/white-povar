@@ -69,7 +69,7 @@ class _IngredientEditDialogState extends State<IngredientEditDialog> {
             TextFormField(
               controller: _notesController,
               decoration: const InputDecoration(
-                labelText: 'Нотатки (необовʼязково)',
+                labelText: 'Нотатки (необов’язково)',
                 hintText: 'Наприклад: нарізані, свіжі, великі',
                 border: OutlineInputBorder(),
               ),

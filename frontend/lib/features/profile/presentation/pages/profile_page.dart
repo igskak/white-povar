@@ -80,7 +80,7 @@ class _GuestProfile extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                    'Увійдіть, щоб зберігати рецепти, памʼятати налаштування і продовжувати на будь-якому пристрої.',
+                    'Увійдіть, щоб зберігати рецепти, пам’ятати налаштування і продовжувати на будь-якому пристрої.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge),
                 const SizedBox(height: AppSpacing.lg),
@@ -168,7 +168,7 @@ class _SignedInProfile extends ConsumerWidget {
           const _ProfileRow(
               icon: Icons.history,
               title: 'Історія приготування',
-              subtitle: 'Зʼявиться після запуску історії',
+              subtitle: 'З’явиться після запуску історії',
               onTap: null),
           const Divider(height: 1),
           _ProfileRow(
@@ -192,7 +192,7 @@ class _SignedInProfile extends ConsumerWidget {
           const Divider(height: 1),
           _ProfileRow(
               icon: Icons.kitchen_outlined,
-              title: 'Кладова і покупки',
+              title: 'Комора і покупки',
               subtitle: 'Продукти вдома та список покупок',
               onTap: () => context.push('/pantry')),
           const Divider(height: 1),
@@ -282,7 +282,7 @@ class _SignedInProfile extends ConsumerWidget {
       await ref.read(authProvider.notifier).deleteAccount();
       if (context.mounted) {
         _showAuthActionError(context, ref,
-            'Не вдалося видалити акаунт. Перевірте зʼєднання і спробуйте ще раз.');
+            'Не вдалося видалити акаунт. Перевірте з’єднання і спробуйте ще раз.');
       }
     }
   }
@@ -291,7 +291,7 @@ class _SignedInProfile extends ConsumerWidget {
     await ref.read(authProvider.notifier).signOut();
     if (context.mounted) {
       _showAuthActionError(context, ref,
-          'Не вдалося вийти з акаунта. Перевірте зʼєднання і спробуйте ще раз.');
+          'Не вдалося вийти з акаунта. Перевірте з’єднання і спробуйте ще раз.');
     }
   }
 
