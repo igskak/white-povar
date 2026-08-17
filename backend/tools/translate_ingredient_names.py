@@ -160,37 +160,72 @@ NAMES = {
     'yogurt': 'йогурт',
 }
 
+GENDER = {
+    'абрикоси': 'pl', 'авокадо': 'n', 'апельсин': 'm', 'банани': 'pl', 'бекон': 'm',
+    'борошно': 'n', 'брюссельська капуста': 'f', 'буряк': 'm', 'васабі': 'n',
+    'вершки': 'pl', 'вершкове масло': 'n', 'вершковий сир Філадельфія': 'm',
+    'вишнева тріска': 'f', 'вода': 'f', 'волоські горіхи': 'pl', 'вівсяні пластівці': 'pl',
+    'гречаний попкорн': 'm', 'жирні вершки': 'pl', 'згущене молоко': 'n',
+    'зелена цибуля': 'f', 'йогурт': 'm', 'картопля': 'f', 'квашений буряк': 'm',
+    'кефір або несолодкий йогурт': 'm', 'кмин': 'm', 'консервовані томати': 'pl',
+    'копчений лосось': 'm', 'кориця': 'f', 'коріандр': 'm', 'кріп': 'm',
+    'кукурудзяний крохмаль': 'm', 'кунжутна олія': 'f', 'курячі яйця': 'pl', 'кінза': 'f',
+    'лаваш': 'm', 'лаврове листя': 'n', 'лимонний сік': 'm',
+    'лимонний сік або яблучний оцет': 'm', 'листи для лазаньї': 'pl', 'листя базиліку': 'n',
+    'майонез': 'm', 'манго': 'n', 'маринована редька': 'f', 'маринована цибуля': 'f',
+    'мед': 'm', 'молоко': 'n', 'морква': 'f', 'мікс салатів': 'm',
+    'міні-моцарела або бурата': 'f', 'насіння соняшнику': 'n', 'огірок': 'm',
+    'оливкова олія': 'f', 'олія': 'f', 'олія для смаження': 'f', 'орегано': 'n',
+    'паприка': 'f', 'петрушка': 'f', 'помідор': 'm', 'помідори': 'pl',
+    'підсмажені горіхи': 'pl', 'підсолена вода': 'f', 'рисовий папір': 'm',
+    'розпушувач': 'm', 'рукола': 'f', 'свиняча шия': 'f',
+    'свіжа зелень (петрушка, кріп, базилік)': 'f', 'свіжа кінза': 'f', 'сир моцарела': 'm',
+    'сир пармезан': 'm', 'сир фета': 'm', 'смажена гречка': 'f', 'сметана': 'f',
+    'солодкий перець': 'm', 'солоні огірки': 'pl', 'соус бешамель': 'm',
+    'соус болоньєзе': 'm', 'соус шрірача': 'm', 'соєвий соус': 'm', 'стебло селери': 'n',
+    'стиглі великі томати': 'pl', 'сухе біле вино': 'n', 'сухе червоне вино': 'n',
+    'сушений чебрець': 'm', 'сік лайма': 'm', 'сіль': 'f', 'томатна паста': 'f',
+    'тунець': 'm', 'устричний соус': 'm', 'фундук': 'm', 'цвітна капуста': 'f',
+    'цедра лимона': 'f', 'цибуля': 'f', 'цукор': 'm', 'цукрова пудра': 'f',
+    'часник': 'm', 'червона цибуля': 'f', 'чорний перець': 'm', 'шніт-цибуля': 'f',
+    'яблучний оцет': 'm', 'ягоди': 'pl', 'ягідний джем': 'm', 'яйце': 'n', 'яйця': 'pl',
+    'яловича печінка': 'f', 'яловичий фарш': 'm', 'імбир': 'm',
+}
+
+# Notes describe the ingredient, so their adjectives have to agree with it:
+# "петрушка / свіжа", not "петрушка / свіжий". Adjectives are written in the
+# masculine inside {braces} and declined against the ingredient's gender.
 NOTES = {
     '1.5% fat': '1,5% жирності',
     '1.5% fat, warmed': '1,5% жирності, підігріте',
     '10% fat': '10% жирності',
     '15-20% fat content': 'жирність 15–20%',
     'adjust to taste': 'за смаком',
-    'all-purpose': 'універсальне',
+    'all-purpose': '{універсальний}',
     'average of 80-100g': 'у середньому 80–100 г',
-    'baked or thawed': 'печений або розморожений',
-    'chicken': 'куряче',
-    'chopped': 'нарізаний',
-    'chopped, for garnish': 'нарізаний, для подачі',
-    'chopped, for garnish, fresh': 'свіжий, нарізаний, для подачі',
-    'chopped, in juice': 'нарізані, у власному соку',
+    'baked or thawed': '{печений} або {розморожений}',
+    'chicken': '{курячий}',
+    'chopped': '{нарізаний}',
+    'chopped, for garnish': '{нарізаний}, для подачі',
+    'chopped, for garnish, fresh': '{свіжий}, {нарізаний}, для подачі',
+    'chopped, in juice': '{нарізаний}, у власному соку',
     'clove, minced': 'зубчик, подрібнений',
     'cloves, sliced': 'зубчики, нарізані',
     'cut into pieces of at least 50g': 'нарізати шматками щонайменше 50 г',
     'cut into squares or pieces': 'нарізати квадратами або шматками',
     'diced': 'кубиками',
-    'diced, not overly ripe': 'кубиками, не перестиглий',
-    'dried': 'сушений',
+    'diced, not overly ripe': 'кубиками, не {перестиглий}',
+    'dried': '{сушений}',
     'extra virgin': 'першого віджиму',
-    'finely chopped': 'дрібно нарізаний',
-    'finely ground': 'дрібно змелені',
+    'finely chopped': 'дрібно {нарізаний}',
+    'finely ground': 'дрібно {змелений}',
     'for boiling': 'для варіння',
     'for béchamel sauce': 'для соусу бешамель',
     'for drizzling': 'для збризкування',
     'for frying': 'для смаження',
     'for frying, at 180°C': 'для смаження, за 180 °C',
     'for garnish': 'для подачі',
-    'for garnish, fresh': 'свіжий, для подачі',
+    'for garnish, fresh': '{свіжий}, для подачі',
     'for garnish, optional': 'для подачі, за бажанням',
     'for greasing': 'для змащування',
     'for homemade chips': 'для домашніх чипсів',
@@ -200,53 +235,53 @@ NOTES = {
     'for smoking': 'для копчення',
     'for soaking': 'для замочування',
     'for stuffing': 'для начинки',
-    'for stuffing, large': 'для начинки, великий',
-    'fresh': 'свіжий',
-    'fresh or dried': 'свіжий або сушений',
-    'fresh, chopped': 'свіжий, нарізаний',
-    'fresh, chopped for garnish': 'свіжий, нарізаний для подачі',
-    'fresh, diced': 'свіжий, кубиками',
-    'fresh, for garnish': 'свіжий, для подачі',
-    'freshly squeezed': 'свіжовичавлений',
+    'for stuffing, large': 'для начинки, {великий}',
+    'fresh': '{свіжий}',
+    'fresh or dried': '{свіжий} або {сушений}',
+    'fresh, chopped': '{свіжий}, {нарізаний}',
+    'fresh, chopped for garnish': '{свіжий}, {нарізаний} для подачі',
+    'fresh, diced': '{свіжий}, кубиками',
+    'fresh, for garnish': '{свіжий}, для подачі',
+    'freshly squeezed': '{свіжовичавлений}',
     'from one lime': 'з одного лайма',
-    'grated': 'натертий',
-    'grated, optional': 'натертий, за бажанням',
-    'ground': 'мелений',
-    'halved': 'розрізані навпіл',
-    'high starch content, peeled': 'крохмалистий сорт, очищена',
-    'high-quality, cold, cubed': 'якісне, холодне, кубиками',
-    'large': 'великий',
-    'lean, from the hind leg, ground': 'пісний, із задньої ноги, мелений',
-    'lightly salted': 'слабосолоний',
-    'medium, diced': 'середній, кубиками',
-    'minced': 'подрібнений',
+    'grated': '{натертий}',
+    'grated, optional': '{натертий}, за бажанням',
+    'ground': '{мелений}',
+    'halved': '{розрізаний} навпіл',
+    'high starch content, peeled': 'крохмалистий сорт, {очищений}',
+    'high-quality, cold, cubed': '{якісний}, {холодний}, кубиками',
+    'large': '{великий}',
+    'lean, from the hind leg, ground': '{пісний}, із задньої ноги, {мелений}',
+    'lightly salted': '{слабосолоний}',
+    'medium, diced': '{середній}, кубиками',
+    'minced': '{подрібнений}',
     'optional': 'за бажанням',
     'or fresh beetroot juice with lemon juice or dry white wine':
         'або свіжий буряковий сік із лимонним соком чи сухим білим вином',
     'or lemon juice': 'або лимонний сік',
     'or potato starch': 'або картопляний крохмаль',
-    'peeled': 'очищена',
-    'peeled and cut into even pieces': 'очищена, нарізана рівними шматками',
-    'peeled, starchy variety': 'очищена, крохмалистий сорт',
+    'peeled': '{очищений}',
+    'peeled and cut into even pieces': '{очищений}, {нарізаний} рівними шматками',
+    'peeled, starchy variety': '{очищений}, крохмалистий сорт',
     'pinch': 'дрібка',
-    'red, diced': 'червона, кубиками',
-    'roasted': 'смажений',
-    'roasted, diced': 'смажений, кубиками',
-    'sliced': 'нарізаний',
-    'sliced into half rings': 'нарізана півкільцями',
-    'sliced into pieces 1-1.5 cm thick': 'нарізана шматками завтовшки 1–1,5 см',
-    'sliced, for serving': 'нарізаний, для подачі',
-    'small, finely chopped': 'дрібний, дрібно нарізаний',
-    'smoked or sweet': 'копчена або солодка',
+    'red, diced': '{червоний}, кубиками',
+    'roasted': '{смажений}',
+    'roasted, diced': '{смажений}, кубиками',
+    'sliced': '{нарізаний}',
+    'sliced into half rings': '{нарізаний} півкільцями',
+    'sliced into pieces 1-1.5 cm thick': '{нарізаний} шматками завтовшки 1–1,5 см',
+    'sliced, for serving': '{нарізаний}, для подачі',
+    'small, finely chopped': '{дрібний}, дрібно {нарізаний}',
+    'smoked or sweet': '{копчений} або {солодкий}',
     'to balance acidity': 'щоб збалансувати кислотність',
     'to taste': 'за смаком',
-    'toasted': 'підсмажений',
+    'toasted': '{підсмажений}',
     'toasted, can substitute with almonds, cashews, or pistachios':
-        "підсмажений, можна замінити мигдалем, кеш'ю або фісташками",
-    'toasted, optional': 'підсмажений, за бажанням',
-    'unsalted': 'незасолене',
-    'warm': 'тепле',
-    'warm, 15% fat': 'теплі, 15% жирності',
+        "{підсмажений}, можна замінити мигдалем, кеш'ю або фісташками",
+    'toasted, optional': '{підсмажений}, за бажанням',
+    'unsalted': '{незасолений}',
+    'warm': '{теплий}',
+    'warm, 15% fat': '{теплий}, 15% жирності',
     'zest and juice (~80g)': 'цедра і сік (~80 г)',
 }
 
@@ -257,16 +292,56 @@ NAMES = {key.lower(): value for key, value in NAMES.items()}
 NOTES = {key.lower(): value for key, value in NOTES.items()}
 
 
+ADJECTIVE = re.compile(r'\{([^}]+)\}')
+
+# Feminine / neuter / plural endings for a masculine adjective, by stem type.
+_ENDINGS = {
+    'ий': {'m': 'ий', 'f': 'а', 'n': 'е', 'pl': 'і'},   # hard: свіжий -> свіжа
+    'ій': {'m': 'ій', 'f': 'я', 'n': 'є', 'pl': 'і'},   # soft: середній -> середня
+}
+
+
+def decline(adjective, gender):
+    """Put a masculine adjective into the ingredient's gender and number."""
+    for ending, forms in _ENDINGS.items():
+        if adjective.endswith(ending):
+            stem = adjective[:-len(ending)]
+            return stem + forms[gender]
+    return adjective
+
+
 def get_arg_or_env(value, env_name):
     return value or os.getenv(env_name)
 
 
-def translate(value, table):
-    """Return the Ukrainian form, or None when the value needs no change."""
+def translate_name(value):
+    """Return the Ukrainian name, or None when the value needs no change."""
     text = (value or '').strip()
     if not text or CYRILLIC.search(text):
         return None
-    return table.get(text.lower())
+    return NAMES.get(text.lower())
+
+
+def translate_note(value, ingredient_name):
+    """Translate a note, agreeing its adjectives with the ingredient.
+
+    Returns (text, unknown_gender). The flag is set when the note carries an
+    adjective but the ingredient's gender is unknown, so the caller can report
+    it instead of quietly defaulting to masculine.
+    """
+    text = (value or '').strip()
+    if not text or CYRILLIC.search(text):
+        return None, False
+    template = NOTES.get(text.lower())
+    if template is None:
+        return None, False
+    if '{' not in template:
+        return template, False
+    gender = GENDER.get((ingredient_name or '').strip())
+    resolved = ADJECTIVE.sub(
+        lambda match: decline(match.group(1), gender or 'm'), template
+    )
+    return resolved, gender is None
 
 
 def fetch_all(client):
@@ -291,6 +366,10 @@ def main():
     parser.add_argument('--supabase-url')
     parser.add_argument('--supabase-key')
     parser.add_argument('--backup-dir', default='backend/tools/backups')
+    parser.add_argument('--source', metavar='BACKUP.JSON',
+                        help='re-translate from the English originals in a backup '
+                             'instead of from the database, so an earlier, worse '
+                             'translation can be corrected in place')
     args = parser.parse_args()
 
     load_dotenv(Path(__file__).resolve().parents[1] / '.env')
@@ -300,32 +379,53 @@ def main():
         sys.exit('SUPABASE_URL and SUPABASE_SERVICE_KEY are required.')
 
     client = create_client(url, key)
-    rows = fetch_all(client)
+    if args.source:
+        rows = json.loads(Path(args.source).read_text(encoding='utf-8'))
+        print(f'source: {args.source} (English originals)')
+    else:
+        rows = fetch_all(client)
 
-    planned, untranslated = [], set()
+    planned, untranslated, genderless = [], set(), set()
     for row in rows:
         update = {}
-        for column, table in (('display_name', NAMES), ('preparation_notes', NOTES)):
-            original = (row.get(column) or '').strip()
-            translated = translate(original, table)
-            if translated:
-                update[column] = translated
-            elif original and not CYRILLIC.search(original):
-                untranslated.add(f'{column}: {original}')
+
+        name = (row.get('display_name') or '').strip()
+        translated_name = translate_name(name)
+        if translated_name:
+            update['display_name'] = translated_name
+        elif name and not CYRILLIC.search(name):
+            untranslated.add(f'display_name: {name}')
+
+        # Notes agree with the ingredient, so resolve them against the Ukrainian
+        # name this row is going to end up with, not the English one it had.
+        final_name = update.get('display_name', name)
+        note = (row.get('preparation_notes') or '').strip()
+        translated_note, unknown_gender = translate_note(note, final_name)
+        if translated_note:
+            update['preparation_notes'] = translated_note
+            if unknown_gender:
+                genderless.add(final_name)
+        elif note and not CYRILLIC.search(note):
+            untranslated.add(f'preparation_notes: {note}')
+
         if update:
             planned.append((row, update))
 
     print(f'ingredient rows: {len(rows)}')
     print(f'rows to update:  {len(planned)}')
     for row, update in planned:
-        before = ' / '.join(filter(None, [row.get('display_name'), row.get('preparation_notes')]))
         after = ' / '.join(filter(None, [update.get('display_name', row.get('display_name')),
                                          update.get('preparation_notes', row.get('preparation_notes'))]))
-        print(f'  {before}  ->  {after}')
+        print(f'  {after}')
 
     if untranslated:
         print(f'\nno translation in the table ({len(untranslated)}) — left unchanged:')
         for item in sorted(untranslated):
+            print(f'  {item}')
+
+    if genderless:
+        print(f'\nno gender known ({len(genderless)}) — adjectives defaulted to masculine:')
+        for item in sorted(genderless):
             print(f'  {item}')
 
     if not args.apply:
