@@ -84,11 +84,11 @@ class SupabaseService:
         try:
             client = self.get_client(use_service_key=True)
 
-            # Build the query with JOIN to include ingredients
-            query = client.table('recipes').select('''
-                *,
-                recipe_ingredients(*)
-            ''')
+            # Build the query with JOIN to include ingredients.  The select must
+            # stay on one line: PostgREST silently ignores a select that starts
+            # with a newline and answers with the bare columns, so an indented
+            # multi-line string costs the embedded ingredients without any error.
+            query = client.table('recipes').select('*,recipe_ingredients(*)')
 
             # Apply filters if provided
             if filters:
@@ -448,12 +448,11 @@ class SupabaseService:
         try:
             client = self.get_client(use_service_key=True)
 
-            # Select recipe with ingredients using JOIN
-            recipe_result = client.table('recipes').select('''
-                *,
-                recipe_ingredients(*),
-                recipe_nutrition(*)
-            ''').eq('id', recipe_id).eq('chef_id', chef_id).execute()
+            # Select recipe with ingredients using JOIN.  Keep it on one line;
+            # see get_recipes for what a leading newline costs here.
+            recipe_result = client.table('recipes').select(
+                '*,recipe_ingredients(*),recipe_nutrition(*)'
+            ).eq('id', recipe_id).eq('chef_id', chef_id).execute()
 
             if not recipe_result.data:
                 return {"data": None}
@@ -487,10 +486,9 @@ class SupabaseService:
             client = self.get_client(use_service_key=True)
 
             # Build search query with actual text search
-            search_query = client.table('recipes').select('''
-                *,
-                recipe_ingredients(*)
-            ''').eq('is_public', True)
+            search_query = client.table('recipes').select(
+                '*,recipe_ingredients(*)'
+            ).eq('is_public', True)
 
             # Add text search filters - search in title, description, and tags
             search_query = search_query.or_(

@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext
 from app.schemas.recipe import RecipeCreate
+from app.services.database import supabase_service
 
 
 def test_public_payload_maps_to_canonical_recipe_tables():
@@ -265,3 +266,49 @@ def test_private_recipe_is_hidden_from_guests(monkeypatch):
         asyncio.run(recipes.get_recipe(recipe_id, None, tenant))
 
     assert error.value.status_code == 404
+
+
+class _SelectSpy:
+    """Records the PostgREST select string and swallows the rest of the chain."""
+
+    def __init__(self, recorded):
+        self._recorded = recorded
+
+    def table(self, _name):
+        return self
+
+    def select(self, columns, **_kwargs):
+        self._recorded.append(columns)
+        return self
+
+    def __getattr__(self, _name):
+        return lambda *args, **kwargs: self
+
+    def execute(self):
+        return type('Result', (), {'data': []})()
+
+
+@pytest.mark.parametrize('read', [
+    lambda: supabase_service.get_recipes({'is_public': True}, 5, 0),
+    lambda: supabase_service.get_recipe_by_id(str(uuid4()), str(uuid4())),
+    lambda: supabase_service.search_recipes_by_text('soup', str(uuid4())),
+])
+def test_recipe_reads_embed_ingredients_in_a_single_line_select(monkeypatch, read):
+    """PostgREST drops a select that starts with a newline.
+
+    It answers 200 with the bare recipe columns and no embedded
+    `recipe_ingredients`, so an indented multi-line select empties every
+    ingredient list in the app without raising anything.
+    """
+    recorded = []
+    monkeypatch.setattr(
+        supabase_service, 'get_client', lambda *a, **k: _SelectSpy(recorded)
+    )
+
+    asyncio.run(read())
+
+    assert len(recorded) == 1
+    select = recorded[0]
+    assert 'recipe_ingredients(*)' in select
+    assert select == select.strip()
+    assert '\n' not in select
