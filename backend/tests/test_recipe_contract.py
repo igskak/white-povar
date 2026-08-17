@@ -51,6 +51,21 @@ def test_public_payload_maps_to_canonical_recipe_tables():
     assert 'images' not in rows
 
 
+def test_units_survive_a_read_then_write_round_trip():
+    """The unit the API hands out must be a unit it accepts back.
+
+    An editor saves what it was shown. When the read side started answering in
+    Ukrainian, an English-only write map would have resolved every unit to None
+    and quietly dropped it from the recipe.
+    """
+    for unit_id in recipes._UNIT_IDS.values():
+        rendered = recipes._get_unit_name_from_id(unit_id)
+        rows = recipes._recipe_payload_to_rows({
+            'ingredients': [{'name': 'Сіль', 'amount': 5, 'unit': rendered, 'order': 0}],
+        })
+        assert rows['ingredients'][0]['unit_id'] == unit_id, rendered
+
+
 def test_canonical_row_maps_back_to_frontend_contract():
     recipe_id = str(uuid4())
     chef_id = str(uuid4())
@@ -98,7 +113,8 @@ def test_canonical_row_maps_back_to_frontend_contract():
     )
     assert recipe.image_presentation.primary.focal.x == 0.5
     assert recipe.ingredients[0].name == 'Pasta'
-    assert recipe.ingredients[0].unit == 'g'
+    # The app ships one locale, so units are handed out in Ukrainian.
+    assert recipe.ingredients[0].unit == 'г'
     assert recipe.nutrition.calories == 450
     assert recipe.content_kind == 'process'
 
