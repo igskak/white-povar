@@ -42,7 +42,7 @@ void main() {
   group('profile stats presentation', () {
     testWidgets('shows the counts the API returned', (tester) async {
       await tester.pumpWidget(_profileApp(
-        stats: (_) async => const ProfileStats(saved: 1, cooked: 12, scans: 4),
+        stats: () async => const ProfileStats(saved: 1, cooked: 12, scans: 4),
       ));
       await tester.pump();
 
@@ -54,7 +54,7 @@ void main() {
     testWidgets('shows a dash rather than a zero while counts are in flight',
         (tester) async {
       await tester.pumpWidget(_profileApp(
-        stats: (_) => Completer<ProfileStats>().future,
+        stats: () => Completer<ProfileStats>().future,
       ));
       await tester.pump();
 
@@ -66,7 +66,7 @@ void main() {
     testWidgets('an unreachable API leaves a dash, not an empty collection',
         (tester) async {
       await tester.pumpWidget(_profileApp(
-        stats: (_) async => throw Exception('offline'),
+        stats: () async => throw Exception('offline'),
       ));
       await tester.pump();
 
@@ -102,16 +102,14 @@ class _ExplodingService extends ProfileStatsService {
 
 Future<String?> _noToken() async => null;
 
-Widget _profileApp({
-  required Future<ProfileStats> Function(FutureProviderRef<ProfileStats>) stats,
-}) =>
+Widget _profileApp({required Future<ProfileStats> Function() stats}) =>
     ProviderScope(
       overrides: [
         currentUserProvider.overrideWithValue(_user),
         isPremiumProvider.overrideWithValue(false),
         profileAccountDataLoadingProvider.overrideWithValue(false),
         studioSessionProvider.overrideWith((_) async => null),
-        profileStatsProvider.overrideWith(stats),
+        profileStatsProvider.overrideWith((_) => stats()),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brand),
