@@ -9,6 +9,7 @@ from starlette.requests import Request
 from app.api.v1.endpoints import collections, recipes
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext
+from app.services.subscription_service import subscription_service
 
 
 def _request(language='uk'):
@@ -170,21 +171,50 @@ def test_free_preview_item_hides_a_recipe_the_tenant_never_published(monkeypatch
     assert result.items == []
 
 
-def _premium_recipe_route(monkeypatch, tenant, recipe_id, *, grants, calls=None):
+def _premium_recipe_route(monkeypatch, tenant, recipe_id, *, item, calls=None):
+    """Serve one premium recipe, with whatever the named collection claims of it."""
     row = _content(recipe_id, tenant.chef_id, premium=True)
     row['instructions'] = ['Секретний крок']
 
     async def get_recipe_by_id(_recipe_id, _chef_id):
         return {'data': [row]}
 
-    async def collection_grants_preview(received_recipe, received_collection, received_chef):
+    async def get_collection_item_grant(received_recipe, received_collection, received_chef):
         if calls is not None:
             calls.append((received_recipe, received_collection, received_chef))
-        return grants
+        return item
 
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', get_recipe_by_id)
     monkeypatch.setattr(
-        recipes.supabase_service, 'collection_grants_preview', collection_grants_preview,
+        recipes.supabase_service, 'get_collection_item_grant', get_collection_item_grant,
+    )
+
+
+def _item_grant(collection_id, chef_id, *, preview=False, premium=True):
+    return {
+        'is_preview': preview,
+        'collections': {
+            'id': collection_id, 'chef_id': chef_id,
+            'is_premium': premium, 'status': 'published',
+        },
+    }
+
+
+def _owns_collection(monkeypatch, user_id, chef_id, collection_id):
+    """Grant a real one-off entitlement rather than stubbing the decision."""
+    async def get_entitlements(received_user, received_chef):
+        assert (received_user, received_chef) == (user_id, chef_id)
+        return [{
+            'status': 'active', 'scope_type': 'collection',
+            'collection_id': collection_id, 'expires_at': None, 'starts_at': None,
+            'product': {
+                'kind': 'one_off',
+                'product_content': [{'collection_id': collection_id}],
+            },
+        }]
+
+    monkeypatch.setattr(
+        subscription_service.db_service, 'get_commerce_entitlements', get_entitlements,
     )
 
 
@@ -193,7 +223,10 @@ def test_free_preview_grant_opens_the_same_recipe_on_its_own_route(monkeypatch):
     tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
     recipe_id, collection_id = str(uuid4()), str(uuid4())
     calls = []
-    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=True, calls=calls)
+    _premium_recipe_route(
+        monkeypatch, tenant, recipe_id, calls=calls,
+        item=_item_grant(collection_id, tenant.chef_id, preview=True),
+    )
 
     result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, None, tenant))
 
@@ -206,7 +239,8 @@ def test_a_forged_collection_claim_never_opens_a_premium_recipe(monkeypatch):
     """The client names a collection; only the server decides what it granted."""
     tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
     recipe_id = str(uuid4())
-    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=False)
+    # No row comes back for a collection that does not carry this recipe.
+    _premium_recipe_route(monkeypatch, tenant, recipe_id, item=None)
 
     result = asyncio.run(recipes.get_recipe(recipe_id, str(uuid4()), None, tenant))
 
@@ -218,9 +252,79 @@ def test_a_malformed_collection_hint_is_no_grant_and_no_error(monkeypatch):
     tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
     recipe_id = str(uuid4())
     calls = []
-    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=True, calls=calls)
+    _premium_recipe_route(
+        monkeypatch, tenant, recipe_id, calls=calls,
+        item=_item_grant(str(uuid4()), tenant.chef_id, preview=True),
+    )
 
     result = asyncio.run(recipes.get_recipe(recipe_id, 'not-a-uuid', None, tenant))
 
     assert result.is_locked is True
     assert calls == []
+
+
+def test_buying_one_collection_opens_its_material_on_the_recipe_route(monkeypatch):
+    """The collection screen shows a bought material readable; so must the route."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id, collection_id, user_id = (str(uuid4()) for _ in range(3))
+    _premium_recipe_route(
+        monkeypatch, tenant, recipe_id,
+        item=_item_grant(collection_id, tenant.chef_id),
+    )
+    _owns_collection(monkeypatch, user_id, tenant.chef_id, collection_id)
+    buyer = User(id=user_id, email='buyer@example.com', chef_id=None)
+    # One collection is all this buyer holds — no tenant-wide premium to lean on.
+    assert not asyncio.run(
+        subscription_service.has_tenant_entitlement(user_id, tenant.chef_id))
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, buyer, tenant))
+
+    assert result.is_locked is False
+    assert result.instructions == ['Секретний крок']
+
+
+def test_a_premium_collection_stays_shut_for_someone_who_never_bought_it(monkeypatch):
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id, collection_id, other_collection = (str(uuid4()) for _ in range(3))
+    user_id = str(uuid4())
+    _premium_recipe_route(
+        monkeypatch, tenant, recipe_id,
+        item=_item_grant(collection_id, tenant.chef_id),
+    )
+    # The entitlement this viewer holds is for a different collection.
+    _owns_collection(monkeypatch, user_id, tenant.chef_id, other_collection)
+    viewer = User(id=user_id, email='viewer@example.com', chef_id=None)
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, viewer, tenant))
+
+    assert result.is_locked is True
+    assert result.instructions == []
+
+
+def test_an_embedded_collection_is_read_as_an_object_or_a_single_row(monkeypatch):
+    """PostgREST shapes a parent embed either way; ownership must survive both."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id, collection_id, user_id = (str(uuid4()) for _ in range(3))
+    grant = _item_grant(collection_id, tenant.chef_id)
+    grant['collections'] = [grant['collections']]
+    _premium_recipe_route(monkeypatch, tenant, recipe_id, item=grant)
+    _owns_collection(monkeypatch, user_id, tenant.chef_id, collection_id)
+    buyer = User(id=user_id, email='buyer@example.com', chef_id=None)
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, buyer, tenant))
+
+    assert result.is_locked is False
+
+
+def test_a_guest_gets_nothing_from_naming_a_premium_collection(monkeypatch):
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id, collection_id = str(uuid4()), str(uuid4())
+    _premium_recipe_route(
+        monkeypatch, tenant, recipe_id,
+        item=_item_grant(collection_id, tenant.chef_id),
+    )
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, None, tenant))
+
+    assert result.is_locked is True
+    assert result.instructions == []

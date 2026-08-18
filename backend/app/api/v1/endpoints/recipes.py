@@ -11,7 +11,7 @@ from app.api.v1.endpoints.auth import get_optional_user, verify_firebase_token, 
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
 from app.core.tenant import TenantContext, require_tenant_context
-from app.core.content_access import resolve_preview_grant, resolve_recipe_access
+from app.core.content_access import resolve_collection_grant, resolve_recipe_access
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -546,7 +546,7 @@ async def record_recipe_history(
 async def get_recipe(
     recipe_id: str,
     collection_id: Optional[str] = Query(
-        None, description="Collection whose free-preview grant should be re-checked for this recipe",
+        None, description="Collection whose grant over this recipe should be re-checked server-side",
     ),
     current_user: Optional[User] = Depends(get_optional_user),
     tenant: TenantContext = Depends(require_tenant_context),
@@ -580,11 +580,13 @@ async def get_recipe(
             )
 
         can_read_body = access.can_read_body
-        # A collection can hand out a free preview of its own premium item, so
-        # the same detail route has to honour that grant instead of teasing the
-        # recipe the collection screen just showed as free.
+        # A collection opens its own items — as a free preview, or because the
+        # viewer bought it — so the detail route has to honour that grant
+        # instead of teasing the material the collection screen just showed.
         if not can_read_body and _uuid_or_none(collection_id) is not None:
-            can_read_body = await resolve_preview_grant(recipe_data, collection_id, tenant)
+            can_read_body = await resolve_collection_grant(
+                recipe_data, collection_id, tenant, current_user,
+            )
 
         return _recipe_from_row(recipe_data) if can_read_body else _premium_teaser(recipe_data)
         

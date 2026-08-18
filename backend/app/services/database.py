@@ -145,20 +145,23 @@ class SupabaseService:
             .limit(1).execute()
         )
 
-    async def collection_grants_preview(self, recipe_id: str, collection_id: str, chef_id: str) -> bool:
-        """Re-check a client's preview claim: the grant belongs to the collection.
+    async def get_collection_item_grant(
+        self, recipe_id: str, collection_id: str, chef_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """Re-read what a collection claims about one of its items, server-side.
 
-        A free-preview grant counts only while its collection is published in
-        this tenant and still carries this recipe marked as a preview.
+        Returns the published in-tenant collection that carries this recipe,
+        together with the item's preview flag, or None when no such claim
+        exists. A client naming a collection proves nothing on its own.
         """
         result = (
             self.get_client(use_service_key=True).table('collection_items')
-            .select('id, collections!inner(id,chef_id,status)')
-            .eq('collection_id', collection_id).eq('recipe_id', recipe_id).eq('is_preview', True)
+            .select('is_preview, collections!inner(id,chef_id,is_premium,status)')
+            .eq('collection_id', collection_id).eq('recipe_id', recipe_id)
             .eq('collections.chef_id', chef_id).eq('collections.status', 'published')
             .limit(1).execute()
         )
-        return bool(result.data)
+        return (result.data or [None])[0]
 
     async def get_commerce_entitlements(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
         """Read entitlement scope and authoritative product-content mapping together."""
