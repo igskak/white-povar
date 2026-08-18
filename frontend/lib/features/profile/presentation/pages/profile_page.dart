@@ -7,6 +7,8 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../features/studio/studio_brand_draft_service.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../models/profile_stats.dart';
+import '../../providers/profile_stats_provider.dart';
 import '../../../subscription/paywall_provider.dart';
 import '../../../subscription/purchase_adapter.dart';
 import '../../../subscription/providers/subscription_provider.dart';
@@ -148,7 +150,7 @@ class _SignedInProfile extends ConsumerWidget {
               ]))
         ]),
         const SizedBox(height: AppSpacing.lg),
-        const _FutureStats(),
+        const _AccountStats(),
         const SizedBox(height: AppSpacing.lg),
         studioSession.when(
           data: (session) => session == null
@@ -399,16 +401,36 @@ class _StudioAccessCard extends StatelessWidget {
       );
 }
 
-class _FutureStats extends StatelessWidget {
-  const _FutureStats();
+/// The saved/cooked/scanned totals, counted by the API for this account and
+/// tenant.
+///
+/// A dash is shown while the counts are in flight or unreachable: a zero would
+/// claim the collection is empty, which is exactly the wrong thing to say when
+/// the request simply has not answered yet.
+class _AccountStats extends ConsumerWidget {
+  const _AccountStats();
+
   @override
-  Widget build(BuildContext context) => const Row(children: [
-        Expanded(child: _Stat(value: '—', label: 'Збережено')),
-        SizedBox(width: AppSpacing.xs),
-        Expanded(child: _Stat(value: '—', label: 'Приготовано')),
-        SizedBox(width: AppSpacing.xs),
-        Expanded(child: _Stat(value: '—', label: 'Сканувань')),
-      ]);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stats = ref.watch(profileStatsProvider);
+    String value(int Function(ProfileStats stats) read) => stats.maybeWhen(
+          data: (data) => '${read(data)}',
+          orElse: () => '—',
+        );
+    return Row(children: [
+      Expanded(
+          child:
+              _Stat(value: value((stats) => stats.saved), label: 'Збережено')),
+      const SizedBox(width: AppSpacing.xs),
+      Expanded(
+          child: _Stat(
+              value: value((stats) => stats.cooked), label: 'Приготовано')),
+      const SizedBox(width: AppSpacing.xs),
+      Expanded(
+          child:
+              _Stat(value: value((stats) => stats.scans), label: 'Сканувань')),
+    ]);
+  }
 }
 
 class _Stat extends StatelessWidget {

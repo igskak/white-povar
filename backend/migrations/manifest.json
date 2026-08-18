@@ -28,6 +28,7 @@
     {"id": "2026_07_15_seed_ohorodnik_brand_config", "filename": "2026_07_15_seed_ohorodnik_brand_config.sql", "requires": ["2026_07_15_published_brand_configs"], "optional": true, "recovery": "delete only the specifically seeded tenant records after approval"},
     {"id": "2026_07_16_seed_demo_commerce_offers", "filename": "2026_07_16_seed_demo_commerce_offers.sql", "requires": ["2026_07_16_demo_commerce", "2026_07_15_seed_ohorodnik_brand_config"], "recovery": "archive only the specifically seeded offers/products after approval"},
     {"id": "2026_07_19_fix_studio_brand_config_version_ambiguity", "filename": "2026_07_19_fix_studio_brand_config_version_ambiguity.sql", "requires": ["2026_07_15_studio_releases"], "recovery": "forward fix or restore the pre-QA Studio backup"},
-    {"id": "2026_07_26_recipe_image_presentation", "filename": "2026_07_26_recipe_image_presentation.sql", "requires": ["2026_07_15_studio_assets", "2026_07_16_studio_content_merchandising"], "recovery": "forward fix; image_url remains the backward-compatible source"}
+    {"id": "2026_07_26_recipe_image_presentation", "filename": "2026_07_26_recipe_image_presentation.sql", "requires": ["2026_07_15_studio_assets", "2026_07_16_studio_content_merchandising"], "recovery": "forward fix; image_url remains the backward-compatible source"},
+    {"id": "2026_08_18_user_scan_events", "filename": "2026_08_18_user_scan_events.sql", "requires": ["2026_07_11_enable_row_level_security"], "recovery": "drop the table; the profile scan counter reads zero without affecting saved or cooked"}
   ]
 }

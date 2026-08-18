@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
+import '../../../profile/providers/profile_stats_provider.dart';
 import '../../models/detected_ingredient.dart';
 import '../../providers/camera_provider.dart';
 import '../../providers/photo_search_provider.dart';
@@ -182,6 +183,10 @@ class _CameraCapturePageState extends ConsumerState<CameraCapturePage>
     if (photoSearchState.error != null) {
       return;
     }
+
+    // The API counted this scan; the profile must not keep serving the total
+    // it read before the shutter.
+    ref.invalidate(profileStatsProvider);
 
     context.push('/camera/review', extra: capturedImage);
   }

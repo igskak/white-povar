@@ -35,6 +35,13 @@ class User(BaseModel):
     chef_id: Optional[str] = None
 
 
+class ProfileStats(BaseModel):
+    """The three totals the profile header shows, counted inside one tenant."""
+    saved: int = 0
+    cooked: int = 0
+    scans: int = 0
+
+
 def _chef_id_from_user_result(user_result) -> Optional[str]:
     """Read trusted chef membership without accepting it from JWT user metadata."""
     if not user_result.data:
@@ -208,6 +215,21 @@ async def reset_preferences(
     tenant: TenantContext = Depends(require_tenant_context),
 ):
     await supabase_service.delete_preference_profile(current_user.id, tenant.chef_id)
+
+
+@router.get('/me/stats', response_model=ProfileStats)
+async def get_profile_stats(
+    current_user: User = Depends(verify_firebase_token),
+    tenant: TenantContext = Depends(require_tenant_context),
+):
+    """Count the caller's saved, cooked and scanned totals for this tenant.
+
+    The counts are read live rather than denormalized onto the user row: they
+    are cheap, and a stored counter would drift from the collection the Saved
+    page actually lists the moment a recipe leaves the tenant.
+    """
+    stats = await supabase_service.get_profile_stats(current_user.id, tenant.chef_id)
+    return ProfileStats(**stats)
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)

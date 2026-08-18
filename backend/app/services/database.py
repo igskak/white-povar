@@ -1049,6 +1049,60 @@ class SupabaseService:
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, _execute)
 
+    async def record_scan_event(self, user_id: str, chef_id: str) -> None:
+        """Append one private scan row for the resolved tenant.
+
+        A scan is an event rather than a state, so unlike view/cook history it
+        appends instead of upserting: two photos of the same fridge are two
+        scans.
+        """
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            return client.table('user_scan_events').insert({
+                'user_id': user_id,
+                'chef_id': chef_id,
+            }).execute()
+
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, _execute)
+
+    async def get_profile_stats(self, user_id: str, chef_id: str) -> Dict[str, int]:
+        """Count the three profile totals inside the resolved tenant.
+
+        `saved` deliberately repeats the tenant filter the Saved page applies to
+        the same rows: `user_favorites` is not chef-scoped, so counting it
+        directly would show a total the collection screen never lists.
+        """
+        def _execute():
+            client = self.get_client(use_service_key=True)
+            favorite_ids = [
+                str(row['recipe_id'])
+                for row in (client.table('user_favorites').select('recipe_id')
+                            .eq('user_id', user_id).execute().data or [])
+            ]
+            saved = 0
+            if favorite_ids:
+                saved = client.table('recipes').select('id', count='exact') \
+                    .in_('id', favorite_ids).eq('chef_id', chef_id) \
+                    .limit(1).execute().count or 0
+            cooked = client.table('user_recipe_history').select('recipe_id', count='exact') \
+                .eq('user_id', user_id).eq('chef_id', chef_id) \
+                .not_.is_('cooked_at', 'null').limit(1).execute().count or 0
+            try:
+                scans = client.table('user_scan_events').select('id', count='exact') \
+                    .eq('user_id', user_id).eq('chef_id', chef_id) \
+                    .limit(1).execute().count or 0
+            except Exception:
+                # The scan table arrives with its own migration, which is applied
+                # by hand after the code deploys. Until then the two counters
+                # that do have their tables must still reach the profile.
+                logger.warning('Scan counter unavailable; is 2026_08_18_user_scan_events applied?')
+                scans = 0
+            return {'saved': saved, 'cooked': cooked, 'scans': scans}
+
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _execute)
+
     # Ingestion-related methods
     async def create_ingestion_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new ingestion job"""

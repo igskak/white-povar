@@ -30,6 +30,18 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+async def _record_scan(user_id: str, chef_id: str) -> None:
+    """Persist the scan without letting bookkeeping fail a delivered result.
+
+    This is deliberately not an analytics event: those are consent-gated and
+    allowlisted, so they can never back a counter the account owner is shown.
+    """
+    try:
+        await supabase_service.record_scan_event(user_id, chef_id)
+    except Exception:
+        logger.warning('Scan event dropped for authenticated user', exc_info=True)
+
+
 def _row_contains_any(row: Dict[str, Any], terms: List[str]) -> bool:
     """Safety filter for declared allergens/dislikes.
 
@@ -188,9 +200,14 @@ class FilterOptions(BaseModel):
 @router.post("/photo", response_model=PhotoSearchResponse)
 async def search_by_photo(
     request: PhotoSearchRequest,
+    current_user: Optional[User] = Depends(get_optional_user),
     tenant: TenantContext = Depends(require_tenant_context),
 ):
-    """Search recipes by analyzing ingredients in a photo using OpenAI Vision"""
+    """Search recipes by analyzing ingredients in a photo using OpenAI Vision.
+
+    The scan stays available to anonymous visitors; it is only recorded when a
+    signed-in user performed it, because the counter it feeds is per account.
+    """
     try:
         # Validate and process the image
         try:
@@ -279,6 +296,8 @@ async def search_by_photo(
             confidence_score = vision_result.get('confidence', 0.0)
             
             if not detected_ingredients:
+                # A photo the model could not read is not a scan the user made:
+                # it produced nothing, so it must not inflate the counter.
                 return PhotoSearchResponse(
                     ingredients=[],
                     suggested_recipes=[],
@@ -299,7 +318,10 @@ async def search_by_photo(
                 tenant.chef_id,
                 request.max_results
             )
-            
+
+            if current_user:
+                await _record_scan(current_user.id, tenant.chef_id)
+
             return PhotoSearchResponse(
                 ingredients=detected_ingredients,
                 suggested_recipes=suggested_recipes,

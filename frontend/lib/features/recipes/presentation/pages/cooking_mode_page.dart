@@ -12,6 +12,7 @@ import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../profile/providers/profile_stats_provider.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
@@ -138,6 +139,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                       await ref
                           .read(recipeServiceProvider)
                           .recordHistory(recipe.id, 'cooked');
+                      ref.invalidate(profileStatsProvider);
                     } catch (_) {
                       // Completion stays local; a network retry must not undo it.
                     }
