@@ -110,10 +110,13 @@ async def get_collection(
         elif not item.get('is_preview', False):
             projected = _premium_teaser(content)
         else:
+            # A free preview is the collection's to give: it opens its own item
+            # even when that recipe is premium. Visibility is still the recipe's
+            # to refuse, so an unpublished or cross-tenant row stays hidden.
             content_access = await resolve_recipe_access(content, tenant, current_user)
             if not content_access.exists_in_tenant:
                 continue
-            projected = _content_item_from_row(content) if content_access.can_read_body else _premium_teaser(content)
+            projected = _content_item_from_row(content)
         items.append(CollectionItem(
             id=item['id'], position=item['position'], is_preview=item.get('is_preview', False), content=projected,
         ))

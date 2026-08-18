@@ -99,7 +99,8 @@ class _HomeRecipeService extends RecipeService {
   }
 
   @override
-  Future<Recipe> getRecipe(String id) async => _recipes.first;
+  Future<Recipe> getRecipe(String id, {String? collectionId}) async =>
+      _recipes.first;
 
   @override
   Future<List<Recipe>> getFeaturedRecipes() async => [_recipes.first];

@@ -50,6 +50,28 @@ class OfferRouteLocation {
   }
 }
 
+/// A collection can mark one of its premium materials as a free preview. That
+/// grant belongs to the collection, not to the recipe, so it has to travel with
+/// the link — otherwise a material the collection screen showed as free locks
+/// itself again the moment it opens on its own route. The server re-checks the
+/// claim; carrying it here only keeps it from being lost in navigation.
+class PreviewGrant {
+  const PreviewGrant._();
+
+  static const String queryParam = 'collectionId';
+
+  static String appendTo(String path, String? collectionId) {
+    if (collectionId == null || collectionId.isEmpty) return path;
+    final uri = Uri.parse(path);
+    return uri.replace(queryParameters: {
+      ...uri.queryParameters,
+      queryParam: collectionId,
+    }).toString();
+  }
+
+  static String? fromUri(Uri uri) => _nonEmpty(uri.queryParameters[queryParam]);
+}
+
 String? _nonEmpty(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;

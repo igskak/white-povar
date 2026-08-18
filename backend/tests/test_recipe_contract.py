@@ -279,7 +279,7 @@ def test_private_recipe_is_hidden_from_guests(monkeypatch):
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', private_recipe)
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(recipes.get_recipe(recipe_id, None, tenant))
+        asyncio.run(recipes.get_recipe(recipe_id, None, None, tenant))
 
     assert error.value.status_code == 404
 

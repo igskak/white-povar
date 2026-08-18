@@ -34,7 +34,7 @@ def test_cross_tenant_detail_is_indistinguishable_from_missing(monkeypatch):
 
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', get_recipe_by_id)
     with pytest.raises(HTTPException) as error:
-        asyncio.run(recipes.get_recipe(recipe_id, None, tenant_a))
+        asyncio.run(recipes.get_recipe(recipe_id, None, None, tenant_a))
 
     assert error.value.status_code == 404
     assert calls == [(recipe_id, tenant_a.chef_id)]
@@ -50,7 +50,7 @@ def test_guest_gets_premium_teaser_without_protected_body(monkeypatch):
         return {'data': [_row(recipe_id=recipe_id, chef_id=tenant.chef_id, premium=True)]}
 
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', get_recipe_by_id)
-    result = asyncio.run(recipes.get_recipe(recipe_id, None, tenant))
+    result = asyncio.run(recipes.get_recipe(recipe_id, None, None, tenant))
 
     assert result.is_locked is True
     assert result.instructions == []
@@ -69,7 +69,7 @@ def test_tenant_member_can_read_own_private_body(monkeypatch):
 
     monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', get_recipe_by_id)
     result = asyncio.run(recipes.get_recipe(
-        recipe_id, User(id=str(uuid4()), email='member@example.com', chef_id=tenant.chef_id), tenant,
+        recipe_id, None, User(id=str(uuid4()), email='member@example.com', chef_id=tenant.chef_id), tenant,
     ))
     assert result.is_locked is False
     assert result.instructions == ['secret step']

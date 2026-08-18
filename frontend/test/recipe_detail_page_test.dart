@@ -18,13 +18,26 @@ void main() {
   group('UI-05 recipe detail', () {
     testWidgets('does not build protected payload for a locked premium recipe',
         (tester) async {
-      await tester.pumpWidget(_app(recipe: _recipe(isPremium: true)));
+      await tester
+          .pumpWidget(_app(recipe: _recipe(isPremium: true, isLocked: true)));
       await tester.pump();
 
       expect(find.text('Рецепт від шефа — у Premium'), findsOneWidget);
       expect(find.text('Секретний інгредієнт'), findsNothing);
       expect(find.text('Не показувати цей крок'), findsNothing);
       expect(find.text('Почати готувати'), findsNothing);
+    });
+
+    testWidgets('a free preview reads without any premium of its own',
+        (tester) async {
+      // The collection granted this one material; the server unlocked the body
+      // and the page must not lock it again from a local subscription flag.
+      await tester.pumpWidget(_app(recipe: _recipe(isPremium: true)));
+      await tester.pump();
+
+      expect(find.text('Секретний інгредієнт'), findsOneWidget);
+      expect(find.text('Не показувати цей крок'), findsOneWidget);
+      expect(find.text('Рецепт від шефа — у Premium'), findsNothing);
     });
 
     testWidgets('renders recipe sections for a user with premium access',
@@ -225,7 +238,8 @@ Widget _app({
 }) =>
     ProviderScope(
       overrides: [
-        recipeDetailProvider(recipe.id).overrideWith((_) async => recipe),
+        recipeDetailProvider((recipeId: recipe.id, collectionId: null))
+            .overrideWith((_) async => recipe),
         isPremiumProvider.overrideWithValue(hasPremiumAccess),
         authProvider.overrideWith(
           (ref) => AuthNotifier.testing(
@@ -244,6 +258,7 @@ Widget _app({
 
 Recipe _recipe({
   required bool isPremium,
+  bool isLocked = false,
   ContentKind contentKind = ContentKind.recipe,
   List<Ingredient>? ingredients,
 }) =>
@@ -276,6 +291,7 @@ Recipe _recipe({
       tags: const [],
       isFeatured: false,
       isPremium: isPremium,
+      isLocked: isLocked,
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     );

@@ -78,7 +78,11 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: columns,
-                  mainAxisExtent: columns == 1 ? 142 : 168,
+                  // A card carries up to three badges — kind, free preview and
+                  // resume — and on a phone each one claims most of a row, so
+                  // the tile is sized for the badges wrapping rather than for
+                  // the shortest card in the grid.
+                  mainAxisExtent: columns == 1 ? 212 : 188,
                   crossAxisSpacing: AppSpacing.md,
                   mainAxisSpacing: AppSpacing.md,
                 ),
@@ -134,7 +138,9 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
       ContentKind.recipe => '/recipes/${item.content.id}',
       _ => '/content/${item.content.id}',
     };
-    if (mounted) context.push(path);
+    // Name the collection so the free preview it granted survives the jump to
+    // the material instead of locking itself again on the recipe route.
+    if (mounted) context.push(PreviewGrant.appendTo(path, collection.id));
   }
 }
 
@@ -272,6 +278,8 @@ class _CollectionItemCard extends StatelessWidget {
                     ]),
                 const SizedBox(height: AppSpacing.xs),
                 Text(item.content.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium),
                 if (!item.isLocked)
                   Text(item.content.description,

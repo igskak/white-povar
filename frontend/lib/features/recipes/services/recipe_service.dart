@@ -65,10 +65,16 @@ class RecipeService {
   }
 
   // Get recipe by ID
-  Future<Recipe> getRecipe(String id) async {
+  Future<Recipe> getRecipe(String id, {String? collectionId}) async {
     try {
-      final response =
-          await _apiClient.get<Map<String, dynamic>>('/api/v1/recipes/$id');
+      // A collection that marked this material a free preview is named here so
+      // the server can honour its own grant instead of serving a teaser.
+      final response = await _apiClient.get<Map<String, dynamic>>(
+        '/api/v1/recipes/$id',
+        queryParameters: {
+          if (collectionId != null) 'collection_id': collectionId,
+        },
+      );
       if (response.statusCode == 200) {
         final data = response.data!;
         return Recipe.fromJson(data);

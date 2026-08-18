@@ -41,7 +41,8 @@ Widget _recipeApp(_RecipeFixtureState state) {
   final recipe = _recipe(isPremium: state == _RecipeFixtureState.locked);
   return ProviderScope(
     overrides: [
-      recipeDetailProvider(recipe.id).overrideWith((_) async => recipe),
+      recipeDetailProvider((recipeId: recipe.id, collectionId: null))
+          .overrideWith((_) async => recipe),
       isPremiumProvider.overrideWithValue(false),
       authProvider.overrideWith((_) => AuthNotifier.testing()),
     ],

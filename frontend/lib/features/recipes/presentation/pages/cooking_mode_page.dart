@@ -13,14 +13,17 @@ import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../profile/providers/profile_stats_provider.dart';
-import '../../../subscription/providers/subscription_provider.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
 import '../../services/cooking_progress_store.dart';
 
 class CookingModePage extends ConsumerStatefulWidget {
-  const CookingModePage({super.key, required this.recipeId});
+  const CookingModePage({super.key, required this.recipeId, this.collectionId});
   final String recipeId;
+
+  /// Carried over from the collection that granted this material a free
+  /// preview, so cooking mode reads the same projection the detail screen did.
+  final String? collectionId;
   @override
   ConsumerState<CookingModePage> createState() => _CookingModePageState();
 }
@@ -80,9 +83,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
 
   @override
   Widget build(BuildContext context) {
-    final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
+    final recipeAsync = ref.watch(recipeDetailProvider(
+        (recipeId: widget.recipeId, collectionId: widget.collectionId)));
     final isAuthenticated = ref.watch(authProvider).isAuthenticated;
-    final hasAccess = ref.watch(isPremiumProvider);
     return ForcedDarkTheme(
       child: Scaffold(
         backgroundColor: AppColorsV2.ink,
@@ -90,7 +93,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => _CookingError(onExit: () => context.pop()),
           data: (recipe) {
-            if (recipe.isPremium && !hasAccess) {
+            // The server already refused or granted the body; a free preview
+            // arrives unlocked even though the recipe itself is premium.
+            if (recipe.isLocked) {
               return _CookingGate(
                 onUnlock: () => _openGate(context, isAuthenticated),
               );

@@ -81,7 +81,8 @@ class _FavoriteService implements RecipeService {
   @override
   Future<List<Recipe>> getFeaturedRecipes() async => [];
   @override
-  Future<Recipe> getRecipe(String id) => throw UnimplementedError();
+  Future<Recipe> getRecipe(String id, {String? collectionId}) =>
+      throw UnimplementedError();
   @override
   Future<List<Recipe>> getRecipes({
     String? cuisine,

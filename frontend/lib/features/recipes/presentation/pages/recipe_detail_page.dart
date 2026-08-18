@@ -12,7 +12,6 @@ import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../menu_plan/providers/menu_plan_provider.dart';
 import '../../../pantry/providers/pantry_provider.dart';
-import '../../../subscription/providers/subscription_provider.dart';
 import '../../../subscription/widgets/premium_badge.dart';
 import '../../models/recipe.dart';
 import '../../providers/recipe_provider.dart';
@@ -22,8 +21,13 @@ import '../widgets/recipe_photo.dart';
 import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerStatefulWidget {
-  const RecipeDetailPage({super.key, required this.recipeId});
+  const RecipeDetailPage(
+      {super.key, required this.recipeId, this.collectionId});
   final String recipeId;
+
+  /// Set when this material was opened from a collection that marked it a free
+  /// preview. The server re-checks the grant before it unlocks anything.
+  final String? collectionId;
 
   @override
   ConsumerState<RecipeDetailPage> createState() => _RecipeDetailPageState();
@@ -32,11 +36,16 @@ class RecipeDetailPage extends ConsumerStatefulWidget {
 class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
   bool _viewRecorded = false;
 
+  String get _cookingLocation => PreviewGrant.appendTo(
+      '/recipes/${widget.recipeId}/cook', widget.collectionId);
+
+  RecipeDetailRequest get _request =>
+      (recipeId: widget.recipeId, collectionId: widget.collectionId);
+
   @override
   Widget build(BuildContext context) {
-    final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
+    final recipeAsync = ref.watch(recipeDetailProvider(_request));
     final auth = ref.watch(authProvider);
-    final hasPremiumAccess = ref.watch(isPremiumProvider);
 
     return Scaffold(
       body: recipeAsync.when(
@@ -48,7 +57,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
           subtitle: _isOffline(error)
               ? 'Перевірте інтернет і спробуйте ще раз.'
               : 'Спробуйте відкрити рецепт ще раз.',
-          onRetry: () => ref.invalidate(recipeDetailProvider(widget.recipeId)),
+          onRetry: () => ref.invalidate(recipeDetailProvider(_request)),
         ),
         data: (recipe) {
           if (auth.isAuthenticated && !_viewRecorded) {
@@ -59,8 +68,10 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 .recordHistory(recipe.id, 'viewed')
                 .catchError((_) {});
           }
-          final locked =
-              recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
+          // The server's projection is the access decision; guessing again from
+          // a local subscription flag re-locks free previews and one-off
+          // collection purchases that never granted tenant-wide premium.
+          final locked = recipe.isLocked;
           final canCook = (recipe.contentKind == ContentKind.recipe ||
                   recipe.contentKind == ContentKind.process) &&
               recipe.instructions.isNotEmpty;
@@ -74,7 +85,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
             onPrimaryAction: locked
                 ? () => _openGate(context, auth.isAuthenticated)
                 : canCook
-                    ? () => context.push('/recipes/${widget.recipeId}/cook')
+                    ? () => context.push(_cookingLocation)
                     : null,
             onAddToShopping: locked || !auth.isAuthenticated
                 ? null
@@ -110,8 +121,10 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
           if (MediaQuery.sizeOf(context).width >= AppLayout.desktopBreakpoint) {
             return null;
           }
-          final locked =
-              recipe.isLocked || (recipe.isPremium && !hasPremiumAccess);
+          // The server's projection is the access decision; guessing again from
+          // a local subscription flag re-locks free previews and one-off
+          // collection purchases that never granted tenant-wide premium.
+          final locked = recipe.isLocked;
           final canCook = (recipe.contentKind == ContentKind.recipe ||
                   recipe.contentKind == ContentKind.process) &&
               recipe.instructions.isNotEmpty;
@@ -123,7 +136,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 locked ? Icons.workspace_premium : Icons.soup_kitchen_outlined,
             onPressed: () => locked
                 ? _openGate(context, auth.isAuthenticated)
-                : context.push('/recipes/${widget.recipeId}/cook'),
+                : context.push(_cookingLocation),
           );
         },
         orElse: () => null,

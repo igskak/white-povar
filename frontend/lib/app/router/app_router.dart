@@ -167,7 +167,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   title: 'Рецепт не знайдено',
                   subtitle: 'Некоректний ідентифікатор рецепта.',
                 )
-              : CookingModePage(recipeId: recipeId);
+              : CookingModePage(
+                  recipeId: recipeId,
+                  collectionId: PreviewGrant.fromUri(state.uri),
+                );
         },
       ),
       GoRoute(
@@ -289,7 +292,10 @@ Widget _recipeDetail(GoRouterState state) {
           title: 'Рецепт не знайдено',
           subtitle: 'Некоректний ідентифікатор рецепта.',
         )
-      : RecipeDetailPage(recipeId: recipeId);
+      : RecipeDetailPage(
+          recipeId: recipeId,
+          collectionId: PreviewGrant.fromUri(state.uri),
+        );
 }
 
 class AdaptiveNavigationShell extends ConsumerWidget {

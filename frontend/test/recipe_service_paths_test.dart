@@ -31,6 +31,25 @@ void main() {
 
     expect(adapter.paths.single, '/api/v1/recipes/');
   });
+
+  test('a collection is named so the server can honour its preview grant',
+      () async {
+    final adapter = _RecordingAdapter(body: _recipeJson);
+    final service = RecipeService(_client(adapter));
+
+    await service.getRecipe('recipe-1', collectionId: 'collection-1');
+
+    expect(adapter.queries.single, {'collection_id': 'collection-1'});
+  });
+
+  test('a recipe opened on its own carries no collection claim', () async {
+    final adapter = _RecordingAdapter(body: _recipeJson);
+    final service = RecipeService(_client(adapter));
+
+    await service.getRecipe('recipe-1');
+
+    expect(adapter.queries.single, isEmpty);
+  });
 }
 
 const _recipeJson = <String, dynamic>{
@@ -63,6 +82,7 @@ class _RecordingAdapter implements HttpClientAdapter {
   final int statusCode;
   final Map<String, dynamic> body;
   final List<String> paths = [];
+  final List<Map<String, String>> queries = [];
 
   @override
   void close({bool force = false}) {}
@@ -74,6 +94,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     paths.add(options.uri.path);
+    queries.add(options.uri.queryParameters);
     return ResponseBody.fromString(
       jsonEncode(body),
       statusCode,

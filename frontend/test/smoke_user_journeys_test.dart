@@ -204,7 +204,7 @@ class _FakeRecipeService implements RecipeService {
   Future<Map<String, dynamic>> getSearchFilterOptions() async => const {};
 
   @override
-  Future<Recipe> getRecipe(String id) async {
+  Future<Recipe> getRecipe(String id, {String? collectionId}) async {
     return _testRecipe(id: id, title: 'Recipe Detail');
   }
 

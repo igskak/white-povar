@@ -210,9 +210,16 @@ class AppBadge extends StatelessWidget {
                 Icon(icon, size: 15, color: scheme.onSecondary),
                 const SizedBox(width: AppSpacing.xxs)
               ],
-              Text(label,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.onSecondary, fontWeight: FontWeight.w700)),
+              // A long label belongs to a narrow card as often as to a wide
+              // one, so the badge shrinks instead of painting an overflow.
+              Flexible(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSecondary,
+                        fontWeight: FontWeight.w700)),
+              ),
             ],
           ),
         ),

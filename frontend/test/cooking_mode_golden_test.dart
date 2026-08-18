@@ -61,7 +61,8 @@ void main() {
 
 Widget _cookingApp(String fixtureKey) => ProviderScope(
       overrides: [
-        recipeDetailProvider(_recipe.id).overrideWith((_) async => _recipe),
+        recipeDetailProvider((recipeId: _recipe.id, collectionId: null))
+            .overrideWith((_) async => _recipe),
         authProvider.overrideWith((_) => AuthNotifier.testing()),
         isPremiumProvider.overrideWithValue(true),
       ],

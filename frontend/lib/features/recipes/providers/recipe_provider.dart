@@ -87,15 +87,20 @@ class RecipeListNotifier extends StateNotifier<AsyncValue<List<Recipe>>> {
   }
 }
 
+/// A detail is addressed by its recipe, plus the collection whose free-preview
+/// grant opened it, when there is one.
+typedef RecipeDetailRequest = ({String recipeId, String? collectionId});
+
 // Recipe detail provider
 final recipeDetailProvider =
-    FutureProvider.family<Recipe, String>((ref, recipeId) async {
+    FutureProvider.family<Recipe, RecipeDetailRequest>((ref, request) async {
   // A detail can initially load as an anonymous premium teaser while the web
   // session is restoring. Recompute when auth becomes available so the
   // server's entitlement projection is reflected without manual refresh.
   ref.watch(currentUserProvider);
   final recipeService = ref.watch(recipeServiceProvider);
-  return recipeService.getRecipe(recipeId);
+  return recipeService.getRecipe(request.recipeId,
+      collectionId: request.collectionId);
 });
 
 final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {

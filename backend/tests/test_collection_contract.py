@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from app.api.v1.endpoints import collections
+from app.api.v1.endpoints import collections, recipes
 from app.api.v1.endpoints.auth import User
 from app.core.tenant import TenantContext
 
@@ -18,11 +18,11 @@ def _request(language='uk'):
     })
 
 
-def _content(recipe_id, chef_id):
+def _content(recipe_id, chef_id, *, premium=False):
     now = datetime.now(timezone.utc).isoformat()
     return {
         'id': recipe_id, 'chef_id': chef_id, 'title': 'Техніка', 'description': 'Деталі',
-        'content_kind': 'technique', 'is_public': True, 'is_premium': False,
+        'content_kind': 'technique', 'is_public': True, 'is_premium': premium,
         'difficulty_level': 1, 'prep_time_minutes': 0, 'cook_time_minutes': 0,
         'servings': 1, 'instructions_structured': ['Секретний крок'], 'tags': [],
         'created_at': now, 'updated_at': now, 'recipe_ingredients': [], 'recipe_nutrition': [],
@@ -124,3 +124,103 @@ def test_collection_migration_allows_one_content_item_in_multiple_collections():
     assert 'UNIQUE (collection_id, recipe_id)' in sql
     assert 'UNIQUE (recipe_id)' not in sql
     assert 'enforce_collection_item_tenant' in sql
+
+
+def test_free_preview_opens_its_premium_item_but_not_the_rest(monkeypatch):
+    """The badge promises a readable material, so the projection must deliver one."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    collection_id, preview_id, paid_id = (str(uuid4()) for _ in range(3))
+    row = _collection(collection_id, tenant.chef_id, items=[
+        {'id': str(uuid4()), 'position': 0, 'is_preview': True,
+         'content': _content(preview_id, tenant.chef_id, premium=True)},
+        {'id': str(uuid4()), 'position': 1, 'is_preview': False,
+         'content': _content(paid_id, tenant.chef_id, premium=True)},
+    ])
+
+    async def get_one(*_args):
+        return _Result([row])
+
+    monkeypatch.setattr(collections.supabase_service, 'get_published_collection_by_id', get_one)
+    result = asyncio.run(collections.get_collection(collection_id, _request(), None, tenant))
+
+    assert result.is_locked is True
+    preview, paid = result.items
+    assert preview.is_preview is True
+    assert preview.content.is_locked is False
+    assert preview.content.instructions == ['Секретний крок']
+    assert paid.content.is_locked is True
+    assert paid.content.instructions == []
+
+
+def test_free_preview_item_hides_a_recipe_the_tenant_never_published(monkeypatch):
+    """A preview flag grants premium reading, never cross-tenant visibility."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    collection_id = str(uuid4())
+    foreign = _content(str(uuid4()), str(uuid4()), premium=True)
+    row = _collection(collection_id, tenant.chef_id, items=[
+        {'id': str(uuid4()), 'position': 0, 'is_preview': True, 'content': foreign},
+    ])
+
+    async def get_one(*_args):
+        return _Result([row])
+
+    monkeypatch.setattr(collections.supabase_service, 'get_published_collection_by_id', get_one)
+    result = asyncio.run(collections.get_collection(collection_id, _request(), None, tenant))
+
+    assert result.items == []
+
+
+def _premium_recipe_route(monkeypatch, tenant, recipe_id, *, grants, calls=None):
+    row = _content(recipe_id, tenant.chef_id, premium=True)
+    row['instructions'] = ['Секретний крок']
+
+    async def get_recipe_by_id(_recipe_id, _chef_id):
+        return {'data': [row]}
+
+    async def collection_grants_preview(received_recipe, received_collection, received_chef):
+        if calls is not None:
+            calls.append((received_recipe, received_collection, received_chef))
+        return grants
+
+    monkeypatch.setattr(recipes.supabase_service, 'get_recipe_by_id', get_recipe_by_id)
+    monkeypatch.setattr(
+        recipes.supabase_service, 'collection_grants_preview', collection_grants_preview,
+    )
+
+
+def test_free_preview_grant_opens_the_same_recipe_on_its_own_route(monkeypatch):
+    """Opening the item from the collection must not re-lock what it showed as free."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id, collection_id = str(uuid4()), str(uuid4())
+    calls = []
+    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=True, calls=calls)
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, collection_id, None, tenant))
+
+    assert result.is_locked is False
+    assert result.instructions == ['Секретний крок']
+    assert calls == [(recipe_id, collection_id, tenant.chef_id)]
+
+
+def test_a_forged_collection_claim_never_opens_a_premium_recipe(monkeypatch):
+    """The client names a collection; only the server decides what it granted."""
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id = str(uuid4())
+    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=False)
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, str(uuid4()), None, tenant))
+
+    assert result.is_locked is True
+    assert result.instructions == []
+
+
+def test_a_malformed_collection_hint_is_no_grant_and_no_error(monkeypatch):
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    recipe_id = str(uuid4())
+    calls = []
+    _premium_recipe_route(monkeypatch, tenant, recipe_id, grants=True, calls=calls)
+
+    result = asyncio.run(recipes.get_recipe(recipe_id, 'not-a-uuid', None, tenant))
+
+    assert result.is_locked is True
+    assert calls == []
