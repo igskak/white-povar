@@ -86,6 +86,17 @@ void main() {
             greaterThanOrEqualTo(4.5),
             reason: '${brand.tenantSlug} surface text',
           );
+          expect(
+            _contrastRatio(
+                scheme.onSurfaceVariant, theme.scaffoldBackgroundColor),
+            greaterThanOrEqualTo(4.5),
+            reason: '${brand.tenantSlug} secondary text on page background',
+          );
+          expect(
+            _contrastRatio(scheme.outline, scheme.surfaceContainerLowest),
+            greaterThanOrEqualTo(3),
+            reason: '${brand.tenantSlug} control outline',
+          );
         }
       }
     });

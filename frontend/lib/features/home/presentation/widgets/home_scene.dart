@@ -19,30 +19,82 @@ class ScanBanner extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ContentCard(
-        onTap: onTap,
-        semanticLabel: 'Сканувати інгредієнти',
-        child: Row(
-          children: [
-            const Icon(Icons.photo_camera_outlined),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    final dark = theme.brightness == Brightness.dark;
+    final foreground = dark ? semantic.textPrimary : AppColorsV2.onInk;
+    final background = dark ? semantic.surfaceRaised : AppColorsV2.ink;
+    final accent = context.brandTheme.accentOnDark;
+
+    return Semantics(
+      button: true,
+      label: 'Сканувати інгредієнти',
+      child: Material(
+        color: background,
+        elevation: dark ? 0 : AppElevation.level2,
+        shadowColor: accent.withOpacity(.22),
+        borderRadius: AppRadius.lg,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          mouseCursor: SystemMouseCursors.click,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 66),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
                 children: [
-                  Text('Сканувати інгредієнти',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  Text('Фото продуктів → рецепти за 10 секунд',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: accent.withOpacity(.16),
+                      borderRadius: AppRadius.md,
+                      border: Border.all(color: accent.withOpacity(.42)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xs),
+                      child: Icon(Icons.photo_camera_outlined,
+                          size: 22, color: accent),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Сканувати інгредієнти',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: foreground,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Фото продуктів → рецепти за 10 секунд',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: foreground.withOpacity(.72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(Icons.arrow_forward_rounded, color: accent),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_rounded),
-          ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// The intro block of the compact Home: brand header, the photo the tenant

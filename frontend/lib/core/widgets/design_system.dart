@@ -235,26 +235,59 @@ class ContentCard extends StatelessWidget {
     this.onTap,
     this.semanticLabel,
     this.padding = const EdgeInsets.all(AppSpacing.md),
+    this.variant,
   });
 
   final Widget child;
   final VoidCallback? onTap;
   final String? semanticLabel;
   final EdgeInsetsGeometry padding;
+  final ContentCardVariant? variant;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: onTap != null,
-        label: semanticLabel,
-        child: Card(
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(padding: padding, child: child),
-          ),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final resolved = variant ??
+        (onTap == null
+            ? ContentCardVariant.outlined
+            : ContentCardVariant.raised);
+    final shape = switch (resolved) {
+      ContentCardVariant.flat => const RoundedRectangleBorder(
+          borderRadius: AppRadius.lg,
         ),
-      );
+      ContentCardVariant.outlined ||
+      ContentCardVariant.raised =>
+        RoundedRectangleBorder(
+          borderRadius: AppRadius.lg,
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+    };
+
+    return Semantics(
+      button: onTap != null,
+      label: semanticLabel,
+      child: Card(
+        color: resolved == ContentCardVariant.flat
+            ? scheme.surfaceContainerLow
+            : scheme.surfaceContainerLowest,
+        elevation:
+            resolved == ContentCardVariant.raised ? AppElevation.level1 : 0,
+        shadowColor: scheme.shadow.withOpacity(.18),
+        surfaceTintColor: Colors.transparent,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          mouseCursor:
+              onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+          onTap: onTap,
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
+  }
 }
+
+enum ContentCardVariant { flat, outlined, raised }
 
 class BrandHeader extends StatelessWidget {
   const BrandHeader({

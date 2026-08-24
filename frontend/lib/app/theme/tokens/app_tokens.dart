@@ -83,7 +83,7 @@ class AppElevation {
   static const double level3 = 4;
 }
 
-/// The eight semantic colour roles, resolved for one [Brightness].
+/// The semantic colour roles resolved for one [Brightness].
 ///
 /// Widgets must read these through `context.semantic` (or the [ThemeExtension])
 /// rather than referencing raw values, so that a surface renders correctly in
@@ -92,7 +92,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   const SemanticColors({
     required this.background,
     required this.surface,
+    required this.surfaceRaised,
     required this.surfaceStrong,
+    required this.outline,
+    required this.outlineVariant,
     required this.textPrimary,
     required this.textSecondary,
     required this.success,
@@ -102,7 +105,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
 
   final Color background;
   final Color surface;
+  final Color surfaceRaised;
   final Color surfaceStrong;
+  final Color outline;
+  final Color outlineVariant;
   final Color textPrimary;
   final Color textSecondary;
   final Color success;
@@ -113,9 +119,12 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   static const SemanticColors light = SemanticColors(
     background: Color(0xFFF5EEE1),
     surface: Color(0xFFFDF8EE),
+    surfaceRaised: Color(0xFFFFFCF5),
     surfaceStrong: Color(0xFFEBE0CC),
+    outline: Color(0xFF8F826D),
+    outlineVariant: Color(0xFFD8CAB3),
     textPrimary: Color(0xFF1C1710),
-    textSecondary: Color(0xFF7C7159),
+    textSecondary: Color(0xFF6A604D),
     success: Color(0xFF3E6B4A),
     warning: Color(0xFFB0832E),
     error: Color(0xFFA8362A),
@@ -125,7 +134,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   static const SemanticColors dark = SemanticColors(
     background: Color(0xFF16130F),
     surface: Color(0xFF221D16),
+    surfaceRaised: Color(0xFF2A241C),
     surfaceStrong: Color(0xFF2E2820),
+    outline: Color(0xFF8D816F),
+    outlineVariant: Color(0xFF4A4136),
     textPrimary: Color(0xFFF3E9DA),
     textSecondary: Color(0xFFB9AC98),
     success: Color(0xFF7A9E7E),
@@ -159,7 +171,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
   SemanticColors copyWith({
     Color? background,
     Color? surface,
+    Color? surfaceRaised,
     Color? surfaceStrong,
+    Color? outline,
+    Color? outlineVariant,
     Color? textPrimary,
     Color? textSecondary,
     Color? success,
@@ -169,7 +184,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
       SemanticColors(
         background: background ?? this.background,
         surface: surface ?? this.surface,
+        surfaceRaised: surfaceRaised ?? this.surfaceRaised,
         surfaceStrong: surfaceStrong ?? this.surfaceStrong,
+        outline: outline ?? this.outline,
+        outlineVariant: outlineVariant ?? this.outlineVariant,
         textPrimary: textPrimary ?? this.textPrimary,
         textSecondary: textSecondary ?? this.textSecondary,
         success: success ?? this.success,
@@ -183,7 +201,10 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     return SemanticColors(
       background: Color.lerp(background, other.background, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
+      surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
       surfaceStrong: Color.lerp(surfaceStrong, other.surfaceStrong, t)!,
+      outline: Color.lerp(outline, other.outline, t)!,
+      outlineVariant: Color.lerp(outlineVariant, other.outlineVariant, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
       success: Color.lerp(success, other.success, t)!,
@@ -222,9 +243,10 @@ class AppFonts {
 class AppColorsV2 {
   static const Color bg = Color(0xFFF5EEE1);
   static const Color surface = Color(0xFFFDF8EE);
+  static const Color surfaceRaised = Color(0xFFFFFCF5);
   static const Color surfaceStrong = Color(0xFFEBE0CC);
   static const Color textPrimary = Color(0xFF1C1710);
-  static const Color textSecondary = Color(0xFF7C7159);
+  static const Color textSecondary = Color(0xFF6A604D);
 
   /// Product-tier colour, deliberately not a tenant brand role.
   static const Color premiumGold = Color(0xFFD9A441);

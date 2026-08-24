@@ -166,17 +166,8 @@ class RecipeCard extends ConsumerWidget {
                     runSpacing: AppSpacing.xs,
                     children: [
                       MetaChip(
-                        icon: _contentKindIcon(recipe.contentKind),
-                        label: _contentKindLabel(recipe.contentKind),
-                      ),
-                      MetaChip(
                         icon: Icons.schedule_rounded,
                         label: '${recipe.totalTimeMinutes} хв',
-                        isData: true,
-                      ),
-                      MetaChip(
-                        icon: Icons.people_outline_rounded,
-                        label: '${recipe.servings} порц.',
                         isData: true,
                       ),
                       MetaChip(
@@ -184,9 +175,13 @@ class RecipeCard extends ConsumerWidget {
                         label: recipe.cuisine,
                       ),
                       MetaChip(
-                        icon: Icons.speed_rounded,
-                        label: 'Рівень ${recipe.difficulty}',
-                        isData: true,
+                        icon: recipe.contentKind == ContentKind.recipe
+                            ? Icons.speed_rounded
+                            : _contentKindIcon(recipe.contentKind),
+                        label: recipe.contentKind == ContentKind.recipe
+                            ? 'Рівень ${recipe.difficulty}'
+                            : _contentKindLabel(recipe.contentKind),
+                        isData: recipe.contentKind == ContentKind.recipe,
                       ),
                     ],
                   ),
@@ -256,27 +251,41 @@ class RecipeCard extends ConsumerWidget {
       borderRadius: AppRadius.xl,
       child: SizedBox(
         height: height,
-        child: ColoredBox(
-          color: AppColorsV2.ink,
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(40),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(color: AppColorsV2.ink),
+            RecipePhoto(
+              recipe: recipe,
+              role: RecipeImageRole.featured,
+              targetWidth: width,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    AppColorsV2.ink.withOpacity(.96),
+                    AppColorsV2.ink.withOpacity(.74),
+                    AppColorsV2.ink.withOpacity(.20),
+                    Colors.transparent,
+                  ],
+                  stops: const [0, .34, .68, 1],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(40),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: width * .44),
                   child: _featuredCopy(context),
                 ),
               ),
-              Expanded(
-                flex: 3,
-                child: RecipePhoto(
-                  recipe: recipe,
-                  role: RecipeImageRole.featured,
-                  targetWidth: width * .6,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

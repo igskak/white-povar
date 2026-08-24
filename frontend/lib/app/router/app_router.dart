@@ -398,9 +398,8 @@ class _DesktopNavigationShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final dark = theme.brightness == Brightness.dark;
-    final railColor = dark ? const Color(0xFF221D16) : scheme.surface;
-    final dividerColor = dark ? const Color(0xFF2E2820) : scheme.outlineVariant;
+    final railColor = scheme.surfaceContainerLowest;
+    final dividerColor = scheme.outlineVariant;
 
     return Scaffold(
       body: Row(
@@ -497,7 +496,7 @@ class _DesktopRailDestination extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: selected
-                  ? theme.colorScheme.surfaceContainerHighest
+                  ? theme.colorScheme.primaryContainer
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -544,6 +543,7 @@ class _DesktopTopBar extends StatelessWidget {
           horizontal: AppLayout.gutter(MediaQuery.sizeOf(context).width),
         ),
         decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
           border: Border(bottom: BorderSide(color: dividerColor)),
         ),
         child: Row(
@@ -609,7 +609,7 @@ class _TopBarSearchField extends StatelessWidget {
           height: 40,
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
-            color: semantic.surface,
+            color: theme.colorScheme.surfaceContainerLowest,
             borderRadius: AppRadius.md,
             border: Border.all(color: theme.colorScheme.outlineVariant),
           ),

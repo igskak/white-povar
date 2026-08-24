@@ -32,9 +32,12 @@ with an explicit set per `Brightness`, read in widgets as `context.semantic`.
 |---|---|---|---|
 | `background` | `#16130F` | `#F5EEE1` | Scaffold |
 | `surface` | `#221D16` | `#FDF8EE` | Cards, nav, fields |
+| `surfaceRaised` | `#2A241C` | `#FFFCF5` | Elevated cards and prominent controls |
 | `surfaceStrong` | `#2E2820` | `#EBE0CC` | Borders, dividers, chips |
+| `outline` | `#8D816F` | `#8F826D` | Interactive borders with 3:1 contrast |
+| `outlineVariant` | `#4A4136` | `#D8CAB3` | Quiet card borders and separators |
 | `textPrimary` | `#F3E9DA` | `#1C1710` | Headings, body |
-| `textSecondary` | `#B9AC98` | `#7C7159` | Metadata, captions |
+| `textSecondary` | `#B9AC98` | `#6A604D` | Metadata, captions |
 | `success` | `#7A9E7E` | `#3E6B4A` | Confirmed, matched |
 | `warning` | `#C9A24B` | `#B0832E` | Low confidence |
 | `error` | `#D67A6B` | `#A8362A` | Errors, destructive |
@@ -181,9 +184,10 @@ A screen must compose these rather than defining a private equivalent.
 | `AppButton` primary | height 48–52 · radius 12–14 · padding H 24 · label 16/700 · fill accent, text `onAccent` · press 250ms darken · loading = spinner + label · disabled 0.38 |
 | `AppButton` secondary/text | height 48 · radius 12–14 · border 1.5 `surfaceStrong` or accent · transparent fill |
 | `AppTextField` | height 48–52 · radius 12–14 · padding H 16 · border 1 → 1.5 accent on focus · error border + helper 12 · leading/trailing icon 20 |
+| `ContentCard` | `flat`, `outlined`, `raised` variants · raised surface for interactive cards · quiet `outlineVariant` border · soft shadow only where hierarchy needs it |
 | `RecipeCard.grid` | radius 16–18 · 4:3 image · title serif 17–19 · `MetaChip` row |
 | `RecipeCard.list` | 84×84 thumbnail row |
-| `RecipeCard.featured` | editorial hero, ink gradient, gold "Рекомендоване" badge |
+| `RecipeCard.featured` | full-bleed editorial hero on desktop, ink gradient, gold "Рекомендоване" badge |
 | `RecipeCard.skeleton` | shimmer 1.4s |
 | `MetaChip` | icon 16 + label 12–13 `textSecondary`; boxed variant height ≥34, radius 8 |
 | `AppChip` (filter) | height 34–36 · radius 8–18 · active fill accent/`onAccent`, idle surface + border |
@@ -197,12 +201,18 @@ A screen must compose these rather than defining a private equivalent.
 
 Screen horizontal padding is 20 at mobile 390.
 
+The theme defines every Material 3 surface and outline role explicitly. Components
+must not rely on Flutter's generated `outlineVariant` or `surfaceContainer*` fallbacks:
+that used to collapse light-mode depth into black borders or nearly identical surfaces.
+
 ### Checks
 
 - [ ] No private re-implementation of anything in the table above.
 - [ ] Every interactive target is ≥ 44×44.
 - [ ] Skeletons use `AppSkeleton`, which shimmers over `surfaceStrong` and degrades to
       a static block under reduced motion.
+- [ ] Light and dark themes are both checked; the light theme must retain visible
+      hierarchy without using premium gold as the global secondary colour.
 
 ---
 

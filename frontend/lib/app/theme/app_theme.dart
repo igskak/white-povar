@@ -35,21 +35,79 @@ class AppThemeV2 {
     final surface = semantic.surface;
     final onSurface = semantic.textPrimary;
     final secondaryText = semantic.textSecondary;
-    final primary = isDark ? brand.accentOnDark : brand.accent;
+    final accent = isDark ? brand.accentOnDark : brand.accent;
+    final primary = accent;
     final lightPrimary =
         brand.lightCtaMode == 'accentFill' ? primary : AppColorsV2.ink;
+    final cta = isDark ? primary : lightPrimary;
+    final onCta = isDark
+        ? AppColorsV2.ink
+        : brand.lightCtaMode == 'accentFill'
+            ? brand.onAccent
+            : AppColorsV2.onInk;
+    final primaryContainer = Color.alphaBlend(
+      accent.withOpacity(isDark ? .20 : .13),
+      semantic.surfaceRaised,
+    );
+    final errorContainer = Color.alphaBlend(
+      semantic.error.withOpacity(isDark ? .20 : .11),
+      semantic.surfaceRaised,
+    );
+    final surfaceDim = isDark ? semantic.background : const Color(0xFFEDE4D4);
+    final surfaceBright =
+        isDark ? const Color(0xFF3A3329) : semantic.surfaceRaised;
+    final surfaceContainerLowest =
+        isDark ? const Color(0xFF15120E) : semantic.surfaceRaised;
+    final surfaceContainerLow = semantic.surface;
+    final surfaceContainer =
+        isDark ? const Color(0xFF272119) : const Color(0xFFF8F1E5);
+    final surfaceContainerHigh =
+        isDark ? semantic.surfaceStrong : const Color(0xFFF1E7D7);
+    final surfaceContainerHighest =
+        isDark ? const Color(0xFF3A3329) : semantic.surfaceStrong;
     final scheme = ColorScheme(
       brightness: brightness,
-      primary: lightPrimary,
-      onPrimary: brand.lightCtaMode == 'accentFill'
-          ? brand.onAccent
-          : AppColorsV2.onInk,
-      secondary: AppColorsV2.premiumGold,
-      onSecondary: AppColorsV2.ink,
+      primary: cta,
+      onPrimary: onCta,
+      primaryContainer: primaryContainer,
+      onPrimaryContainer: onSurface,
+      secondary: accent,
+      onSecondary: isDark ? AppColorsV2.ink : brand.onAccent,
+      secondaryContainer: primaryContainer,
+      onSecondaryContainer: onSurface,
+      tertiary: semantic.warning,
+      onTertiary: AppColorsV2.ink,
+      tertiaryContainer: Color.alphaBlend(
+        semantic.warning.withOpacity(isDark ? .20 : .12),
+        semantic.surfaceRaised,
+      ),
+      onTertiaryContainer: onSurface,
       error: semantic.error,
       onError: isDark ? AppColorsV2.ink : Colors.white,
+      errorContainer: errorContainer,
+      onErrorContainer: onSurface,
       surface: surface,
       onSurface: onSurface,
+      surfaceDim: surfaceDim,
+      surfaceBright: surfaceBright,
+      surfaceContainerLowest: surfaceContainerLowest,
+      surfaceContainerLow: surfaceContainerLow,
+      surfaceContainer: surfaceContainer,
+      surfaceContainerHigh: surfaceContainerHigh,
+      surfaceContainerHighest: surfaceContainerHighest,
+      onSurfaceVariant: secondaryText,
+      outline: semantic.outline,
+      outlineVariant: semantic.outlineVariant,
+      shadow: isDark ? Colors.black : const Color(0xFF2A2116),
+      scrim: Colors.black,
+      inverseSurface: isDark
+          ? SemanticColors.light.surfaceRaised
+          : SemanticColors.dark.surface,
+      onInverseSurface: isDark
+          ? SemanticColors.light.textPrimary
+          : SemanticColors.dark.textPrimary,
+      inversePrimary: isDark ? brand.accent : brand.accentOnDark,
+      surfaceTint: Colors.transparent,
     );
     final baseText =
         isDark ? Typography.whiteMountainView : Typography.blackMountainView;
@@ -66,11 +124,31 @@ class AppThemeV2 {
           height: 1.1,
           fontWeight: FontWeight.w700,
           color: onSurface),
+      headlineSmall: TextStyle(
+          fontFamily: brand.displayFontFamily,
+          fontSize: 24,
+          height: 1.15,
+          fontWeight: FontWeight.w700,
+          color: onSurface),
       titleLarge: TextStyle(
           fontFamily: brand.displayFontFamily,
           fontSize: 22,
           height: 1.15,
           fontWeight: FontWeight.w600,
+          color: onSurface),
+      titleMedium: TextStyle(
+          fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
+          fontSize: 17,
+          height: 1.25,
+          fontWeight: FontWeight.w700,
+          color: onSurface),
+      titleSmall: TextStyle(
+          fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
+          fontSize: 15,
+          height: 1.3,
+          fontWeight: FontWeight.w700,
           color: onSurface),
       bodyLarge: TextStyle(
           fontFamily: brand.bodyFontFamily,
@@ -96,6 +174,14 @@ class AppThemeV2 {
           fontSize: 11,
           letterSpacing: 0,
           color: secondaryText),
+      labelLarge: TextStyle(
+          fontFamily: brand.bodyFontFamily,
+          fontFamilyFallback: brand.bodyFontFallback,
+          fontSize: 14,
+          height: 1.2,
+          letterSpacing: 0,
+          fontWeight: FontWeight.w700,
+          color: onSurface),
       // Data/mono role (Handoff §1): numeric metadata, codes, counters.
       labelMedium: semantic.dataLabel,
     );
@@ -115,15 +201,23 @@ class AppThemeV2 {
         foregroundColor: onSurface,
         surfaceTintColor: Colors.transparent,
       ),
-      navigationBarTheme: NavigationBarThemeData(
-        height: 72,
-        backgroundColor: surface,
-        indicatorColor: semantic.surfaceStrong,
-        elevation: 0,
-      ),
       elevatedButtonTheme: ComponentThemes.elevatedButtonTheme(scheme),
+      filledButtonTheme: ComponentThemes.filledButtonTheme(scheme),
+      outlinedButtonTheme: ComponentThemes.outlinedButtonTheme(scheme),
+      textButtonTheme: ComponentThemes.textButtonTheme(scheme),
       inputDecorationTheme: ComponentThemes.inputDecorationTheme(scheme),
       cardTheme: ComponentThemes.cardTheme(scheme),
+      chipTheme: ComponentThemes.chipTheme(scheme, textTheme),
+      segmentedButtonTheme:
+          ComponentThemes.segmentedButtonTheme(scheme, textTheme),
+      navigationBarTheme: ComponentThemes.navigationBarTheme(scheme, textTheme),
+      navigationRailTheme:
+          ComponentThemes.navigationRailTheme(scheme, textTheme),
+      listTileTheme: ComponentThemes.listTileTheme(scheme),
+      dividerTheme: ComponentThemes.dividerTheme(scheme),
+      dialogTheme: ComponentThemes.dialogTheme(scheme),
+      bottomSheetTheme: ComponentThemes.bottomSheetTheme(scheme),
+      snackBarTheme: ComponentThemes.snackBarTheme(scheme),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),

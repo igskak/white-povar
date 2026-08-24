@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/app/theme/app_theme.dart';
 import 'package:frontend/app/theme/brand_theme.dart';
 import 'package:frontend/app/theme/theme_mode_controller.dart';
+import 'package:frontend/app/theme/tokens/app_tokens.dart';
 import 'package:frontend/core/branding/brand_assets.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/features/profile/presentation/pages/settings_page.dart';
@@ -24,9 +25,18 @@ void main() {
 
       expect(light.colorScheme.primary, brand.accent);
       expect(dark.colorScheme.primary, brand.accentOnDark);
-      expect(light.colorScheme.secondary, const Color(0xFFD9A441));
+      expect(light.colorScheme.secondary, brand.accent);
+      expect(AppColorsV2.premiumGold, const Color(0xFFD9A441));
       expect(light.colorScheme.error, const Color(0xFFA8362A));
+      expect(light.colorScheme.outline, SemanticColors.light.outline);
+      expect(light.colorScheme.outlineVariant,
+          SemanticColors.light.outlineVariant);
+      expect(light.colorScheme.surfaceContainerLowest,
+          SemanticColors.light.surfaceRaised);
       expect(light.textTheme.bodyMedium?.fontFamily, brand.bodyFontFamily);
+      expect(
+          light.textTheme.headlineSmall?.fontFamily, brand.displayFontFamily);
+      expect(light.cardTheme.margin, EdgeInsets.zero);
     }
   });
 
