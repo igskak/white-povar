@@ -51,9 +51,9 @@ void main() {
 
     expect(find.byType(NavigationRail), findsNothing);
     expect(find.text('Огороднік Олександр'), findsOneWidget);
+    expect(find.text('Рецепти'), findsOneWidget);
     expect(find.text('Сканувати'), findsOneWidget);
-    expect(find.byTooltip('Налаштування'), findsOneWidget);
-    expect(find.byType(ConstrainedBox), findsWidgets);
+    expect(find.byTooltip('Профіль'), findsOneWidget);
     expect(find.text('Збережений стан вкладки'), findsOneWidget);
   });
 
@@ -78,10 +78,9 @@ void main() {
       ),
     ));
 
-    // The rail eats into the page, so a page measuring itself against the
-    // window breakpoint would draw its narrow layout inside desktop chrome.
+    // The editorial header leaves the page the full desktop width.
     expect(pageWidth, isNotNull);
-    expect(pageWidth, greaterThanOrEqualTo(AppLayout.contentDesktopBreakpoint));
+    expect(pageWidth, AppLayout.contentDesktopBreakpoint);
   });
 }
 

@@ -8,6 +8,7 @@ import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/premium.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
+import '../../../recipes/presentation/widgets/recipe_photo.dart';
 
 /// The Home entry points, shared with the Creator Studio live preview (13m).
 ///
@@ -21,20 +22,17 @@ class ScanBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = context.semantic;
-    final dark = theme.brightness == Brightness.dark;
-    final foreground = dark ? semantic.textPrimary : AppColorsV2.onInk;
-    final background = dark ? semantic.surfaceRaised : AppColorsV2.ink;
-    final accent = context.brandTheme.accentOnDark;
+    final foreground = theme.colorScheme.onPrimary;
+    final background = theme.colorScheme.primary;
+    final accent = foreground;
 
     return Semantics(
       button: true,
       label: 'Сканувати інгредієнти',
       child: Material(
         color: background,
-        elevation: dark ? 0 : AppElevation.level2,
-        shadowColor: accent.withOpacity(.22),
-        borderRadius: AppRadius.lg,
+        elevation: AppElevation.level0,
+        borderRadius: AppRadius.sm,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -97,8 +95,8 @@ class ScanBanner extends StatelessWidget {
   }
 }
 
-/// The intro block of the compact Home: brand header, the photo the tenant
-/// published for Home, the greeting and the two capture entry points.
+/// The intro block of the compact Home: brand header, editorial greeting and
+/// the two capture entry points.
 ///
 /// Lives here rather than inside `HomePage` because the Studio preview renders
 /// this very widget. A section added to Home therefore appears in the editor
@@ -137,7 +135,33 @@ class HomeIntro extends StatelessWidget {
                     child: UserAvatar(name: userName),
                   ),
                 ),
-                // The brand's own photo, when it published one for Home.
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  'АВТОРСЬКА КУХНЯ',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.8,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  brand.voice.greeting,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                        fontFamily: context.brandTheme.displayFontFamily,
+                        fontWeight: FontWeight.w600,
+                        height: 1.02,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'Улюблені рецепти. З увагою до деталей.',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: context.semantic.textSecondary,
+                      ),
+                ),
                 if (brand.heroFor('home') != null) ...[
                   const SizedBox(height: AppSpacing.md),
                   BrandHeroBanner(
@@ -146,17 +170,6 @@ class HomeIntro extends StatelessWidget {
                     role: 'home',
                   ),
                 ],
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  brand.voice.greeting,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontFamily: context.brandTheme.displayFontFamily,
-                        fontWeight: FontWeight.w700,
-                        height: 1.05,
-                      ),
-                ),
                 const SizedBox(height: AppSpacing.md),
                 ScanBanner(onTap: onScanTap),
                 const SizedBox(height: AppSpacing.xs),
@@ -238,8 +251,8 @@ class HomeFeedSections extends StatelessWidget {
   }
 }
 
-/// The desktop Home composition: the published photo, the featured recipe and
-/// the chef's catalogue as a four-column grid.
+/// The desktop Home composition: editorial introduction, featured recipe and
+/// the chef's catalogue as a three-column grid.
 ///
 /// It deliberately differs from the compact composition — no brand header or
 /// capture banner, because the desktop shell already owns both. The Studio
@@ -275,28 +288,26 @@ class HomeDesktopSections extends StatelessWidget {
       (recipe) => recipe.isFeatured,
       orElse: () => recipes.first,
     );
+    final feed = recipes.where((item) => item.id != featured.id).toList();
     return ResponsiveContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (brand.heroFor('home') != null) ...[
-            BrandHeroBanner(
-              key: const ValueKey('home-brand-hero'),
-              brand: brand,
-              role: 'home',
-            ),
-            const SizedBox(height: 28),
-          ],
-          RecipeCard.featured(
+          _BordeauxDesktopHero(
+            brand: brand,
             recipe: featured,
             onTap: () => onOpenRecipe(featured),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: AppSpacing.xl),
+          Divider(color: context.semantic.outlineVariant),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Expanded(
                 child: Text('Від шефа',
-                    style: Theme.of(context).textTheme.headlineSmall),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        )),
               ),
               TextButton.icon(
                 onPressed: onSeeAll,
@@ -310,15 +321,15 @@ class HomeDesktopSections extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
+              crossAxisCount: 3,
               crossAxisSpacing: AppSpacing.md,
               mainAxisSpacing: AppSpacing.md,
-              childAspectRatio: .60,
+              childAspectRatio: .82,
             ),
-            itemCount: recipes.length,
+            itemCount: feed.length,
             itemBuilder: (context, index) => RecipeCard(
-              recipe: recipes[index],
-              onTap: () => onOpenRecipe(recipes[index]),
+              recipe: feed[index],
+              onTap: () => onOpenRecipe(feed[index]),
             ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
@@ -332,6 +343,186 @@ class HomeDesktopSections extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _BordeauxDesktopHero extends StatelessWidget {
+  const _BordeauxDesktopHero({
+    required this.brand,
+    required this.recipe,
+    required this.onTap,
+  });
+
+  final BrandDetails brand;
+  final Recipe recipe;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: semantic.outlineVariant),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) => SizedBox(
+          height: (constraints.maxWidth * .36).clamp(390.0, 520.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'АВТОРСЬКА КУХНЯ',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _EditorialGreeting(text: brand.voice.greeting),
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        'Улюблені рецепти. З увагою до деталей.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: semantic.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ElevatedButton.icon(
+                        onPressed: onTap,
+                        iconAlignment: IconAlignment.end,
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: const Text('Обрати рецепт'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 6,
+                child: Semantics(
+                  button: true,
+                  label: 'Відкрити рецепт ${recipe.title}',
+                  child: Material(
+                    color: semantic.surfaceStrong,
+                    child: InkWell(
+                      onTap: onTap,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (brand.heroFor('home') != null)
+                            BrandHero(
+                              key: const ValueKey('home-brand-hero'),
+                              brand: brand,
+                              role: 'home',
+                              targetWidth: constraints.maxWidth * .6,
+                            )
+                          else
+                            RecipePhoto(
+                              recipe: recipe,
+                              role: RecipeImageRole.featured,
+                              targetWidth: constraints.maxWidth * .6,
+                            ),
+                          Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Container(
+                              width: constraints.maxWidth * .42,
+                              constraints: const BoxConstraints(minWidth: 260),
+                              color: theme.colorScheme.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.md,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          recipe.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: theme.textTheme.titleLarge
+                                              ?.copyWith(
+                                            color: theme.colorScheme.onPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: AppSpacing.xxs),
+                                        Text(
+                                          '${recipe.totalTimeMinutes} хв',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme.colorScheme.onPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  Icon(Icons.arrow_forward_rounded,
+                                      color: theme.colorScheme.onPrimary),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorialGreeting extends StatelessWidget {
+  const _EditorialGreeting({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final split = text.split('—');
+    final base = theme.textTheme.headlineLarge?.copyWith(
+      fontFamily: context.brandTheme.displayFontFamily,
+      fontSize: 52,
+      fontWeight: FontWeight.w600,
+      height: .98,
+    );
+    if (split.length != 2) return Text(text, maxLines: 3, style: base);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: '${split.first.trim()} —\n', style: base),
+          TextSpan(
+            text: split.last.trim(),
+            style: base?.copyWith(
+              color: theme.colorScheme.secondary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

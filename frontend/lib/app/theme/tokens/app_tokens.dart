@@ -26,23 +26,16 @@ class AppRadius {
 /// from the viewport instead: the column grows with the window until it hits a
 /// cap chosen for readability, and the leftover space becomes an even margin.
 class AppLayout {
-  /// Window width at which the desktop chrome — branded rail plus top bar —
-  /// replaces the tablet rail.
+  /// Window width at which the compact editorial header replaces the tablet
+  /// rail.
   static const double desktopBreakpoint = 1024;
 
   /// The branded rail, plus the hairline divider beside it.
   static const double railWidth = 92;
-  static const double _railAndDivider = railWidth + 1;
 
-  /// Width at which a *page* adopts its desktop composition.
-  ///
-  /// A page inside the shell is a rail narrower than the window, so at the
-  /// window breakpoint it never sees more than this. Measuring page layout
-  /// against [desktopBreakpoint] instead left a band of window sizes where the
-  /// chrome said desktop while the page inside it was still drawing its
-  /// phone-shaped, single-column self.
-  static const double contentDesktopBreakpoint =
-      desktopBreakpoint - _railAndDivider;
+  /// Width at which a page adopts its desktop composition. The editorial
+  /// desktop shell no longer subtracts a rail from the page canvas.
+  static const double contentDesktopBreakpoint = desktopBreakpoint;
 
   /// Narrowest a page column can be and still carry [sideColumn] next to a
   /// usable second column.
@@ -117,14 +110,14 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
 
   /// Handoff Spec §1 — light column.
   static const SemanticColors light = SemanticColors(
-    background: Color(0xFFF5EEE1),
-    surface: Color(0xFFFDF8EE),
-    surfaceRaised: Color(0xFFFFFCF5),
-    surfaceStrong: Color(0xFFEBE0CC),
-    outline: Color(0xFF8F826D),
-    outlineVariant: Color(0xFFD8CAB3),
-    textPrimary: Color(0xFF1C1710),
-    textSecondary: Color(0xFF6A604D),
+    background: Color(0xFFF4F0E8),
+    surface: Color(0xFFF8F4ED),
+    surfaceRaised: Color(0xFFFFFCF7),
+    surfaceStrong: Color(0xFFE8E0D4),
+    outline: Color(0xFF8C7E75),
+    outlineVariant: Color(0xFFD6CCC1),
+    textPrimary: Color(0xFF201817),
+    textSecondary: Color(0xFF6B5E58),
     success: Color(0xFF3E6B4A),
     warning: Color(0xFFB0832E),
     error: Color(0xFFA8362A),
@@ -241,12 +234,12 @@ class AppFonts {
 /// here. The light-mode aliases are retained so unmigrated widgets keep
 /// compiling while screens move onto `context.semantic`.
 class AppColorsV2 {
-  static const Color bg = Color(0xFFF5EEE1);
-  static const Color surface = Color(0xFFFDF8EE);
-  static const Color surfaceRaised = Color(0xFFFFFCF5);
-  static const Color surfaceStrong = Color(0xFFEBE0CC);
-  static const Color textPrimary = Color(0xFF1C1710);
-  static const Color textSecondary = Color(0xFF6A604D);
+  static const Color bg = Color(0xFFF4F0E8);
+  static const Color surface = Color(0xFFF8F4ED);
+  static const Color surfaceRaised = Color(0xFFFFFCF7);
+  static const Color surfaceStrong = Color(0xFFE8E0D4);
+  static const Color textPrimary = Color(0xFF201817);
+  static const Color textSecondary = Color(0xFF6B5E58);
 
   /// Product-tier colour, deliberately not a tenant brand role.
   static const Color premiumGold = Color(0xFFD9A441);

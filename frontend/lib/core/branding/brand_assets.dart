@@ -30,11 +30,11 @@ abstract final class BrandMediaAspectRatio {
   /// to a flatter band there than on a phone. Derived rather than written down,
   /// so the crop thumbnail cannot promise a shape the page stopped rendering.
   static double bannerOnDesktop([double windowWidth = desktopWindowWidth]) {
-    // What the branded rail, its divider and the page gutters leave.
-    final page = windowWidth - AppLayout.railWidth - 1;
-    final column = math.min(page, AppLayout.contentMax) -
+    // What the editorial desktop header and page gutters leave.
+    final column = math.min(windowWidth, AppLayout.contentMax) -
         AppLayout.gutter(windowWidth) * 2;
-    return column / math.min(column / banner, BrandHeroBanner.maxBannerHeight);
+    final heroHeight = (column * .36).clamp(390.0, 520.0);
+    return column * .6 / heroHeight;
   }
 }
 

@@ -18,7 +18,7 @@ class ComponentThemes {
           disabledBackgroundColor: scheme.surfaceContainerHighest,
           disabledForegroundColor: scheme.onSurfaceVariant,
           surfaceTintColor: Colors.transparent,
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
@@ -33,7 +33,7 @@ class ComponentThemes {
           ),
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );
@@ -48,7 +48,7 @@ class ComponentThemes {
           ),
           foregroundColor: scheme.secondary,
           side: BorderSide(color: scheme.outline),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
           textStyle: const TextStyle(fontWeight: FontWeight.w700),
         ),
       );

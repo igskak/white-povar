@@ -26,13 +26,13 @@ enum StudioPreviewTab { home, login, paywall }
 enum StudioPreviewViewport {
   phone(label: 'Телефон', window: Size(390, 720), page: Size(390, 720)),
 
-  /// A 1280 window: the page keeps what the branded rail and the top bar leave
-  /// it, and reads the *window* width for its gutters, exactly as in the app.
+  /// A 1280 window: the editorial header leaves the page the full width and
+  /// removes only its own height.
   desktop(
     label: 'Десктоп',
     window: Size(BrandMediaAspectRatio.desktopWindowWidth, 800),
     page: Size(
-      BrandMediaAspectRatio.desktopWindowWidth - AppLayout.railWidth - 1,
+      BrandMediaAspectRatio.desktopWindowWidth,
       800 - _desktopTopBarHeight,
     ),
   );
@@ -52,7 +52,7 @@ enum StudioPreviewViewport {
   final Size page;
 }
 
-const double _desktopTopBarHeight = 60;
+const double _desktopTopBarHeight = 72;
 
 /// The design's preview frame (13m): «рендер тим самим кодом застосунку, без
 /// скриншотів».
@@ -195,9 +195,8 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
         ),
       );
 
-  /// Home as a 1280 window draws it: the shell owns the brand header and the
-  /// capture entry point, the page opens on the photo, and the banner takes
-  /// the crop a wide column gives it — which is not the phone's crop.
+  /// Home as a 1280 window draws it: the shell owns the compact brand header
+  /// and the page opens on the two-column editorial hero.
   Widget _desktopHome(BuildContext context) => Scaffold(
         body: SingleChildScrollView(
           physics: const NeverScrollableScrollPhysics(),

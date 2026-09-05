@@ -316,7 +316,21 @@ class _DesktopRecipeContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(recipe.title, style: theme.textTheme.headlineLarge),
+                      Text(
+                        'ВІД ШЕФА',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.6,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        recipe.title,
+                        style: theme.textTheme.headlineLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         recipe.description,
@@ -477,8 +491,21 @@ class _RecipeBody extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 900),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(recipe.title,
-                  style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                'ВІД ШЕФА',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.6,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                recipe.title,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
               const SizedBox(height: AppSpacing.md),
               Text(recipe.description,
                   style: Theme.of(context)
@@ -602,7 +629,14 @@ class _StatsRow extends StatelessWidget {
   const _StatsRow({required this.recipe});
   final Recipe recipe;
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Container(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(color: context.semantic.outlineVariant),
+        ),
+      ),
+      child: Row(
           children: [
         _Stat(
             icon: Icons.schedule_rounded,
@@ -621,7 +655,7 @@ class _StatsRow extends StatelessWidget {
                   child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: item)))
-              .toList());
+              .toList()));
 }
 
 class _Stat extends StatelessWidget {
@@ -630,20 +664,17 @@ class _Stat extends StatelessWidget {
   final String value;
   final String label;
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-      decoration: BoxDecoration(
-          color: context.semantic.surfaceStrong, borderRadius: AppRadius.md),
-      child: Padding(
-          padding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.sm, horizontal: AppSpacing.xs),
-          child: Column(children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            Text(value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge),
-            Text(label, style: Theme.of(context).textTheme.labelSmall)
-          ])));
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.secondary),
+        const SizedBox(height: AppSpacing.xxs),
+        Text(value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelLarge),
+        Text(label, style: Theme.of(context).textTheme.labelSmall)
+      ]));
 }
 
 class _RecipeDetailSkeleton extends StatelessWidget {

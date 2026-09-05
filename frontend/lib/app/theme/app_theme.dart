@@ -53,16 +53,16 @@ class AppThemeV2 {
       semantic.error.withOpacity(isDark ? .20 : .11),
       semantic.surfaceRaised,
     );
-    final surfaceDim = isDark ? semantic.background : const Color(0xFFEDE4D4);
+    final surfaceDim = isDark ? semantic.background : const Color(0xFFE9E2D8);
     final surfaceBright =
         isDark ? const Color(0xFF3A3329) : semantic.surfaceRaised;
     final surfaceContainerLowest =
         isDark ? const Color(0xFF15120E) : semantic.surfaceRaised;
     final surfaceContainerLow = semantic.surface;
     final surfaceContainer =
-        isDark ? const Color(0xFF272119) : const Color(0xFFF8F1E5);
+        isDark ? const Color(0xFF272119) : const Color(0xFFF6F1EA);
     final surfaceContainerHigh =
-        isDark ? semantic.surfaceStrong : const Color(0xFFF1E7D7);
+        isDark ? semantic.surfaceStrong : const Color(0xFFEFE8DE);
     final surfaceContainerHighest =
         isDark ? const Color(0xFF3A3329) : semantic.surfaceStrong;
     final scheme = ColorScheme(

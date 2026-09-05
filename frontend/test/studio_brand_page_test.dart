@@ -309,9 +309,9 @@ void main() {
 
     // The point of the second viewport: the published crop is not the phone's.
     // A wide column clamps the banner's height, so its shape is flatter.
-    final desktopBanner = tester.getSize(find.byType(BrandHeroBanner).first);
+    final desktopBanner = tester.getSize(find.byType(BrandHero).first);
     expect(phoneBanner.aspectRatio, closeTo(BrandMediaAspectRatio.banner, .01));
-    expect(desktopBanner.aspectRatio, greaterThan(3));
+    expect(desktopBanner.aspectRatio, greaterThan(1.6));
 
     // …and the crop thumbnail promises exactly that shape, so a frame kept
     // inside the desktop thumbnail is a frame the page really shows.
@@ -329,8 +329,8 @@ void main() {
 
     expect(ratioOf('banner'), BrandMediaAspectRatio.banner);
     expect(ratioOf('banner-desktop'), BrandMediaAspectRatio.bannerOnDesktop());
-    expect(ratioOf('banner-desktop'), greaterThan(ratioOf('banner')),
-        reason: 'the desktop column crops the same photo flatter');
+    expect(ratioOf('banner-desktop'), lessThan(ratioOf('banner')),
+        reason: 'the desktop editorial hero uses a taller image crop');
   });
 
   testWidgets('login has no desktop composition to promise', (tester) async {

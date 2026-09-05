@@ -12,7 +12,7 @@ import 'recipe_photo.dart';
 /// How a recipe is presented. One implementation backs every surface so Home,
 /// Discover, Saved and the camera results cannot drift apart.
 enum RecipeCardVariant {
-  /// Full card with a 4:3 image, description and metadata row.
+  /// Open editorial tile with a 4:3 image and a compact metadata line.
   grid,
 
   /// Dense row with an 84×84 thumbnail — the Home/Saved feed.
@@ -88,107 +88,91 @@ class RecipeCard extends ConsumerWidget {
     return Semantics(
       button: onTap != null,
       label: label,
-      child: ContentCard(
-        onTap: onTap,
-        semanticLabel: label,
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                AspectRatio(
-                  aspectRatio: 4 / 3,
-                  child: RecipeImageFallback.wrap(
-                    recipe,
-                    role: RecipeImageRole.grid,
-                  ),
-                ),
-                if (recipe.isPremium)
-                  const Positioned(
-                    top: AppSpacing.sm,
-                    left: AppSpacing.sm,
-                    child: PremiumBadge(size: 24),
-                  ),
-                if (recipe.isFeatured)
-                  const Positioned(
-                    left: AppSpacing.sm,
-                    bottom: AppSpacing.sm,
-                    child: _ScrimBadge(
-                      icon: Icons.local_fire_department_outlined,
-                      label: 'Вибір шефа',
-                    ),
-                  ),
-                if (recipe.videoUrl != null || recipe.videoFilePath != null)
-                  const Positioned(
-                    top: AppSpacing.sm,
-                    right: 52,
-                    child: _CircleBadge(icon: Icons.play_arrow_rounded),
-                  ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: FavoriteButton(recipeId: recipe.id),
-                ),
-                if (showMatchIndicator && matchedIngredients > 0)
-                  Positioned(
-                    right: AppSpacing.sm,
-                    bottom: AppSpacing.sm,
-                    child: _ScrimBadge(
-                      icon: Icons.check_circle_outline,
-                      label: '$matchedIngredients збіг',
-                    ),
-                  ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.sm,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  Text(
-                    recipe.title,
-                    style: theme.textTheme.titleLarge,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    recipe.description,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: semantic.textSecondary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
-                    children: [
-                      MetaChip(
-                        icon: Icons.schedule_rounded,
-                        label: '${recipe.totalTimeMinutes} хв',
-                        isData: true,
+                  AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: ClipRRect(
+                      borderRadius: AppRadius.sm,
+                      child: RecipeImageFallback.wrap(
+                        recipe,
+                        role: RecipeImageRole.grid,
                       ),
-                      MetaChip(
-                        icon: Icons.restaurant_menu_rounded,
-                        label: recipe.cuisine,
-                      ),
-                      MetaChip(
-                        icon: recipe.contentKind == ContentKind.recipe
-                            ? Icons.speed_rounded
-                            : _contentKindIcon(recipe.contentKind),
-                        label: recipe.contentKind == ContentKind.recipe
-                            ? 'Рівень ${recipe.difficulty}'
-                            : _contentKindLabel(recipe.contentKind),
-                        isData: recipe.contentKind == ContentKind.recipe,
-                      ),
-                    ],
+                    ),
                   ),
+                  if (recipe.isPremium)
+                    const Positioned(
+                      top: AppSpacing.sm,
+                      left: AppSpacing.sm,
+                      child: PremiumBadge(size: 24),
+                    ),
+                  if (recipe.isFeatured)
+                    const Positioned(
+                      left: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: _ScrimBadge(
+                        icon: Icons.local_fire_department_outlined,
+                        label: 'Вибір шефа',
+                      ),
+                    ),
+                  if (recipe.videoUrl != null || recipe.videoFilePath != null)
+                    const Positioned(
+                      top: AppSpacing.sm,
+                      right: 52,
+                      child: _CircleBadge(icon: Icons.play_arrow_rounded),
+                    ),
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: FavoriteButton(recipeId: recipe.id),
+                  ),
+                  if (showMatchIndicator && matchedIngredients > 0)
+                    Positioned(
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.sm,
+                      child: _ScrimBadge(
+                        icon: Icons.check_circle_outline,
+                        label: '$matchedIngredients збіг',
+                      ),
+                    ),
                 ],
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.only(
+                  top: AppSpacing.sm,
+                  bottom: AppSpacing.xs,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.title,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}',
+                      style: semantic.dataLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -291,39 +275,76 @@ class RecipeCard extends ConsumerWidget {
     );
   }
 
-  Widget _featuredMobile(BuildContext context) => ClipRRect(
-        borderRadius: AppRadius.xl,
-        child: AspectRatio(
-          aspectRatio: 3 / 2,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              RecipePhoto(
-                recipe: recipe,
-                role: RecipeImageRole.featured,
-                targetWidth: 480,
+  Widget _featuredMobile(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.sm,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: AppRadius.sm,
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    RecipePhoto(
+                      recipe: recipe,
+                      role: RecipeImageRole.featured,
+                      targetWidth: 480,
+                    ),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        child: AppBadge(
+                          label: 'Вибір шефа',
+                          icon: Icons.local_fire_department_outlined,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      AppColorsV2.ink.withOpacity(.92),
-                      AppColorsV2.ink.withOpacity(.48),
-                      Colors.transparent,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        '${recipe.totalTimeMinutes} хв  ·  ${recipe.servings} порції',
+                        style: context.semantic.dataBody,
+                      ),
                     ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: _featuredCopy(context, mobile: true),
-              ),
-            ],
-          ),
+                const SizedBox(width: AppSpacing.xs),
+                FavoriteButton(recipeId: recipe.id),
+              ],
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 
   Widget _featuredCopy(BuildContext context, {bool mobile = false}) {
     final theme = Theme.of(context);
@@ -375,13 +396,6 @@ String _contentKindLabel(ContentKind kind) => switch (kind) {
       ContentKind.technique => 'Техніка',
       ContentKind.process => 'Процес',
       ContentKind.video => 'Відео',
-    };
-
-IconData _contentKindIcon(ContentKind kind) => switch (kind) {
-      ContentKind.recipe => Icons.restaurant_menu_rounded,
-      ContentKind.technique => Icons.auto_awesome_outlined,
-      ContentKind.process => Icons.format_list_numbered_rounded,
-      ContentKind.video => Icons.play_circle_outline_rounded,
     };
 
 /// Recipe imagery with the design's fallback: surfaceStrong + restaurant icon.

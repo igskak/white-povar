@@ -238,9 +238,10 @@ detail and cooking mode sit outside the shell.
 
 ### Home `/home`
 
-Sections top→bottom: brand header (avatar + `brand.name` + trailing user avatar →
-Profile) · `brand.voice.greeting` · scan banner (primary CTA → `/camera`) · secondary
-text CTA → `/search` · featured hero · course card · "Свіже від автора" feed.
+Sections top→bottom: compact brand header (avatar + `brand.name` + trailing user avatar
+→ Profile) · editorial label and `brand.voice.greeting` · optional published brand
+photo · scan banner (primary CTA → `/camera`) · secondary text CTA → `/search` · open
+featured recipe · course card · "Свіже від автора" feed.
 
 Course card states (13g): **hidden** when `voice.courseName`/`courseTag` are absent ·
 **locked** for guests and free users, rendered as `PremiumGateCard` → `/subscription` ·
@@ -251,17 +252,12 @@ Course card states (13g): **hidden** when `voice.courseName`/`courseTag` are abs
 > `/search?tag=…`. The collection is a real, richer destination already in the app and
 > needs no new route.
 
-> **Accepted divergence.** Past `AppLayout.contentDesktopBreakpoint` Home drops the
-> brand header, greeting, scan banner and the "Ввести вручну" CTA — the desktop rail
-> and top bar already carry brand, profile and capture — and shows the photo, the
-> featured recipe and a four-column "Від шефа" grid instead. This is the one place the
-> §7 "no desktop-only IA" rule is knowingly bent, and the published photo takes a
-> flatter crop there than on the phone, because `BrandHeroBanner` caps its height at
-> 300 while a desktop column keeps growing. So the author is not surprised by it,
-> Creator Studio previews Home at both widths (`StudioPreviewViewport`), renders each
-> from the app's own `HomeIntro` / `HomeFeedSections` / `HomeDesktopSections`, and
-> shows a fourth crop thumbnail for the desktop banner whose ratio is derived from the
-> layout tokens (`BrandMediaAspectRatio.bannerOnDesktop`) rather than written down.
+> **Accepted divergence.** Past `AppLayout.contentDesktopBreakpoint` Home uses a
+> compact horizontal header and a two-column editorial hero: greeting and CTA on the
+> left, the published brand photo or featured recipe on the right. The catalogue
+> continues as an open three-column "Від шефа" grid. Creator Studio previews Home at
+> both widths (`StudioPreviewViewport`) and derives the desktop photo crop from the
+> same layout tokens (`BrandMediaAspectRatio.bannerOnDesktop`).
 
 States: shimmer skeleton · empty · error + retry · pull-to-refresh.
 
@@ -369,12 +365,12 @@ dark `ThemeData` — including the `SemanticColors` extension.
 |---|---|
 | **390 mobile** | Baseline. Screen padding 20, single column. |
 | **≥600 tablet** | `NavigationBar` → `NavigationRail` **with the blogger avatar at the top of the rail**. Content max-width 480, centred. Discover grid 3 columns. Home hero max-height 360. Paywall becomes a centred 560 dialog over a 45% ink scrim, same route. |
-| **≥1024 desktop** | Two-column master–detail where specified (list 420 / detail). Login splits: hero photo left, form max 440. |
+| **≥1024 desktop** | `NavigationRail` → compact horizontal editorial header. Pages keep the full viewport width. Home uses a 40/60 hero and a 3-column catalogue. Two-column master–detail where specified (list 420 / detail). Login splits: hero photo left, form max 440. |
 
 ### Checks
 
-- [ ] Layout switches on `MediaQuery.sizeOf(context).width`, not on a nested
-      constraint — the navigation shell consumes rail width before the page is laid out.
+- [ ] Layout switches on the page constraints. At desktop width the horizontal shell
+      leaves the full viewport width to the page.
 - [ ] No desktop-only information architecture; the same routes and scenarios at every
       width.
 - [ ] No horizontal overflow at 390 / 768 / 1280.
@@ -420,7 +416,7 @@ camera, paywall, profile, settings, saved and login, each at the three reference
    environment. Verify **colour, layout and state** from goldens — not glyphs. To check
    an exact colour, sample the pixel rather than eyeballing the thumbnail.
 
-Manual brand fidelity: temporarily load a gold `BrandConfig` to confirm the system
-reproduces the Chef's Table mockups, then revert. The shipping tenant is
-`ohorodnik-oleksandr` (blue-grey `#5D7183`, `accentOnDark #6B8092`) and gold must not
-become the default brand.
+The shipping tenant is `ohorodnik-oleksandr` with Bordeaux `#7A1823`,
+`accentOnDark #C45E60`, a porcelain light palette and the serif display role. Tenant
+accent values remain dynamic; the editorial composition must work with every valid
+BrandConfig.
