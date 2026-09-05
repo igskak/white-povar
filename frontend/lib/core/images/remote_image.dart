@@ -8,6 +8,14 @@ import 'package:flutter/widgets.dart';
 const _objectPrefix = '/storage/v1/object/public/';
 const _renderPrefix = '/storage/v1/render/image/public/';
 
+/// Image transformations are not available on every Supabase project. Keep
+/// them opt-in so a project without that feature loads the public original
+/// instead of turning every image request into a 403 response.
+const supabaseImageTransformsEnabled = bool.fromEnvironment(
+  'SUPABASE_IMAGE_TRANSFORMS_ENABLED',
+  defaultValue: false,
+);
+
 /// The web HtmlImage path negotiates WebP through the browser, but the native
 /// and http-fallback paths have to ask for it. Without this header the render
 /// endpoint returns a resized PNG that can be larger than the original.
@@ -30,10 +38,16 @@ const _widthBuckets = <int>[
   _maxRenderWidth
 ];
 
-/// Rewrites a public Supabase object URL to its resized, WebP-negotiated
-/// variant. Anything else — bundled assets, third-party hosts — is returned
-/// unchanged.
-String sizedRemoteImageUrl(String url, {required int width, int quality = 70}) {
+/// When transformations are enabled, rewrites a public Supabase object URL to
+/// its resized, WebP-negotiated variant. Disabled transformations and anything
+/// outside Supabase Storage are returned unchanged.
+String sizedRemoteImageUrl(
+  String url, {
+  required int width,
+  int quality = 70,
+  bool enableTransform = supabaseImageTransformsEnabled,
+}) {
+  if (!enableTransform) return url;
   final marker = url.indexOf(_objectPrefix);
   if (marker < 0) return url;
 
@@ -90,8 +104,9 @@ class RemoteImage extends StatelessWidget {
     );
     final loading = placeholder;
     final failed = errorWidget;
+    final requestedUrl = sizedRemoteImageUrl(url, width: pixelWidth);
     return CachedNetworkImage(
-      imageUrl: sizedRemoteImageUrl(url, width: pixelWidth),
+      imageUrl: requestedUrl,
       httpHeaders: remoteImageHeaders,
       width: double.infinity,
       height: double.infinity,
@@ -99,7 +114,25 @@ class RemoteImage extends StatelessWidget {
       alignment: alignment,
       memCacheWidth: pixelWidth,
       placeholder: loading == null ? null : (_, __) => loading,
-      errorWidget: failed == null ? null : (_, __, ___) => failed,
+      errorWidget: (_, __, ___) {
+        // A deployment may enable transforms before the Supabase feature is
+        // actually available. In that case preserve photography by retrying
+        // the public object URL once.
+        if (requestedUrl != url) {
+          return CachedNetworkImage(
+            imageUrl: url,
+            httpHeaders: remoteImageHeaders,
+            width: double.infinity,
+            height: double.infinity,
+            fit: fit,
+            alignment: alignment,
+            memCacheWidth: pixelWidth,
+            placeholder: loading == null ? null : (_, __) => loading,
+            errorWidget: failed == null ? null : (_, __, ___) => failed,
+          );
+        }
+        return failed ?? const SizedBox.shrink();
+      },
     );
   }
 }

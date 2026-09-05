@@ -7,33 +7,56 @@ const _render =
     'https://qnlfvpqmkmbvzmzqgjpo.supabase.co/storage/v1/render/image/public';
 
 void main() {
-  test('rewrites a public object URL to the render endpoint', () {
+  test('keeps the public object URL when transforms are disabled', () {
     expect(
       sizedRemoteImageUrl('$_object/recipe-images/Beetroot.png', width: 640),
+      '$_object/recipe-images/Beetroot.png',
+    );
+  });
+
+  test('rewrites a public object URL when transforms are enabled', () {
+    expect(
+      sizedRemoteImageUrl(
+        '$_object/recipe-images/Beetroot.png',
+        width: 640,
+        enableTransform: true,
+      ),
       '$_render/recipe-images/Beetroot.png?width=640&quality=70&resize=contain',
     );
   });
 
   test('keeps the percent-encoded object path byte-for-byte', () {
     expect(
-      sizedRemoteImageUrl('$_object/recipe-images/Capreze%202.0.png',
-          width: 640),
+      sizedRemoteImageUrl(
+        '$_object/recipe-images/Capreze%202.0.png',
+        width: 640,
+        enableTransform: true,
+      ),
       '$_render/recipe-images/Capreze%202.0.png?width=640&quality=70&resize=contain',
     );
   });
 
   test('replaces the query the storage client appends to brand assets', () {
     expect(
-      sizedRemoteImageUrl('$_object/studio-brand-assets/brands/a/b.webp?',
-          width: 320),
+      sizedRemoteImageUrl(
+        '$_object/studio-brand-assets/brands/a/b.webp?',
+        width: 320,
+        enableTransform: true,
+      ),
       '$_render/studio-brand-assets/brands/a/b.webp?width=320&quality=70&resize=contain',
     );
   });
 
   test('leaves non-Supabase and malformed URLs alone', () {
     const external = 'https://cdn.example.com/photo.jpg';
-    expect(sizedRemoteImageUrl(external, width: 640), external);
-    expect(sizedRemoteImageUrl('$_object/', width: 640), '$_object/');
+    expect(
+      sizedRemoteImageUrl(external, width: 640, enableTransform: true),
+      external,
+    );
+    expect(
+      sizedRemoteImageUrl('$_object/', width: 640, enableTransform: true),
+      '$_object/',
+    );
   });
 
   test('snaps requested widths to shared cache buckets', () {

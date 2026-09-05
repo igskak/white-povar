@@ -28,6 +28,7 @@ flutter build web \
   --dart-define=WEB_APP_URL="${WEB_APP_URL:-https://white-povar-p79r.onrender.com}" \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+  --dart-define=SUPABASE_IMAGE_TRANSFORMS_ENABLED="${SUPABASE_IMAGE_TRANSFORMS_ENABLED:-false}" \
   --dart-define=ENVIRONMENT="$ENVIRONMENT" \
   --dart-define=TENANT_SLUG="$TENANT_SLUG" \
   --dart-define=SUPPORT_EMAIL="${SUPPORT_EMAIL:-}" \
