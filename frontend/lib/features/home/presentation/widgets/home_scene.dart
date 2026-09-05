@@ -420,19 +420,12 @@ class _BordeauxDesktopHero extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          if (brand.heroFor('home') != null)
-                            BrandHero(
-                              key: const ValueKey('home-brand-hero'),
-                              brand: brand,
-                              role: 'home',
-                              targetWidth: constraints.maxWidth * .6,
-                            )
-                          else
-                            RecipePhoto(
-                              recipe: recipe,
-                              role: RecipeImageRole.featured,
-                              targetWidth: constraints.maxWidth * .6,
-                            ),
+                          RecipePhoto(
+                            key: const ValueKey('featured-recipe-hero'),
+                            recipe: recipe,
+                            role: RecipeImageRole.featured,
+                            targetWidth: constraints.maxWidth * .6,
+                          ),
                           Align(
                             alignment: Alignment.bottomLeft,
                             child: Container(

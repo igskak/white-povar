@@ -20,13 +20,16 @@ const _homeHero = ValueKey('home-brand-hero');
 const _collectionsHero = ValueKey('collections-brand-hero');
 
 void main() {
-  testWidgets('Home shows the published home photo at every breakpoint',
+  testWidgets(
+      'Home uses brand photography on mobile and recipe photography on desktop',
       (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     tester.view.devicePixelRatio = 1;
 
-    // Mobile and desktop Home are separate layouts; both must honour the role.
+    // The compact brand intro uses the published Home photo. The desktop hero
+    // promotes a recipe, so its title and photography must describe the same
+    // content.
     for (final width in [390.0, 1280.0]) {
       tester.view.physicalSize = Size(width, 1000);
       await tester.pumpWidget(
@@ -34,7 +37,12 @@ void main() {
       );
       await _settleFeed(tester);
 
-      expect(find.byKey(_homeHero), findsOneWidget, reason: 'width: $width');
+      expect(
+          find.byKey(_homeHero), width < 1024 ? findsOneWidget : findsNothing,
+          reason: 'width: $width');
+      expect(find.byKey(const ValueKey('featured-recipe-hero')),
+          width < 1024 ? findsNothing : findsOneWidget,
+          reason: 'width: $width');
       expect(tester.takeException(), isNull);
     }
   });

@@ -16,6 +16,7 @@ import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
 import 'package:frontend/core/widgets/design_system.dart';
 import 'package:frontend/features/home/presentation/widgets/home_scene.dart';
+import 'package:frontend/features/recipes/presentation/widgets/recipe_photo.dart';
 import 'package:frontend/features/studio/presentation/pages/studio_brand_page.dart';
 import 'package:frontend/features/studio/presentation/widgets/studio_preview.dart';
 import 'package:frontend/features/studio/studio_brand_draft_service.dart';
@@ -307,16 +308,12 @@ void main() {
     expect(find.byType(HomeIntro), findsNothing);
     expect(find.text('Від шефа'), findsOneWidget);
 
-    // The point of the second viewport: the published crop is not the phone's.
-    // A wide column clamps the banner's height, so its shape is flatter.
-    final desktopBanner = tester.getSize(find.byType(BrandHero).first);
+    // The desktop hero promotes a recipe and therefore uses that recipe's
+    // photograph rather than the chef's Home banner.
+    expect(find.byKey(const ValueKey('home-brand-hero')), findsNothing);
+    final desktopBanner = tester.getSize(find.byType(RecipePhoto).first);
     expect(phoneBanner.aspectRatio, closeTo(BrandMediaAspectRatio.banner, .01));
     expect(desktopBanner.aspectRatio, greaterThan(1.6));
-
-    // …and the crop thumbnail promises exactly that shape, so a frame kept
-    // inside the desktop thumbnail is a frame the page really shows.
-    expect(desktopBanner.aspectRatio,
-        closeTo(BrandMediaAspectRatio.bannerOnDesktop(), .01));
     expect(tester.takeException(), isNull);
   });
 
