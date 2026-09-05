@@ -299,6 +299,10 @@ class HomeDesktopSections extends StatelessWidget {
             onTap: () => onOpenRecipe(featured),
           ),
           const SizedBox(height: AppSpacing.xl),
+          if (brand.heroFor('home') != null) ...[
+            _DesktopAuthorStory(brand: brand),
+            const SizedBox(height: AppSpacing.xl),
+          ],
           Divider(color: context.semantic.outlineVariant),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -332,10 +336,6 @@ class HomeDesktopSections extends StatelessWidget {
               onTap: () => onOpenRecipe(feed[index]),
             ),
           ),
-          if (brand.heroFor('home') != null) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _DesktopAuthorStory(brand: brand),
-          ],
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
             const SizedBox(height: AppSpacing.xl),
             BrandCourseCard(
