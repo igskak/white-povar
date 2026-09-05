@@ -51,6 +51,15 @@ void main() {
     expect(storage.value, 'light');
   });
 
+  test('starts in the canonical light editorial theme without a saved choice',
+      () async {
+    final controller = ThemeModeController(_MemoryThemeStorage(null));
+    expect(controller.state, ThemeMode.light);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.state, ThemeMode.light);
+  });
+
   testWidgets('theme choice remains usable at 200 percent text scale',
       (tester) async {
     await tester.pumpWidget(ProviderScope(

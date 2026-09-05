@@ -21,7 +21,7 @@ class SharedPreferencesThemeModeStorage implements ThemeModeStorage {
 }
 
 class ThemeModeController extends StateNotifier<ThemeMode> {
-  ThemeModeController(this._storage) : super(ThemeMode.system) {
+  ThemeModeController(this._storage) : super(ThemeMode.light) {
     _restore();
   }
 
@@ -30,7 +30,7 @@ class ThemeModeController extends StateNotifier<ThemeMode> {
   Future<void> _restore() async {
     final value = await _storage.read();
     state = ThemeMode.values.where((mode) => mode.name == value).firstOrNull ??
-        ThemeMode.system;
+        ThemeMode.light;
   }
 
   Future<void> setMode(ThemeMode mode) async {
