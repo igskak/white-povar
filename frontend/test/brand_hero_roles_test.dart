@@ -43,6 +43,12 @@ void main() {
       expect(find.byKey(const ValueKey('featured-recipe-hero')),
           width < 1024 ? findsNothing : findsOneWidget,
           reason: 'width: $width');
+      expect(find.byKey(const ValueKey('desktop-author-avatar')),
+          width < 1024 ? findsNothing : findsOneWidget,
+          reason: 'width: $width');
+      expect(find.byKey(const ValueKey('desktop-author-photo')),
+          width < 1024 ? findsNothing : findsOneWidget,
+          reason: 'width: $width');
       expect(tester.takeException(), isNull);
     }
   });
@@ -64,6 +70,8 @@ void main() {
       // Guard against a false pass from a Home that never finished loading.
       expect(find.text(_recipe.title), findsWidgets, reason: 'width: $width');
       expect(find.byKey(_homeHero), findsNothing, reason: 'width: $width');
+      expect(find.byKey(const ValueKey('desktop-author-photo')), findsNothing,
+          reason: 'width: $width');
     }
   });
 

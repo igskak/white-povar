@@ -332,6 +332,10 @@ class HomeDesktopSections extends StatelessWidget {
               onTap: () => onOpenRecipe(feed[index]),
             ),
           ),
+          if (brand.heroFor('home') != null) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            _DesktopAuthorStory(brand: brand),
+          ],
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
             const SizedBox(height: AppSpacing.xl),
             BrandCourseCard(
@@ -380,6 +384,8 @@ class _BordeauxDesktopHero extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      _DesktopAuthorSignature(brand: brand),
+                      const SizedBox(height: AppSpacing.sm),
                       Text(
                         'АВТОРСЬКА КУХНЯ',
                         style: theme.textTheme.labelSmall?.copyWith(
@@ -474,6 +480,124 @@ class _BordeauxDesktopHero extends StatelessWidget {
                         ],
                       ),
                     ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopAuthorSignature extends StatelessWidget {
+  const _DesktopAuthorSignature({required this.brand});
+
+  final BrandDetails brand;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      key: const ValueKey('desktop-author-signature'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BrandAvatar(
+          key: const ValueKey('desktop-author-avatar'),
+          brand: brand,
+          radius: 22,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              brand.creatorName,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontFamily: context.brandTheme.displayFontFamily,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              'Автор рецептів',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: context.semantic.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopAuthorStory extends StatelessWidget {
+  const _DesktopAuthorStory({required this.brand});
+
+  final BrandDetails brand;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    return Semantics(
+      label: 'Про автора ${brand.name}',
+      child: Container(
+        key: const ValueKey('desktop-author-story'),
+        height: 280,
+        decoration: BoxDecoration(
+          color: semantic.surface,
+          border: Border.all(color: semantic.outlineVariant),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 5,
+                child: BrandHero(
+                  key: const ValueKey('desktop-author-photo'),
+                  brand: brand,
+                  role: 'home',
+                  targetWidth: constraints.maxWidth * 5 / 12,
+                ),
+              ),
+              Expanded(
+                flex: 7,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl,
+                    vertical: AppSpacing.lg,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ЗНАЙОМТЕСЯ З АВТОРОМ',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.secondary,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.8,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        brand.name,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontFamily: context.brandTheme.displayFontFamily,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Особиста добірка страв, перевірених на власній кухні.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: semantic.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
