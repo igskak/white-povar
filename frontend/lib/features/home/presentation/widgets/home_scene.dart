@@ -4,8 +4,10 @@ import '../../../../app/theme/brand_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_config.dart';
+import '../../../../core/images/remote_image.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/premium.dart';
+import '../../../collections/models/collection.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/presentation/widgets/recipe_photo.dart';
@@ -199,6 +201,7 @@ class HomeFeedSections extends StatelessWidget {
     required this.brand,
     required this.recipes,
     required this.courseLocked,
+    this.courseCollection,
     required this.onOpenRecipe,
     required this.onCollectionTap,
     required this.onUnlockCourse,
@@ -207,6 +210,7 @@ class HomeFeedSections extends StatelessWidget {
   final BrandDetails brand;
   final List<Recipe> recipes;
   final bool courseLocked;
+  final ContentCollection? courseCollection;
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
@@ -234,6 +238,8 @@ class HomeFeedSections extends StatelessWidget {
             BrandCourseCard(
               courseName: brand.voice.courseName!,
               locked: courseLocked,
+              collection: courseCollection,
+              fallbackRecipes: feed,
               onOpen: onCollectionTap,
               onUnlock: onUnlockCourse,
             ),
@@ -264,6 +270,7 @@ class HomeDesktopSections extends StatelessWidget {
     required this.brand,
     required this.recipes,
     required this.courseLocked,
+    this.courseCollection,
     required this.onOpenRecipe,
     required this.onSeeAll,
     required this.onCollectionTap,
@@ -273,6 +280,7 @@ class HomeDesktopSections extends StatelessWidget {
   final BrandDetails brand;
   final List<Recipe> recipes;
   final bool courseLocked;
+  final ContentCollection? courseCollection;
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onSeeAll;
   final VoidCallback onCollectionTap;
@@ -303,6 +311,8 @@ class HomeDesktopSections extends StatelessWidget {
             BrandCourseCard(
               courseName: brand.voice.courseName!,
               locked: courseLocked,
+              collection: courseCollection,
+              fallbackRecipes: feed,
               onOpen: onCollectionTap,
               onUnlock: onUnlockCourse,
             ),
@@ -741,8 +751,9 @@ class _RecipeFeed extends StatelessWidget {
       );
 }
 
-/// Brand course card (13g). Hidden when the brand publishes no course;
-/// locked for guests and free users; active for premium.
+/// Editorial storefront for the brand's featured collection. It previews the
+/// real collection whenever its detail has loaded, then falls back to the
+/// published recipe feed so Home never collapses into a generic paywall box.
 class BrandCourseCard extends StatelessWidget {
   const BrandCourseCard({
     super.key,
@@ -750,47 +761,269 @@ class BrandCourseCard extends StatelessWidget {
     required this.locked,
     required this.onOpen,
     required this.onUnlock,
+    this.collection,
+    this.fallbackRecipes = const [],
   });
 
   final String courseName;
   final bool locked;
   final VoidCallback onOpen;
   final VoidCallback onUnlock;
+  final ContentCollection? collection;
+  final List<Recipe> fallbackRecipes;
 
   @override
   Widget build(BuildContext context) {
-    if (locked) {
-      return PremiumGateCard(
-        title: courseName,
-        message: 'Авторський курс від шефа доступний у Premium.',
-        ctaLabel: 'Відкрити Premium',
-        onUnlock: onUnlock,
-      );
-    }
-    return ContentCard(
-      onTap: onOpen,
-      semanticLabel: 'Відкрити колекцію $courseName',
-      child: Row(
+    final title = collection?.title.trim().isNotEmpty == true
+        ? collection!.title
+        : courseName;
+    final description = collection?.description.trim().isNotEmpty == true
+        ? collection!.description
+        : 'Авторські рецепти й практичні матеріали, зібрані в одну програму.';
+    final isLocked = collection?.isLocked ?? locked;
+    final action = isLocked ? onUnlock : onOpen;
+    final previews = _previewRecipes();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final desktop = constraints.maxWidth >= 760;
+        final content = _CourseShowcaseCopy(
+          title: title,
+          description: description,
+          itemCount: collection?.itemCount,
+          locked: isLocked,
+          compact: !desktop,
+        );
+        final media = _CoursePreviewMosaic(
+          title: title,
+          coverUrl: collection?.coverUrl,
+          recipes: previews,
+        );
+
+        return ContentCard(
+          key: const ValueKey('premium-collection-showcase'),
+          onTap: action,
+          semanticLabel: isLocked
+              ? 'Відкрити Premium для колекції $title'
+              : 'Відкрити колекцію $title',
+          padding: EdgeInsets.zero,
+          child: desktop
+              ? SizedBox(
+                  height: 252,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(flex: 6, child: content),
+                      Expanded(flex: 5, child: media),
+                    ],
+                  ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(height: 176, child: media),
+                    content,
+                  ],
+                ),
+        );
+      },
+    );
+  }
+
+  List<Recipe> _previewRecipes() {
+    final candidates = [
+      ...?collection?.items.map((item) => item.content),
+      ...fallbackRecipes,
+    ];
+    final seen = <String>{};
+    return candidates.where((recipe) => seen.add(recipe.id)).take(3).toList();
+  }
+}
+
+class _CourseShowcaseCopy extends StatelessWidget {
+  const _CourseShowcaseCopy({
+    required this.title,
+    required this.description,
+    required this.itemCount,
+    required this.locked,
+    required this.compact,
+  });
+
+  final String title;
+  final String description;
+  final int? itemCount;
+  final bool locked;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
+    final onAccent = theme.colorScheme.onPrimary;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.workspace_premium_rounded,
-              color: AppColorsV2.premiumGold),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              const PremiumBadge(size: 24),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'ПРЕМІАЛЬНА КОЛЕКЦІЯ',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontFamily: context.brandTheme.displayFontFamily,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: context.semantic.textSecondary,
+            ),
+          ),
+          if (compact)
+            const SizedBox(height: AppSpacing.lg)
+          else
+            const Spacer(),
+          if (itemCount != null && itemCount! > 0) ...[
+            Text(
+              '$itemCount матеріалів у колекції',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: context.semantic.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          Container(
+            key: const ValueKey('premium-collection-cta'),
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: AppRadius.sm,
+            ),
+            child: Row(
               children: [
-                Text('Premium-колекція',
-                    style: Theme.of(context).textTheme.labelLarge),
-                Text(courseName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge),
+                Icon(
+                  locked
+                      ? Icons.workspace_premium_outlined
+                      : Icons.collections_bookmark_outlined,
+                  size: 19,
+                  color: onAccent,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    locked ? 'Відкрити Premium' : 'Відкрити майстерню',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: onAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_forward_rounded, size: 20, color: onAccent),
               ],
             ),
           ),
-          const Icon(Icons.arrow_forward_rounded),
         ],
       ),
     );
   }
+}
+
+class _CoursePreviewMosaic extends StatelessWidget {
+  const _CoursePreviewMosaic({
+    required this.title,
+    required this.coverUrl,
+    required this.recipes,
+  });
+
+  final String title;
+  final String? coverUrl;
+  final List<Recipe> recipes;
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = <Widget>[
+      if (coverUrl != null && coverUrl!.isNotEmpty)
+        Semantics(
+          image: true,
+          label: 'Обкладинка колекції $title',
+          child: RemoteImage(
+            url: coverUrl!,
+            targetWidth: 720,
+            errorWidget: _CoursePreviewFallback(title: title),
+          ),
+        ),
+      for (final recipe in recipes) RecipeImageFallback.wrap(recipe),
+    ].take(3).toList();
+
+    if (tiles.isEmpty) return _CoursePreviewFallback(title: title);
+    if (tiles.length == 1) return tiles.first;
+
+    return RepaintBoundary(
+      key: const ValueKey('premium-collection-preview'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 6, child: tiles.first),
+          const SizedBox(width: 4),
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tiles[1]),
+                if (tiles.length > 2) ...[
+                  const SizedBox(height: 4),
+                  Expanded(child: tiles[2]),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CoursePreviewFallback extends StatelessWidget {
+  const _CoursePreviewFallback({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        image: true,
+        label: 'Колекція $title',
+        child: ColoredBox(
+          color: context.semantic.surfaceStrong,
+          child: Center(
+            child: Icon(
+              Icons.collections_bookmark_outlined,
+              size: 52,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ),
+      );
 }

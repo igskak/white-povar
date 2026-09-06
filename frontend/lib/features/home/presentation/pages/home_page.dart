@@ -8,6 +8,7 @@ import '../../../../core/branding/brand_providers.dart';
 import '../../../../core/widgets/design_system.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../auth/providers/auth_provider.dart';
+import '../../../collections/models/collection.dart';
 import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
@@ -44,6 +45,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     // premium, and hidden entirely when the brand publishes no course.
     final courseLocked = !ref.watch(isPremiumProvider);
     final featuredCollectionId = ref.watch(courseCollectionIdProvider);
+    final featuredCollection = featuredCollectionId == null
+        ? null
+        : ref.watch(collectionDetailProvider(featuredCollectionId)).valueOrNull;
 
     return LayoutBuilder(
       builder: (context, constraints) =>
@@ -61,6 +65,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   onUnlockCourse: () => context.push('/subscription'),
                   courseLocked: courseLocked,
+                  courseCollection: featuredCollection,
                 )
               : _MobileHome(
                   brand: brand,
@@ -79,6 +84,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   onUnlockCourse: () => context.push('/subscription'),
                   courseLocked: courseLocked,
+                  courseCollection: featuredCollection,
                 ),
     );
   }
@@ -111,6 +117,7 @@ class _MobileHome extends StatelessWidget {
     required this.onCollectionTap,
     required this.onUnlockCourse,
     required this.courseLocked,
+    required this.courseCollection,
   });
 
   final BrandDetails brand;
@@ -124,6 +131,7 @@ class _MobileHome extends StatelessWidget {
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
+  final ContentCollection? courseCollection;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -174,6 +182,7 @@ class _MobileHome extends StatelessWidget {
                 brand: brand,
                 recipes: recipes,
                 courseLocked: courseLocked,
+                courseCollection: courseCollection,
                 onOpenRecipe: onOpenRecipe,
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
@@ -204,6 +213,7 @@ class _DesktopHome extends StatelessWidget {
     required this.onCollectionTap,
     required this.onUnlockCourse,
     required this.courseLocked,
+    required this.courseCollection,
   });
 
   final BrandDetails brand;
@@ -213,6 +223,7 @@ class _DesktopHome extends StatelessWidget {
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
+  final ContentCollection? courseCollection;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -241,6 +252,7 @@ class _DesktopHome extends StatelessWidget {
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
                 courseLocked: courseLocked,
+                courseCollection: courseCollection,
               );
             },
           ),
@@ -256,6 +268,7 @@ class _DesktopHomeContent extends StatelessWidget {
     required this.onCollectionTap,
     required this.onUnlockCourse,
     required this.courseLocked,
+    required this.courseCollection,
   });
 
   final BrandDetails brand;
@@ -264,6 +277,7 @@ class _DesktopHomeContent extends StatelessWidget {
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
+  final ContentCollection? courseCollection;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
@@ -276,6 +290,7 @@ class _DesktopHomeContent extends StatelessWidget {
                 brand: brand,
                 recipes: recipes,
                 courseLocked: courseLocked,
+                courseCollection: courseCollection,
                 onOpenRecipe: onOpenRecipe,
                 onSeeAll: () => context.go('/search'),
                 onCollectionTap: onCollectionTap,

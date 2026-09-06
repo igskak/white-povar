@@ -22,7 +22,7 @@ preferences, and every interaction must remain usable with touch and keyboard.
 
 ## Delivery status
 
-- [ ] 1. Premium collection showcase
+- [x] 1. Premium collection showcase
 - [ ] 2. Shared recipe transition
 - [ ] 3. Editorial section reveals
 - [ ] 4. Responsive recipe-card interactions
