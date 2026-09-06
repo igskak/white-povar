@@ -494,11 +494,14 @@ class _DesktopFeaturedRecipeMediaState
                     scale: _hovered ? 1.025 : 1,
                     duration: duration,
                     curve: Curves.easeOutCubic,
-                    child: RecipePhoto(
-                      key: const ValueKey('featured-recipe-hero'),
-                      recipe: widget.recipe,
-                      role: RecipeImageRole.featured,
-                      targetWidth: widget.targetWidth,
+                    child: RecipeImageHero(
+                      recipeId: widget.recipe.id,
+                      child: RecipePhoto(
+                        key: const ValueKey('featured-recipe-hero'),
+                        recipe: widget.recipe,
+                        role: RecipeImageRole.featured,
+                        targetWidth: widget.targetWidth,
+                      ),
                     ),
                   ),
                 ),

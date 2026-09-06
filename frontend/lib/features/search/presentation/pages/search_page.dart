@@ -918,7 +918,10 @@ class _SearchResults extends StatelessWidget {
               return Stack(children: [
                 RecipeCard(
                     recipe: recipe,
-                    onTap: () => context.push('/recipes/${recipe.id}')),
+                    onTap: () => context.push(
+                          '/recipes/${recipe.id}',
+                          extra: recipe,
+                        )),
                 if (recommendation != null)
                   Positioned(
                     top: AppSpacing.xs,

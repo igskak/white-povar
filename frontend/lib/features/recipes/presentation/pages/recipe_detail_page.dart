@@ -21,13 +21,22 @@ import '../widgets/recipe_photo.dart';
 import '../widgets/recipe_video_widget.dart';
 
 class RecipeDetailPage extends ConsumerStatefulWidget {
-  const RecipeDetailPage(
-      {super.key, required this.recipeId, this.collectionId});
+  const RecipeDetailPage({
+    super.key,
+    required this.recipeId,
+    this.collectionId,
+    this.initialRecipe,
+  });
   final String recipeId;
 
   /// Set when this material was opened from a collection that marked it a free
   /// preview. The server re-checks the grant before it unlocks anything.
   final String? collectionId;
+
+  /// The list projection selected on the previous screen. It is only used to
+  /// keep the image transition alive while the authoritative detail payload
+  /// loads.
+  final Recipe? initialRecipe;
 
   @override
   ConsumerState<RecipeDetailPage> createState() => _RecipeDetailPageState();
@@ -49,7 +58,7 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
 
     return Scaffold(
       body: recipeAsync.when(
-        loading: () => const _RecipeDetailSkeleton(),
+        loading: () => _RecipeDetailSkeleton(recipe: widget.initialRecipe),
         error: (error, _) => StateView.error(
           title: _isOffline(error)
               ? 'Немає з’єднання'
@@ -217,16 +226,25 @@ class _RecipeDetailContent extends StatelessWidget {
 }
 
 class _RecipeHero extends StatelessWidget {
-  const _RecipeHero({required this.recipe});
+  const _RecipeHero({
+    required this.recipe,
+    this.transitionBorderRadius = BorderRadius.zero,
+  });
   final Recipe recipe;
+  final BorderRadius transitionBorderRadius;
   @override
   Widget build(BuildContext context) => AspectRatio(
         aspectRatio: 4 / 3,
         child: Stack(fit: StackFit.expand, children: [
-          RecipePhoto(
-            recipe: recipe,
-            role: RecipeImageRole.detail,
-            targetWidth: MediaQuery.sizeOf(context).width,
+          RecipeImageHero(
+            key: ValueKey('recipe-detail-image-${recipe.id}'),
+            recipeId: recipe.id,
+            borderRadius: transitionBorderRadius,
+            child: RecipePhoto(
+              recipe: recipe,
+              role: RecipeImageRole.detail,
+              targetWidth: MediaQuery.sizeOf(context).width,
+            ),
           ),
           DecoratedBox(
               decoration: BoxDecoration(
@@ -678,7 +696,10 @@ class _Stat extends StatelessWidget {
 }
 
 class _RecipeDetailSkeleton extends StatelessWidget {
-  const _RecipeDetailSkeleton();
+  const _RecipeDetailSkeleton({this.recipe});
+
+  final Recipe? recipe;
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
@@ -699,37 +720,51 @@ class _RecipeDetailSkeleton extends StatelessWidget {
             // Mirrors the loaded composition — hero pane on the left, recipe
             // summary on the right — so the page does not reflow once the
             // payload lands.
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
               child: ResponsiveContainer(
                 child: Row(
-                  key: ValueKey('desktop-recipe-skeleton'),
+                  key: const ValueKey('desktop-recipe-skeleton'),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       flex: 5,
-                      child: AspectRatio(
-                        aspectRatio: 4 / 3,
-                        child: AppSkeleton(
-                          height: double.infinity,
-                          borderRadius: AppRadius.xl,
+                      child: ClipRRect(
+                        borderRadius: AppRadius.xl,
+                        child: AspectRatio(
+                          aspectRatio: 4 / 3,
+                          child: recipe == null
+                              ? const AppSkeleton(
+                                  height: double.infinity,
+                                  borderRadius: AppRadius.xl,
+                                )
+                              : _RecipeHero(
+                                  recipe: recipe!,
+                                  transitionBorderRadius: AppRadius.xl,
+                                ),
                         ),
                       ),
                     ),
-                    SizedBox(width: AppSpacing.xxl),
-                    Expanded(flex: 4, child: detail),
+                    const SizedBox(width: AppSpacing.xxl),
+                    const Expanded(flex: 4, child: detail),
                   ],
                 ),
               ),
             );
           }
-          return const SingleChildScrollView(
+          return SingleChildScrollView(
             child: Column(
+              key: const ValueKey('mobile-recipe-skeleton'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AppSkeleton(
-                  height: 320,
-                  borderRadius: BorderRadius.zero,
+                AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: recipe == null
+                      ? const AppSkeleton(
+                          height: double.infinity,
+                          borderRadius: BorderRadius.zero,
+                        )
+                      : _RecipeHero(recipe: recipe!),
                 ),
                 detail,
               ],

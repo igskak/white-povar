@@ -3,6 +3,91 @@ import 'package:flutter/material.dart';
 import '../../../../core/images/remote_image.dart';
 import '../../models/recipe.dart';
 
+/// Connects a recipe thumbnail to its detail hero without changing the image
+/// source or access model. The transition disappears entirely when the user
+/// asks the platform to reduce motion.
+class RecipeImageHero extends StatelessWidget {
+  const RecipeImageHero({
+    super.key,
+    required this.recipeId,
+    required this.child,
+    this.borderRadius = BorderRadius.zero,
+  });
+
+  final String recipeId;
+  final Widget child;
+  final BorderRadius borderRadius;
+
+  static String tagFor(String recipeId) => 'recipe-image-$recipeId';
+
+  @override
+  Widget build(BuildContext context) {
+    final frame = _RecipeImageHeroFrame(
+      borderRadius: borderRadius,
+      child: child,
+    );
+    if (MediaQuery.disableAnimationsOf(context)) return frame;
+
+    return Hero(
+      tag: tagFor(recipeId),
+      transitionOnUserGestures: true,
+      createRectTween: (begin, end) => MaterialRectCenterArcTween(
+        begin: begin,
+        end: end,
+      ),
+      flightShuttleBuilder: (
+        _,
+        animation,
+        __,
+        fromHeroContext,
+        toHeroContext,
+      ) {
+        final from =
+            (fromHeroContext.widget as Hero).child as _RecipeImageHeroFrame;
+        final to =
+            (toHeroContext.widget as Hero).child as _RecipeImageHeroFrame;
+        final fade = CurvedAnimation(
+          parent: animation,
+          curve: const Interval(.18, .82, curve: Curves.easeInOut),
+        );
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (_, __) => ClipRRect(
+            borderRadius: BorderRadius.lerp(
+              from.borderRadius,
+              to.borderRadius,
+              animation.value,
+            )!,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Opacity(opacity: 1 - fade.value, child: from.child),
+                Opacity(opacity: fade.value, child: to.child),
+              ],
+            ),
+          ),
+        );
+      },
+      child: frame,
+    );
+  }
+}
+
+class _RecipeImageHeroFrame extends StatelessWidget {
+  const _RecipeImageHeroFrame({
+    required this.borderRadius,
+    required this.child,
+  });
+
+  final BorderRadius borderRadius;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => borderRadius == BorderRadius.zero
+      ? child
+      : ClipRRect(borderRadius: borderRadius, child: child);
+}
+
 /// One role-aware recipe image renderer shared by every consumer surface.
 class RecipePhoto extends StatelessWidget {
   const RecipePhoto({

@@ -89,7 +89,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _openRecipe(Recipe recipe) => context.push('/recipes/${recipe.id}');
+  void _openRecipe(Recipe recipe) =>
+      context.push('/recipes/${recipe.id}', extra: recipe);
 
   void _openCollection(
     BuildContext context, {

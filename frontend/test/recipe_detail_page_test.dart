@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +69,44 @@ void main() {
         await tester.pump();
         expect(tester.takeException(), isNull, reason: 'width: $width');
       }
+    });
+
+    testWidgets('keeps the selected image visible while detail data loads',
+        (tester) async {
+      final recipe = _recipe(isPremium: false);
+      final detail = Completer<Recipe>();
+
+      await tester.pumpWidget(_app(
+        recipe: recipe,
+        recipeFuture: detail.future,
+        initialRecipe: recipe,
+      ));
+      await tester.pump();
+
+      expect(
+        find.byKey(ValueKey('recipe-detail-image-${recipe.id}')),
+        findsOneWidget,
+      );
+      expect(
+          find.byKey(const ValueKey('mobile-recipe-skeleton')), findsOneWidget);
+      expect(find.text(recipe.description), findsNothing);
+
+      detail.complete(recipe);
+      await tester.pumpAndSettle();
+
+      expect(find.text(recipe.description), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('removes the shared image hero when motion is reduced',
+        (tester) async {
+      await tester.pumpWidget(_app(
+        recipe: _recipe(isPremium: false),
+        disableAnimations: true,
+      ));
+      await tester.pump();
+
+      expect(find.byType(Hero), findsNothing);
     });
 
     testWidgets('desktop has 4:3 hero, two-column body and in-header actions',
@@ -235,11 +275,14 @@ Widget _app({
   required Recipe recipe,
   bool hasPremiumAccess = false,
   bool authenticated = false,
+  Future<Recipe>? recipeFuture,
+  Recipe? initialRecipe,
+  bool disableAnimations = false,
 }) =>
     ProviderScope(
       overrides: [
         recipeDetailProvider((recipeId: recipe.id, collectionId: null))
-            .overrideWith((_) async => recipe),
+            .overrideWith((_) => recipeFuture ?? Future.value(recipe)),
         isPremiumProvider.overrideWithValue(hasPremiumAccess),
         authProvider.overrideWith(
           (ref) => AuthNotifier.testing(
@@ -252,7 +295,16 @@ Widget _app({
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brand),
-        home: RecipeDetailPage(recipeId: recipe.id),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: disableAnimations,
+          ),
+          child: child!,
+        ),
+        home: RecipeDetailPage(
+          recipeId: recipe.id,
+          initialRecipe: initialRecipe,
+        ),
       ),
     );
 

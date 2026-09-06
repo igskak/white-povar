@@ -113,7 +113,8 @@ class RecipeCard extends ConsumerWidget {
                 children: [
                   AspectRatio(
                     aspectRatio: 4 / 3,
-                    child: ClipRRect(
+                    child: RecipeImageHero(
+                      recipeId: recipe.id,
                       borderRadius: AppRadius.sm,
                       child: RecipeImageFallback.wrap(
                         recipe,
@@ -199,11 +200,16 @@ class RecipeCard extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       child: Row(
         children: [
-          RecipeImageFallback(
-            recipe: recipe,
-            width: 84,
-            height: 84,
-            role: RecipeImageRole.list,
+          RecipeImageHero(
+            recipeId: recipe.id,
+            borderRadius: AppRadius.md,
+            child: RecipeImageFallback(
+              recipe: recipe,
+              width: 84,
+              height: 84,
+              role: RecipeImageRole.list,
+              borderRadius: BorderRadius.zero,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -252,10 +258,14 @@ class RecipeCard extends ConsumerWidget {
           fit: StackFit.expand,
           children: [
             const ColoredBox(color: AppColorsV2.ink),
-            RecipePhoto(
-              recipe: recipe,
-              role: RecipeImageRole.featured,
-              targetWidth: width,
+            RecipeImageHero(
+              recipeId: recipe.id,
+              borderRadius: AppRadius.xl,
+              child: RecipePhoto(
+                recipe: recipe,
+                role: RecipeImageRole.featured,
+                targetWidth: width,
+              ),
             ),
             DecoratedBox(
               decoration: BoxDecoration(
@@ -305,10 +315,13 @@ class RecipeCard extends ConsumerWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    RecipePhoto(
-                      recipe: recipe,
-                      role: RecipeImageRole.featured,
-                      targetWidth: 480,
+                    RecipeImageHero(
+                      recipeId: recipe.id,
+                      child: RecipePhoto(
+                        recipe: recipe,
+                        role: RecipeImageRole.featured,
+                        targetWidth: 480,
+                      ),
                     ),
                     Align(
                       alignment: Alignment.topLeft,

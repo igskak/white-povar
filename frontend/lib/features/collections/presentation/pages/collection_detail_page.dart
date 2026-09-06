@@ -140,7 +140,12 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
     };
     // Name the collection so the free preview it granted survives the jump to
     // the material instead of locking itself again on the recipe route.
-    if (mounted) context.push(PreviewGrant.appendTo(path, collection.id));
+    if (mounted) {
+      context.push(
+        PreviewGrant.appendTo(path, collection.id),
+        extra: item.content,
+      );
+    }
   }
 }
 

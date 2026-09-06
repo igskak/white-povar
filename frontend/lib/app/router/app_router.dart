@@ -22,6 +22,7 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/profile/presentation/pages/preferences_page.dart';
 import '../../features/profile/presentation/pages/notification_preferences_page.dart';
 import '../../features/profile/presentation/pages/settings_page.dart';
+import '../../features/recipes/models/recipe.dart';
 import '../../features/recipes/presentation/pages/cooking_mode_page.dart';
 import '../../features/recipes/presentation/pages/recipe_detail_page.dart';
 import '../../features/saved/presentation/pages/saved_page.dart';
@@ -294,6 +295,7 @@ Widget _recipeDetail(GoRouterState state) {
       : RecipeDetailPage(
           recipeId: recipeId,
           collectionId: PreviewGrant.fromUri(state.uri),
+          initialRecipe: state.extra is Recipe ? state.extra! as Recipe : null,
         );
 }
 

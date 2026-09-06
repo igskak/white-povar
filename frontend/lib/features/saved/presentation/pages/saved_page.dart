@@ -107,8 +107,10 @@ class _SavedRecipesBody extends ConsumerWidget {
                         delegate: SliverChildBuilderDelegate(
                           (context, index) => RecipeCard(
                             recipe: recipes[index],
-                            onTap: () =>
-                                context.push('/recipes/${recipes[index].id}'),
+                            onTap: () => context.push(
+                              '/recipes/${recipes[index].id}',
+                              extra: recipes[index],
+                            ),
                           ),
                           childCount: recipes.length,
                         ),

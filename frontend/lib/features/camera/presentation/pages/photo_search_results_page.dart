@@ -125,7 +125,10 @@ class PhotoSearchResultsPage extends ConsumerWidget {
                   final recipe = Recipe.fromJson(recipeJson);
                   return RecipeCard(
                     recipe: recipe,
-                    onTap: () => context.push('/recipes/${recipe.id}'),
+                    onTap: () => context.push(
+                      '/recipes/${recipe.id}',
+                      extra: recipe,
+                    ),
                     showMatchIndicator: true,
                     matchedIngredients: _calculateMatchedIngredients(
                         recipe, confirmedIngredients),
