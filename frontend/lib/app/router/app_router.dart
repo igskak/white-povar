@@ -413,7 +413,7 @@ class _DesktopTopBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
-  static const double height = 80;
+  static const double height = 68;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -424,39 +424,24 @@ class _DesktopTopBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLowest,
           border: Border(bottom: BorderSide(color: dividerColor)),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withOpacity(.04),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Row(
           children: [
             SizedBox(
-              width: 220,
-              child: BrandLogo(brand: brand, height: 26),
+              width: 208,
+              child: BrandLogo(brand: brand, height: 24),
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: context.semantic.surface,
-                borderRadius: AppRadius.xl,
-                border: Border.all(color: dividerColor),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxs),
-                child: Row(
-                  children: [
-                    for (var index = 0; index < 3; index++)
-                      _DesktopTopDestination(
-                        label: _DesktopNavigationShell._labels[index],
-                        selected: selectedIndex == index,
-                        onPressed: () => onDestinationSelected(index),
-                      ),
-                  ],
-                ),
-              ),
+            Row(
+              children: [
+                for (var index = 0; index < 3; index++) ...[
+                  _DesktopTopDestination(
+                    label: _DesktopNavigationShell._labels[index],
+                    selected: selectedIndex == index,
+                    onPressed: () => onDestinationSelected(index),
+                  ),
+                  if (index < 2) const SizedBox(width: AppSpacing.xxs),
+                ],
+              ],
             ),
             const Spacer(),
             _DesktopScanButton(
@@ -495,9 +480,8 @@ class _DesktopTopDestinationState extends State<_DesktopTopDestination> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    final foreground = widget.selected
-        ? theme.colorScheme.onPrimary
-        : context.semantic.textPrimary;
+    final accent = theme.colorScheme.secondary;
+    final foreground = widget.selected ? accent : context.semantic.textPrimary;
 
     return Semantics(
       button: true,
@@ -512,42 +496,62 @@ class _DesktopTopDestinationState extends State<_DesktopTopDestination> {
             onTap: widget.onPressed,
             mouseCursor: SystemMouseCursors.click,
             borderRadius: AppRadius.lg,
-            child: AnimatedContainer(
-              key: ValueKey('desktop-nav-${widget.label}'),
-              duration: disableAnimations
-                  ? Duration.zero
-                  : const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              constraints: const BoxConstraints(minHeight: 44),
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: widget.selected
-                    ? theme.colorScheme.primary
-                    : _hovered
-                        ? context.semantic.surfaceRaised
-                        : Colors.transparent,
-                borderRadius: AppRadius.lg,
-                boxShadow: widget.selected
-                    ? [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(.16),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+            child: SizedBox(
+              height: 44,
+              child: Center(
+                child: AnimatedContainer(
+                  key: ValueKey('desktop-nav-${widget.label}'),
+                  duration: disableAnimations
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height: 36,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: widget.selected
+                        ? accent.withOpacity(.08)
+                        : _hovered
+                            ? context.semantic.surfaceRaised
+                            : Colors.transparent,
+                    borderRadius: AppRadius.md,
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: AnimatedDefaultTextStyle(
+                          duration: disableAnimations
+                              ? Duration.zero
+                              : const Duration(milliseconds: 140),
+                          style: theme.textTheme.labelMedium!.copyWith(
+                            color: foreground,
+                            fontWeight: widget.selected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                          child: Text(widget.label),
                         ),
-                      ]
-                    : null,
-              ),
-              child: AnimatedDefaultTextStyle(
-                duration: disableAnimations
-                    ? Duration.zero
-                    : const Duration(milliseconds: 140),
-                style: theme.textTheme.labelLarge!.copyWith(
-                  color: foreground,
-                  fontWeight:
-                      widget.selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                      Positioned(
+                        bottom: 4,
+                        child: AnimatedContainer(
+                          duration: disableAnimations
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          width: widget.selected ? 18 : 0,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            borderRadius: AppRadius.sm,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(widget.label),
               ),
             ),
           ),
@@ -557,53 +561,45 @@ class _DesktopTopDestinationState extends State<_DesktopTopDestination> {
   }
 }
 
-class _DesktopScanButton extends StatefulWidget {
+class _DesktopScanButton extends StatelessWidget {
   const _DesktopScanButton({required this.onPressed});
 
   final VoidCallback onPressed;
 
   @override
-  State<_DesktopScanButton> createState() => _DesktopScanButtonState();
-}
-
-class _DesktopScanButtonState extends State<_DesktopScanButton> {
-  bool _hovered = false;
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: disableAnimations
-            ? Duration.zero
-            : const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        decoration: BoxDecoration(
-          borderRadius: AppRadius.lg,
-          boxShadow: [
-            BoxShadow(
-              color:
-                  theme.colorScheme.primary.withOpacity(_hovered ? .24 : .12),
-              blurRadius: _hovered ? 18 : 10,
-              offset: Offset(0, _hovered ? 7 : 4),
-            ),
-          ],
+    final accent = theme.colorScheme.secondary;
+    return OutlinedButton.icon(
+      key: const ValueKey('desktop-scan-button'),
+      onPressed: onPressed,
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: AppSpacing.md),
         ),
-        child: FilledButton.icon(
-          key: const ValueKey('desktop-scan-button'),
-          onPressed: widget.onPressed,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 48),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            shape: const RoundedRectangleBorder(borderRadius: AppRadius.lg),
-          ),
-          icon: const Icon(Icons.center_focus_strong_rounded, size: 19),
-          label: const Text('Сканувати'),
+        shape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: AppRadius.xl),
+        ),
+        side: WidgetStatePropertyAll(
+          BorderSide(color: accent.withOpacity(.42)),
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? theme.colorScheme.onPrimary
+              : accent,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.hovered)
+              ? accent
+              : accent.withOpacity(.04),
+        ),
+        textStyle: WidgetStatePropertyAll(
+          theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
+      icon: const Icon(Icons.center_focus_strong_rounded, size: 17),
+      label: const Text('Сканувати'),
     );
   }
 }
@@ -646,27 +642,33 @@ class _DesktopProfileButtonState extends State<_DesktopProfileButton> {
               onTap: widget.onPressed,
               customBorder: const CircleBorder(),
               mouseCursor: SystemMouseCursors.click,
-              child: AnimatedContainer(
-                key: const ValueKey('desktop-profile-button'),
-                duration: disableAnimations
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                width: 48,
-                height: 48,
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _hovered
-                      ? context.semantic.surfaceRaised
-                      : context.semantic.surface,
-                  border: Border.all(
-                    color: widget.selected || _hovered
-                        ? theme.colorScheme.primary
-                        : context.semantic.outlineVariant,
-                    width: widget.selected ? 2 : 1,
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(
+                  child: AnimatedContainer(
+                    key: const ValueKey('desktop-profile-button'),
+                    duration: disableAnimations
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    width: 40,
+                    height: 40,
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _hovered
+                          ? context.semantic.surfaceRaised
+                          : context.semantic.surface,
+                      border: Border.all(
+                        color: widget.selected || _hovered
+                            ? theme.colorScheme.primary
+                            : context.semantic.outlineVariant,
+                        width: widget.selected ? 2 : 1,
+                      ),
+                    ),
+                    child: BrandAvatar(brand: widget.brand, radius: 16),
                   ),
                 ),
-                child: BrandAvatar(brand: widget.brand, radius: 19),
               ),
             ),
           ),
