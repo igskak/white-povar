@@ -105,6 +105,12 @@ class RecipeCard extends ConsumerWidget {
         final duration = MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : AppMotion.medium;
+        final titleStyle =
+            theme.textTheme.titleLarge ?? DefaultTextStyle.of(context).style;
+        final brandTheme = theme.extension<BrandThemeExtension>();
+        final hoverColor = brandTheme?.accent ?? theme.colorScheme.primary;
+        final hoverForeground =
+            brandTheme?.onAccent ?? theme.colorScheme.onPrimary;
 
         return Semantics(
           button: onTap != null,
@@ -217,9 +223,8 @@ class RecipeCard extends ConsumerWidget {
                                     duration: duration,
                                     curve: Curves.easeOut,
                                     child: _HoverArrow(
-                                      color: context.brandTheme.accent,
-                                      foregroundColor:
-                                          context.brandTheme.onAccent,
+                                      color: hoverColor,
+                                      foregroundColor: hoverForeground,
                                     ),
                                   ),
                                 ),
@@ -241,9 +246,9 @@ class RecipeCard extends ConsumerWidget {
                         AnimatedDefaultTextStyle(
                           duration: duration,
                           curve: Curves.easeOutCubic,
-                          style: theme.textTheme.titleLarge!.copyWith(
+                          style: titleStyle.copyWith(
                             color: hovered
-                                ? context.brandTheme.accent
+                                ? hoverColor
                                 : theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
                           ),
