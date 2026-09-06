@@ -98,97 +98,188 @@ class RecipeCard extends ConsumerWidget {
     final label =
         'Відкрити ${_contentKindLabel(recipe.contentKind)} ${recipe.title}';
 
-    return Semantics(
-      button: onTap != null,
-      label: label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: AppRadius.sm,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
+    return _PointerHoverBuilder(
+      key: ValueKey('recipe-card-hover-${recipe.id}'),
+      enabled: onTap != null,
+      builder: (context, hovered) {
+        final duration = MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppMotion.medium;
+
+        return Semantics(
+          button: onTap != null,
+          label: label,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: AppRadius.sm,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AspectRatio(
                     aspectRatio: 4 / 3,
-                    child: RecipeImageHero(
-                      recipeId: recipe.id,
+                    child: ClipRRect(
                       borderRadius: AppRadius.sm,
-                      child: RecipeImageFallback.wrap(
-                        recipe,
-                        role: RecipeImageRole.grid,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          AnimatedScale(
+                            key: ValueKey(
+                              'recipe-card-image-scale-${recipe.id}',
+                            ),
+                            scale: hovered ? 1.025 : 1,
+                            duration: duration,
+                            curve: Curves.easeOutCubic,
+                            child: RecipeImageHero(
+                              recipeId: recipe.id,
+                              child: RecipeImageFallback.wrap(
+                                recipe,
+                                role: RecipeImageRole.grid,
+                              ),
+                            ),
+                          ),
+                          IgnorePointer(
+                            child: AnimatedOpacity(
+                              opacity: hovered ? 1 : 0,
+                              duration: duration,
+                              curve: Curves.easeOut,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Colors.transparent,
+                                      AppColorsV2.ink.withOpacity(.16),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (recipe.isPremium)
+                            const Positioned(
+                              top: AppSpacing.sm,
+                              left: AppSpacing.sm,
+                              child: PremiumBadge(size: 24),
+                            ),
+                          if (recipe.isFeatured)
+                            const Positioned(
+                              left: AppSpacing.sm,
+                              bottom: AppSpacing.sm,
+                              child: _ScrimBadge(
+                                icon: Icons.local_fire_department_outlined,
+                                label: 'Вибір шефа',
+                              ),
+                            ),
+                          if (recipe.videoUrl != null ||
+                              recipe.videoFilePath != null)
+                            const Positioned(
+                              top: AppSpacing.sm,
+                              right: 52,
+                              child: _CircleBadge(
+                                icon: Icons.play_arrow_rounded,
+                              ),
+                            ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: FavoriteButton(recipeId: recipe.id),
+                          ),
+                          if (showMatchIndicator && matchedIngredients > 0)
+                            Positioned(
+                              right: AppSpacing.sm,
+                              bottom: AppSpacing.sm,
+                              child: _ScrimBadge(
+                                icon: Icons.check_circle_outline,
+                                label: '$matchedIngredients збіг',
+                              ),
+                            ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                right: AppSpacing.sm,
+                              ),
+                              child: IgnorePointer(
+                                child: AnimatedSlide(
+                                  offset: hovered
+                                      ? Offset.zero
+                                      : const Offset(.22, 0),
+                                  duration: duration,
+                                  curve: Curves.easeOutCubic,
+                                  child: AnimatedOpacity(
+                                    key: ValueKey(
+                                      'recipe-card-arrow-${recipe.id}',
+                                    ),
+                                    opacity: hovered ? 1 : 0,
+                                    duration: duration,
+                                    curve: Curves.easeOut,
+                                    child: _HoverArrow(
+                                      color: context.brandTheme.accent,
+                                      foregroundColor:
+                                          context.brandTheme.onAccent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  if (recipe.isPremium)
-                    const Positioned(
+                  Padding(
+                    padding: const EdgeInsets.only(
                       top: AppSpacing.sm,
-                      left: AppSpacing.sm,
-                      child: PremiumBadge(size: 24),
+                      bottom: AppSpacing.xs,
                     ),
-                  if (recipe.isFeatured)
-                    const Positioned(
-                      left: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
-                      child: _ScrimBadge(
-                        icon: Icons.local_fire_department_outlined,
-                        label: 'Вибір шефа',
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AnimatedDefaultTextStyle(
+                          duration: duration,
+                          curve: Curves.easeOutCubic,
+                          style: theme.textTheme.titleLarge!.copyWith(
+                            color: hovered
+                                ? context.brandTheme.accent
+                                : theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          child: Text(
+                            recipe.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        AnimatedSwitcher(
+                          key: ValueKey('recipe-card-meta-${recipe.id}'),
+                          duration: duration,
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          child: Text(
+                            hovered
+                                ? '${recipe.totalTimeMinutes} хв  ·  '
+                                    '${recipe.category}  ·  ${recipe.cuisine}'
+                                : '${recipe.totalTimeMinutes} хв  ·  '
+                                    '${recipe.cuisine}',
+                            key: ValueKey(hovered),
+                            style: semantic.dataLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  if (recipe.videoUrl != null || recipe.videoFilePath != null)
-                    const Positioned(
-                      top: AppSpacing.sm,
-                      right: 52,
-                      child: _CircleBadge(icon: Icons.play_arrow_rounded),
-                    ),
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: FavoriteButton(recipeId: recipe.id),
                   ),
-                  if (showMatchIndicator && matchedIngredients > 0)
-                    Positioned(
-                      right: AppSpacing.sm,
-                      bottom: AppSpacing.sm,
-                      child: _ScrimBadge(
-                        icon: Icons.check_circle_outline,
-                        label: '$matchedIngredients збіг',
-                      ),
-                    ),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.sm,
-                  bottom: AppSpacing.xs,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recipe.title,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.cuisine}',
-                      style: semantic.dataLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -415,6 +506,70 @@ class RecipeCard extends ConsumerWidget {
       ],
     );
   }
+}
+
+class _PointerHoverBuilder extends StatefulWidget {
+  const _PointerHoverBuilder({
+    super.key,
+    required this.enabled,
+    required this.builder,
+  });
+
+  final bool enabled;
+  final Widget Function(BuildContext context, bool hovered) builder;
+
+  @override
+  State<_PointerHoverBuilder> createState() => _PointerHoverBuilderState();
+}
+
+class _PointerHoverBuilderState extends State<_PointerHoverBuilder> {
+  bool _hovered = false;
+
+  void _setHovered(bool hovered) {
+    if (!widget.enabled || hovered == _hovered) return;
+    setState(() => _hovered = hovered);
+  }
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        cursor: widget.enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        child: widget.builder(context, _hovered),
+      );
+}
+
+class _HoverArrow extends StatelessWidget {
+  const _HoverArrow({
+    required this.color,
+    required this.foregroundColor,
+  });
+
+  final Color color;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppColorsV2.ink.withOpacity(.20),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Icon(
+            Icons.arrow_outward_rounded,
+            size: 20,
+            color: foregroundColor,
+          ),
+        ),
+      );
 }
 
 String _contentKindLabel(ContentKind kind) => switch (kind) {

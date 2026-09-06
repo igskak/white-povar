@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,6 +79,65 @@ void main() {
     expect(tester.widget<FadeTransition>(premiumFinder).opacity.value, 1);
     expect(tester.getSize(heroFinder), heroSize);
     expect(tester.getSize(premiumFinder), premiumSize);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('pointer hover enriches a recipe card without resizing it',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(1280, 1000);
+
+    await tester.pumpWidget(
+      _homeApp(_HomeFixtureState.data, disableAnimations: true),
+    );
+    await tester.pump();
+
+    final cardFinder = find.byKey(
+      const ValueKey('recipe-card-hover-home-1'),
+    );
+    await tester.ensureVisible(cardFinder);
+    await tester.pump();
+    final idleSize = tester.getSize(cardFinder);
+
+    final mouse = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(cardFinder));
+    await tester.pump();
+
+    final imageScale = find.byKey(
+      const ValueKey('recipe-card-image-scale-home-1'),
+    );
+    final arrow = find.byKey(
+      const ValueKey('recipe-card-arrow-home-1'),
+    );
+    expect(tester.widget<AnimatedScale>(imageScale).scale, 1.025);
+    expect(tester.widget<AnimatedOpacity>(arrow).opacity, 1);
+    expect(
+      find.descendant(
+        of: cardFinder,
+        matching: find.text('30 хв  ·  Вечеря  ·  Італійська'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.getSize(cardFinder), idleSize);
+
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    expect(tester.widget<AnimatedScale>(imageScale).scale, 1);
+    expect(tester.widget<AnimatedOpacity>(arrow).opacity, 0);
+    expect(
+      find.descendant(
+        of: cardFinder,
+        matching: find.text('30 хв  ·  Італійська'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }
