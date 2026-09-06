@@ -227,21 +227,31 @@ class HomeFeedSections extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RecipeCard.featured(
-            key: const ValueKey('mobile-featured-recipe-hero'),
-            recipe: featured,
-            compact: true,
-            onTap: () => onOpenRecipe(featured),
+          _EditorialReveal(
+            key: const ValueKey('home-editorial-hero-reveal'),
+            debugLabel: 'home-editorial-hero',
+            delay: const Duration(milliseconds: 40),
+            child: RecipeCard.featured(
+              key: const ValueKey('mobile-featured-recipe-hero'),
+              recipe: featured,
+              compact: true,
+              onTap: () => onOpenRecipe(featured),
+            ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
             const SizedBox(height: AppSpacing.md),
-            BrandCourseCard(
-              courseName: brand.voice.courseName!,
-              locked: courseLocked,
-              collection: courseCollection,
-              fallbackRecipes: feed,
-              onOpen: onCollectionTap,
-              onUnlock: onUnlockCourse,
+            _EditorialReveal(
+              key: const ValueKey('premium-collection-reveal'),
+              debugLabel: 'premium-collection',
+              delay: const Duration(milliseconds: 120),
+              child: BrandCourseCard(
+                courseName: brand.voice.courseName!,
+                locked: courseLocked,
+                collection: courseCollection,
+                fallbackRecipes: feed,
+                onOpen: onCollectionTap,
+                onUnlock: onUnlockCourse,
+              ),
             ),
           ],
           if (feed.isNotEmpty) ...[
@@ -301,20 +311,30 @@ class HomeDesktopSections extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _BordeauxDesktopHero(
-            brand: brand,
-            recipe: featured,
-            onTap: () => onOpenRecipe(featured),
+          _EditorialReveal(
+            key: const ValueKey('home-editorial-hero-reveal'),
+            debugLabel: 'home-editorial-hero',
+            delay: const Duration(milliseconds: 40),
+            child: _BordeauxDesktopHero(
+              brand: brand,
+              recipe: featured,
+              onTap: () => onOpenRecipe(featured),
+            ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
             const SizedBox(height: AppSpacing.xl),
-            BrandCourseCard(
-              courseName: brand.voice.courseName!,
-              locked: courseLocked,
-              collection: courseCollection,
-              fallbackRecipes: feed,
-              onOpen: onCollectionTap,
-              onUnlock: onUnlockCourse,
+            _EditorialReveal(
+              key: const ValueKey('premium-collection-reveal'),
+              debugLabel: 'premium-collection',
+              delay: const Duration(milliseconds: 120),
+              child: BrandCourseCard(
+                courseName: brand.voice.courseName!,
+                locked: courseLocked,
+                collection: courseCollection,
+                fallbackRecipes: feed,
+                onOpen: onCollectionTap,
+                onUnlock: onUnlockCourse,
+              ),
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
@@ -361,6 +381,121 @@ class HomeDesktopSections extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A one-shot editorial entrance that starts only when its section approaches
+/// the viewport. It never changes layout or scroll position, and becomes a
+/// plain child when the platform requests reduced motion.
+class _EditorialReveal extends StatefulWidget {
+  const _EditorialReveal({
+    super.key,
+    required this.debugLabel,
+    required this.child,
+    this.delay = Duration.zero,
+  });
+
+  final String debugLabel;
+  final Widget child;
+  final Duration delay;
+
+  @override
+  State<_EditorialReveal> createState() => _EditorialRevealState();
+}
+
+class _EditorialRevealState extends State<_EditorialReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _offset;
+  ScrollPosition? _scrollPosition;
+  bool _played = false;
+  bool _checkScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final totalDuration = const Duration(milliseconds: 520) + widget.delay;
+    final revealStart =
+        widget.delay.inMicroseconds / totalDuration.inMicroseconds;
+    _controller = AnimationController(
+      vsync: this,
+      duration: totalDuration,
+    );
+    final curve = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(revealStart, 1, curve: Curves.easeOutCubic),
+    );
+    _opacity = curve;
+    _offset = Tween<Offset>(
+      begin: const Offset(0, .035),
+      end: Offset.zero,
+    ).animate(curve);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextPosition = Scrollable.maybeOf(context)?.position;
+    if (_scrollPosition != nextPosition) {
+      _scrollPosition?.removeListener(_scheduleVisibilityCheck);
+      _scrollPosition = nextPosition;
+      _scrollPosition?.addListener(_scheduleVisibilityCheck);
+    }
+
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _played = true;
+      _controller.value = 1;
+    } else {
+      _scheduleVisibilityCheck();
+    }
+  }
+
+  void _scheduleVisibilityCheck() {
+    if (_played || _checkScheduled || !mounted) return;
+    _checkScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkScheduled = false;
+      if (mounted) _checkVisibility();
+    });
+  }
+
+  void _checkVisibility() {
+    if (_played || MediaQuery.disableAnimationsOf(context)) return;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+
+    final top = renderObject.localToGlobal(Offset.zero).dy;
+    final bottom = top + renderObject.size.height;
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    const approachDistance = 72.0;
+    if (top <= viewportHeight + approachDistance &&
+        bottom >= -approachDistance) {
+      _played = true;
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollPosition?.removeListener(_scheduleVisibilityCheck);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return RepaintBoundary(
+      child: FadeTransition(
+        key: ValueKey('${widget.debugLabel}-fade'),
+        opacity: _opacity,
+        child: SlideTransition(
+          position: _offset,
+          child: widget.child,
+        ),
       ),
     );
   }

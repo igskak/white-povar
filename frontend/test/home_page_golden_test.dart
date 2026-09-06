@@ -29,7 +29,10 @@ void main() {
     for (final state in _HomeFixtureState.values) {
       for (final width in [390.0, 768.0, 1280.0]) {
         tester.view.physicalSize = Size(width, 1000);
-        await tester.pumpWidget(_homeApp(state));
+        await tester.pumpWidget(_homeApp(
+          state,
+          disableAnimations: state == _HomeFixtureState.data,
+        ));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 120));
 
@@ -44,9 +47,46 @@ void main() {
       }
     }
   }, tags: 'golden');
+
+  testWidgets('editorial sections reveal without changing their layout',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(1280, 1000);
+
+    await tester.pumpWidget(_homeApp(_HomeFixtureState.data));
+    await tester.pump();
+
+    final heroFinder = find.byKey(
+      const ValueKey('home-editorial-hero-fade'),
+    );
+    final premiumFinder = find.byKey(
+      const ValueKey('premium-collection-fade'),
+    );
+    final heroSize = tester.getSize(heroFinder);
+    final premiumSize = tester.getSize(premiumFinder);
+    expect(tester.widget<FadeTransition>(heroFinder).opacity.value, 0);
+    expect(tester.widget<FadeTransition>(premiumFinder).opacity.value, 0);
+
+    await tester.pump(const Duration(milliseconds: 160));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(tester.widget<FadeTransition>(heroFinder).opacity.value, 1);
+    expect(tester.widget<FadeTransition>(premiumFinder).opacity.value, 1);
+    expect(tester.getSize(heroFinder), heroSize);
+    expect(tester.getSize(premiumFinder), premiumSize);
+    expect(tester.takeException(), isNull);
+  });
 }
 
-Widget _homeApp(_HomeFixtureState state) => ProviderScope(
+Widget _homeApp(
+  _HomeFixtureState state, {
+  bool disableAnimations = false,
+}) =>
+    ProviderScope(
       overrides: [
         tenantBootstrapProvider.overrideWithValue(_bootstrap),
         authProvider.overrideWith((_) => AuthNotifier.testing()),
@@ -56,6 +96,12 @@ Widget _homeApp(_HomeFixtureState state) => ProviderScope(
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brandConfig),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: disableAnimations,
+          ),
+          child: child!,
+        ),
         home: const AdaptiveNavigationShell(
           selectedIndex: 0,
           onDestinationSelected: _ignoreDestination,

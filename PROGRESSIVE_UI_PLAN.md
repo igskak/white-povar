@@ -24,7 +24,7 @@ preferences, and every interaction must remain usable with touch and keyboard.
 
 - [x] 1. Premium collection showcase
 - [x] 2. Shared recipe transition
-- [ ] 3. Editorial section reveals
+- [x] 3. Editorial section reveals
 - [ ] 4. Responsive recipe-card interactions
 - [ ] 5. Personalized shelves
 - [ ] 6. Sticky discovery bar
