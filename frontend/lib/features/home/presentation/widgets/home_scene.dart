@@ -298,6 +298,15 @@ class HomeDesktopSections extends StatelessWidget {
             recipe: featured,
             onTap: () => onOpenRecipe(featured),
           ),
+          if (brand.voice.courseName != null && brand.courseTag != null) ...[
+            const SizedBox(height: AppSpacing.xl),
+            BrandCourseCard(
+              courseName: brand.voice.courseName!,
+              locked: courseLocked,
+              onOpen: onCollectionTap,
+              onUnlock: onUnlockCourse,
+            ),
+          ],
           const SizedBox(height: AppSpacing.xl),
           if (brand.heroFor('home') != null) ...[
             _DesktopAuthorStory(brand: brand),
@@ -341,15 +350,6 @@ class HomeDesktopSections extends StatelessWidget {
               ),
             ),
           ),
-          if (brand.voice.courseName != null && brand.courseTag != null) ...[
-            const SizedBox(height: AppSpacing.xl),
-            BrandCourseCard(
-              courseName: brand.voice.courseName!,
-              locked: courseLocked,
-              onOpen: onCollectionTap,
-              onUnlock: onUnlockCourse,
-            ),
-          ],
         ],
       ),
     );
