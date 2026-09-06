@@ -416,74 +416,150 @@ class _BordeauxDesktopHero extends StatelessWidget {
               ),
               Expanded(
                 flex: 6,
-                child: Semantics(
-                  button: true,
-                  label: 'Відкрити рецепт ${recipe.title}',
-                  child: Material(
-                    color: semantic.surfaceStrong,
-                    child: InkWell(
-                      onTap: onTap,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          RecipePhoto(
-                            key: const ValueKey('featured-recipe-hero'),
-                            recipe: recipe,
-                            role: RecipeImageRole.featured,
-                            targetWidth: constraints.maxWidth * .6,
-                          ),
-                          Align(
-                            alignment: Alignment.bottomLeft,
-                            child: Container(
-                              width: constraints.maxWidth * .42,
-                              constraints: const BoxConstraints(minWidth: 260),
-                              color: theme.colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.lg,
-                                vertical: AppSpacing.md,
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          recipe.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: theme.textTheme.titleLarge
-                                              ?.copyWith(
-                                            color: theme.colorScheme.onPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: AppSpacing.xxs),
-                                        Text(
-                                          '${recipe.totalTimeMinutes} хв',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                            color: theme.colorScheme.onPrimary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  Icon(Icons.arrow_forward_rounded,
-                                      color: theme.colorScheme.onPrimary),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                child: _DesktopFeaturedRecipeMedia(
+                  recipe: recipe,
+                  targetWidth: constraints.maxWidth * .6,
+                  labelWidth: constraints.maxWidth * .42,
+                  onTap: onTap,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopFeaturedRecipeMedia extends StatefulWidget {
+  const _DesktopFeaturedRecipeMedia({
+    required this.recipe,
+    required this.targetWidth,
+    required this.labelWidth,
+    required this.onTap,
+  });
+
+  final Recipe recipe;
+  final double targetWidth;
+  final double labelWidth;
+  final VoidCallback onTap;
+
+  @override
+  State<_DesktopFeaturedRecipeMedia> createState() =>
+      _DesktopFeaturedRecipeMediaState();
+}
+
+class _DesktopFeaturedRecipeMediaState
+    extends State<_DesktopFeaturedRecipeMedia> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.semantic;
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final duration =
+        disableAnimations ? Duration.zero : const Duration(milliseconds: 320);
+
+    return Semantics(
+      button: true,
+      label: 'Відкрити рецепт ${widget.recipe.title}',
+      child: Material(
+        color: semantic.surfaceStrong,
+        child: InkWell(
+          onTap: widget.onTap,
+          onHover: (value) => setState(() => _hovered = value),
+          mouseCursor: SystemMouseCursors.click,
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                RepaintBoundary(
+                  child: AnimatedScale(
+                    scale: _hovered ? 1.025 : 1,
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    child: RecipePhoto(
+                      key: const ValueKey('featured-recipe-hero'),
+                      recipe: widget.recipe,
+                      role: RecipeImageRole.featured,
+                      targetWidth: widget.targetWidth,
+                    ),
+                  ),
+                ),
+                IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _hovered ? 1 : 0,
+                    duration: duration,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            theme.colorScheme.primary.withOpacity(.10),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: AnimatedContainer(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    width: widget.labelWidth,
+                    constraints: const BoxConstraints(minWidth: 260),
+                    color: _hovered
+                        ? context.brandTheme.accentPressed
+                        : theme.colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.recipe.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                '${widget.recipe.totalTimeMinutes} хв',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        AnimatedSlide(
+                          offset: _hovered ? const Offset(.18, 0) : Offset.zero,
+                          duration: duration,
+                          curve: Curves.easeOutCubic,
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

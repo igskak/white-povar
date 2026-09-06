@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,8 +55,30 @@ void main() {
     expect(find.text('Огороднік Олександр'), findsOneWidget);
     expect(find.text('Рецепти'), findsOneWidget);
     expect(find.text('Сканувати'), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-scan-button')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('desktop-profile-button')), findsOneWidget);
     expect(find.byTooltip('Профіль'), findsOneWidget);
     expect(find.text('Збережений стан вкладки'), findsOneWidget);
+  });
+
+  testWidgets('desktop destinations animate their hover state', (tester) async {
+    await pumpShell(tester, const Size(1280, 900));
+
+    const homeKey = ValueKey('desktop-nav-Головна');
+    final before = tester.widget<AnimatedContainer>(find.byKey(homeKey));
+    final beforeDecoration = before.decoration! as BoxDecoration;
+    expect(beforeDecoration.color, Colors.transparent);
+
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(pointer.removePointer);
+    await pointer.addPointer(location: Offset.zero);
+    await pointer.moveTo(tester.getCenter(find.byKey(homeKey)));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final after = tester.widget<AnimatedContainer>(find.byKey(homeKey));
+    final afterDecoration = after.decoration! as BoxDecoration;
+    expect(afterDecoration.color, isNot(Colors.transparent));
   });
 
   testWidgets('a page still gets desktop width at the chrome breakpoint',

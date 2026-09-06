@@ -413,7 +413,7 @@ class _DesktopTopBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
 
-  static const double height = 72;
+  static const double height = 80;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -424,39 +424,56 @@ class _DesktopTopBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLowest,
           border: Border(bottom: BorderSide(color: dividerColor)),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withOpacity(.04),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           children: [
             SizedBox(
-              width: 200,
+              width: 220,
               child: BrandLogo(brand: brand, height: 26),
             ),
-            for (var index = 0; index < 3; index++) ...[
-              _DesktopTopDestination(
-                label: _DesktopNavigationShell._labels[index],
-                selected: selectedIndex == index,
-                onPressed: () => onDestinationSelected(index),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.semantic.surface,
+                borderRadius: AppRadius.xl,
+                border: Border.all(color: dividerColor),
               ),
-              const SizedBox(width: AppSpacing.xxs),
-            ],
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxs),
+                child: Row(
+                  children: [
+                    for (var index = 0; index < 3; index++)
+                      _DesktopTopDestination(
+                        label: _DesktopNavigationShell._labels[index],
+                        selected: selectedIndex == index,
+                        onPressed: () => onDestinationSelected(index),
+                      ),
+                  ],
+                ),
+              ),
+            ),
             const Spacer(),
-            OutlinedButton.icon(
+            _DesktopScanButton(
               onPressed: () => context.push(AppRoutePaths.camera),
-              icon: const Icon(Icons.photo_camera_outlined, size: 18),
-              label: const Text('Сканувати'),
             ),
             const SizedBox(width: AppSpacing.xs),
-            IconButton(
-              tooltip: 'Профіль',
+            _DesktopProfileButton(
+              brand: brand,
+              selected: selectedIndex == 3,
               onPressed: () => onDestinationSelected(3),
-              icon: const Icon(Icons.person_outline, size: 24),
             ),
           ],
         ),
       );
 }
 
-class _DesktopTopDestination extends StatelessWidget {
+class _DesktopTopDestination extends StatefulWidget {
   const _DesktopTopDestination({
     required this.label,
     required this.selected,
@@ -468,24 +485,195 @@ class _DesktopTopDestination extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          foregroundColor: selected
-              ? Theme.of(context).colorScheme.secondary
-              : context.semantic.textPrimary,
-          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            decoration: selected ? TextDecoration.underline : null,
-            decorationColor: Theme.of(context).colorScheme.secondary,
-            decorationThickness: 1.5,
+  State<_DesktopTopDestination> createState() => _DesktopTopDestinationState();
+}
+
+class _DesktopTopDestinationState extends State<_DesktopTopDestination> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final foreground = widget.selected
+        ? theme.colorScheme.onPrimary
+        : context.semantic.textPrimary;
+
+    return Semantics(
+      button: true,
+      selected: widget.selected,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: AppRadius.lg,
+          child: InkWell(
+            onTap: widget.onPressed,
+            mouseCursor: SystemMouseCursors.click,
+            borderRadius: AppRadius.lg,
+            child: AnimatedContainer(
+              key: ValueKey('desktop-nav-${widget.label}'),
+              duration: disableAnimations
+                  ? Duration.zero
+                  : const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              constraints: const BoxConstraints(minHeight: 44),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: widget.selected
+                    ? theme.colorScheme.primary
+                    : _hovered
+                        ? context.semantic.surfaceRaised
+                        : Colors.transparent,
+                borderRadius: AppRadius.lg,
+                boxShadow: widget.selected
+                    ? [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(.16),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: AnimatedDefaultTextStyle(
+                duration: disableAnimations
+                    ? Duration.zero
+                    : const Duration(milliseconds: 140),
+                style: theme.textTheme.labelLarge!.copyWith(
+                  color: foreground,
+                  fontWeight:
+                      widget.selected ? FontWeight.w700 : FontWeight.w600,
+                ),
+                child: Text(widget.label),
+              ),
+            ),
           ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+class _DesktopScanButton extends StatefulWidget {
+  const _DesktopScanButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  State<_DesktopScanButton> createState() => _DesktopScanButtonState();
+}
+
+class _DesktopScanButtonState extends State<_DesktopScanButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.lg,
+          boxShadow: [
+            BoxShadow(
+              color:
+                  theme.colorScheme.primary.withOpacity(_hovered ? .24 : .12),
+              blurRadius: _hovered ? 18 : 10,
+              offset: Offset(0, _hovered ? 7 : 4),
+            ),
+          ],
+        ),
+        child: FilledButton.icon(
+          key: const ValueKey('desktop-scan-button'),
+          onPressed: widget.onPressed,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 48),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.lg),
+          ),
+          icon: const Icon(Icons.center_focus_strong_rounded, size: 19),
+          label: const Text('Сканувати'),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopProfileButton extends StatefulWidget {
+  const _DesktopProfileButton({
+    required this.brand,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final BrandDetails brand;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  State<_DesktopProfileButton> createState() => _DesktopProfileButtonState();
+}
+
+class _DesktopProfileButtonState extends State<_DesktopProfileButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return Tooltip(
+      message: 'Профіль',
+      child: Semantics(
+        button: true,
+        selected: widget.selected,
+        label: 'Профіль',
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            child: InkWell(
+              onTap: widget.onPressed,
+              customBorder: const CircleBorder(),
+              mouseCursor: SystemMouseCursors.click,
+              child: AnimatedContainer(
+                key: const ValueKey('desktop-profile-button'),
+                duration: disableAnimations
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+                width: 48,
+                height: 48,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _hovered
+                      ? context.semantic.surfaceRaised
+                      : context.semantic.surface,
+                  border: Border.all(
+                    color: widget.selected || _hovered
+                        ? theme.colorScheme.primary
+                        : context.semantic.outlineVariant,
+                    width: widget.selected ? 2 : 1,
+                  ),
+                ),
+                child: BrandAvatar(brand: widget.brand, radius: 19),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 const _navigationRailDestinations = <NavigationRailDestination>[
