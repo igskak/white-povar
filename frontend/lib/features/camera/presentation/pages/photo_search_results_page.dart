@@ -109,7 +109,11 @@ class PhotoSearchResultsPage extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                childAspectRatio: columns == 3 ? .60 : .72,
+                mainAxisExtent: RecipeCard.gridMainAxisExtent(
+                  availableWidth: constraints.maxWidth - 32,
+                  columns: columns,
+                  spacing: 12,
+                ),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),

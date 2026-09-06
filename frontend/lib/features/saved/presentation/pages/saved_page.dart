@@ -97,7 +97,10 @@ class _SavedRecipesBody extends ConsumerWidget {
                         key: const ValueKey('saved-recipes-grid'),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
-                          childAspectRatio: columns == 3 ? .72 : .68,
+                          mainAxisExtent: RecipeCard.gridMainAxisExtent(
+                            availableWidth: constraints.crossAxisExtent,
+                            columns: columns,
+                          ),
                           crossAxisSpacing: AppSpacing.md,
                           mainAxisSpacing: AppSpacing.md,
                         ),
@@ -153,7 +156,10 @@ class _SavedSkeleton extends StatelessWidget {
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: columns,
-                      childAspectRatio: columns == 3 ? .72 : .68,
+                      mainAxisExtent: RecipeCard.gridMainAxisExtent(
+                        availableWidth: constraints.crossAxisExtent,
+                        columns: columns,
+                      ),
                       crossAxisSpacing: AppSpacing.md,
                       mainAxisSpacing: AppSpacing.md,
                     ),

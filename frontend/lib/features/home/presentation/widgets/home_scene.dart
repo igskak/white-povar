@@ -321,19 +321,24 @@ class HomeDesktopSections extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: AppSpacing.md,
-              mainAxisSpacing: AppSpacing.md,
-              childAspectRatio: .82,
-            ),
-            itemCount: feed.length,
-            itemBuilder: (context, index) => RecipeCard(
-              recipe: feed[index],
-              onTap: () => onOpenRecipe(feed[index]),
+          LayoutBuilder(
+            builder: (context, constraints) => GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: AppSpacing.md,
+                mainAxisSpacing: AppSpacing.md,
+                mainAxisExtent: RecipeCard.gridMainAxisExtent(
+                  availableWidth: constraints.maxWidth,
+                  columns: 3,
+                ),
+              ),
+              itemCount: feed.length,
+              itemBuilder: (context, index) => RecipeCard(
+                recipe: feed[index],
+                onTap: () => onOpenRecipe(feed[index]),
+              ),
             ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[

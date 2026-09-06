@@ -60,6 +60,19 @@ class RecipeCard extends ConsumerWidget {
   /// Tightens the featured hero for constrained columns.
   final bool compact;
 
+  /// Exact grid height for the open editorial tile: a 4:3 photograph plus
+  /// enough room for a two-line title and its metadata. Keeping this formula
+  /// beside the card prevents individual grids from reserving obsolete empty
+  /// space with unrelated aspect ratios.
+  static double gridMainAxisExtent({
+    required double availableWidth,
+    required int columns,
+    double spacing = AppSpacing.md,
+  }) {
+    final imageWidth = (availableWidth - spacing * (columns - 1)) / columns;
+    return imageWidth * 3 / 4 + 96;
+  }
+
   /// Placeholder shown while a feed loads (Handoff §3: shimmer 1.4 s).
   static Widget skeleton(
           {RecipeCardVariant variant = RecipeCardVariant.grid}) =>

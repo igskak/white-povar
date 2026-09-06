@@ -899,8 +899,6 @@ class _SearchResults extends StatelessWidget {
             for (final item in recommendations) item.recipe.id: item,
           };
           final columns = constraints.maxWidth >= 600 ? 3 : 1;
-          final threeColumnAspectRatio =
-              constraints.maxWidth >= 900 ? .60 : .45;
           return GridView.builder(
             key: const ValueKey('search-results-grid'),
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -908,7 +906,10 @@ class _SearchResults extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: AppSpacing.md,
               crossAxisSpacing: AppSpacing.md,
-              childAspectRatio: columns == 1 ? .75 : threeColumnAspectRatio,
+              mainAxisExtent: RecipeCard.gridMainAxisExtent(
+                availableWidth: constraints.maxWidth - AppSpacing.md * 2,
+                columns: columns,
+              ),
             ),
             itemCount: recipes.length,
             itemBuilder: (context, index) {
