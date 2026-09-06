@@ -149,8 +149,12 @@ void main() {
     tester.view
       ..devicePixelRatio = 1
       ..physicalSize = const Size(390, 1000);
+    final staleSnapshot = Recipe.fromJson(
+      Map<String, dynamic>.from(_recipes[1].toJson())
+        ..['title'] = 'Стара назва рецепта',
+    );
     final progress = CookingProgress(
-      recipe: _recipes[1],
+      recipe: staleSnapshot,
       step: 0,
       updatedAt: DateTime.utc(2026, 9, 6),
     );
@@ -168,6 +172,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('home-resume-cooking')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-resume-cooking')),
+        matching: find.text('Авторський рецепт 2'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Стара назва рецепта'), findsNothing);
     expect(
       find.byKey(const ValueKey('home-quick-recipe-shelf')),
       findsOneWidget,

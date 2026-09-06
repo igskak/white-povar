@@ -262,7 +262,8 @@ class HomeFeedSections extends StatelessWidget {
             ),
           ],
           HomePersonalizedSections(
-            recipes: feed,
+            recipes: recipes,
+            featuredRecipeId: featured.id,
             cookingProgress: cookingProgress,
             savedRecipes: savedRecipes,
             compact: true,
@@ -359,7 +360,8 @@ class HomeDesktopSections extends StatelessWidget {
             ),
           ],
           HomePersonalizedSections(
-            recipes: feed,
+            recipes: recipes,
+            featuredRecipeId: featured.id,
             cookingProgress: cookingProgress,
             savedRecipes: savedRecipes,
             onOpenRecipe: onOpenRecipe,
@@ -425,6 +427,7 @@ class HomePersonalizedSections extends StatelessWidget {
     this.savedRecipes = const [],
     this.onResumeCooking,
     this.compact = false,
+    this.featuredRecipeId,
   });
 
   final List<Recipe> recipes;
@@ -433,10 +436,12 @@ class HomePersonalizedSections extends StatelessWidget {
   final ValueChanged<Recipe> onOpenRecipe;
   final ValueChanged<Recipe>? onResumeCooking;
   final bool compact;
+  final String? featuredRecipeId;
 
   @override
   Widget build(BuildContext context) {
-    final activeId = cookingProgress?.recipe.id;
+    final resolvedProgress = _resolvedProgress();
+    final activeId = resolvedProgress?.recipe.id;
     final seenSaved = <String>{};
     final visibleSaved = savedRecipes
         .where((recipe) => recipe.id != activeId && seenSaved.add(recipe.id))
@@ -449,10 +454,11 @@ class HomePersonalizedSections extends StatelessWidget {
             recipe.totalTimeMinutes <= 30 &&
             !recipe.isLocked &&
             !savedIds.contains(recipe.id) &&
+            recipe.id != featuredRecipeId &&
             recipe.id != activeId)
         .take(3)
         .toList();
-    if (cookingProgress == null &&
+    if (resolvedProgress == null &&
         quickRecipes.isEmpty &&
         visibleSaved.isEmpty) {
       return const SizedBox.shrink();
@@ -480,13 +486,13 @@ class HomePersonalizedSections extends StatelessWidget {
                     : Theme.of(context).textTheme.headlineMedium)
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
-          if (cookingProgress != null) ...[
+          if (resolvedProgress != null) ...[
             const SizedBox(height: AppSpacing.md),
             _ResumeCookingCard(
-              progress: cookingProgress!,
+              progress: resolvedProgress,
               onTap: onResumeCooking == null
                   ? null
-                  : () => onResumeCooking!(cookingProgress!.recipe),
+                  : () => onResumeCooking!(resolvedProgress.recipe),
             ),
           ],
           if (quickRecipes.isNotEmpty) ...[
@@ -512,6 +518,22 @@ class HomePersonalizedSections extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  CookingProgress? _resolvedProgress() {
+    final stored = cookingProgress;
+    if (stored == null) return null;
+    for (final recipe in recipes) {
+      if (recipe.id == stored.recipe.id) {
+        return CookingProgress(
+          recipe: recipe,
+          step: stored.step,
+          updatedAt: stored.updatedAt,
+          timerEndsAt: stored.timerEndsAt,
+        );
+      }
+    }
+    return stored;
   }
 }
 
