@@ -11,6 +11,7 @@ import '../../../collections/models/collection.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/presentation/widgets/recipe_photo.dart';
+import '../../../recipes/services/cooking_progress_store.dart';
 
 /// The Home entry points, shared with the Creator Studio live preview (13m).
 ///
@@ -205,6 +206,9 @@ class HomeFeedSections extends StatelessWidget {
     required this.onOpenRecipe,
     required this.onCollectionTap,
     required this.onUnlockCourse,
+    this.cookingProgress,
+    this.savedRecipes = const [],
+    this.onResumeCooking,
   });
 
   final BrandDetails brand;
@@ -214,6 +218,9 @@ class HomeFeedSections extends StatelessWidget {
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
+  final ValueChanged<Recipe>? onResumeCooking;
 
   @override
   Widget build(BuildContext context) {
@@ -254,6 +261,14 @@ class HomeFeedSections extends StatelessWidget {
               ),
             ),
           ],
+          HomePersonalizedSections(
+            recipes: feed,
+            cookingProgress: cookingProgress,
+            savedRecipes: savedRecipes,
+            compact: true,
+            onOpenRecipe: onOpenRecipe,
+            onResumeCooking: onResumeCooking,
+          ),
           if (feed.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
             Text('Свіже від автора',
@@ -285,6 +300,9 @@ class HomeDesktopSections extends StatelessWidget {
     required this.onSeeAll,
     required this.onCollectionTap,
     required this.onUnlockCourse,
+    this.cookingProgress,
+    this.savedRecipes = const [],
+    this.onResumeCooking,
   });
 
   final BrandDetails brand;
@@ -295,6 +313,9 @@ class HomeDesktopSections extends StatelessWidget {
   final VoidCallback onSeeAll;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
+  final ValueChanged<Recipe>? onResumeCooking;
 
   /// The page's own vertical margins, shared with the Studio desktop preview
   /// so the editor frames the composition the way the app does.
@@ -337,6 +358,13 @@ class HomeDesktopSections extends StatelessWidget {
               ),
             ),
           ],
+          HomePersonalizedSections(
+            recipes: feed,
+            cookingProgress: cookingProgress,
+            savedRecipes: savedRecipes,
+            onOpenRecipe: onOpenRecipe,
+            onResumeCooking: onResumeCooking,
+          ),
           const SizedBox(height: AppSpacing.xl),
           if (brand.heroFor('home') != null) ...[
             _DesktopAuthorStory(brand: brand),
@@ -384,6 +412,318 @@ class HomeDesktopSections extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Home modules assembled only from signals the product already owns: the
+/// local cooking snapshot, account favorites and recipe duration metadata.
+class HomePersonalizedSections extends StatelessWidget {
+  const HomePersonalizedSections({
+    super.key,
+    required this.recipes,
+    required this.onOpenRecipe,
+    this.cookingProgress,
+    this.savedRecipes = const [],
+    this.onResumeCooking,
+    this.compact = false,
+  });
+
+  final List<Recipe> recipes;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
+  final ValueChanged<Recipe> onOpenRecipe;
+  final ValueChanged<Recipe>? onResumeCooking;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeId = cookingProgress?.recipe.id;
+    final seenSaved = <String>{};
+    final visibleSaved = savedRecipes
+        .where((recipe) => recipe.id != activeId && seenSaved.add(recipe.id))
+        .take(3)
+        .toList();
+    final savedIds = visibleSaved.map((recipe) => recipe.id).toSet();
+    final quickRecipes = recipes
+        .where((recipe) =>
+            recipe.totalTimeMinutes > 0 &&
+            recipe.totalTimeMinutes <= 30 &&
+            !recipe.isLocked &&
+            !savedIds.contains(recipe.id) &&
+            recipe.id != activeId)
+        .take(3)
+        .toList();
+    if (cookingProgress == null &&
+        quickRecipes.isEmpty &&
+        visibleSaved.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      key: const ValueKey('home-personalized-sections'),
+      padding: const EdgeInsets.only(top: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ДЛЯ ВАС СЬОГОДНІ',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.secondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.8,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            'Оберіть, що приготувати далі',
+            style: (compact
+                    ? Theme.of(context).textTheme.headlineSmall
+                    : Theme.of(context).textTheme.headlineMedium)
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          if (cookingProgress != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            _ResumeCookingCard(
+              progress: cookingProgress!,
+              onTap: onResumeCooking == null
+                  ? null
+                  : () => onResumeCooking!(cookingProgress!.recipe),
+            ),
+          ],
+          if (quickRecipes.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _PersonalizedRecipeShelf(
+              key: const ValueKey('home-quick-recipe-shelf'),
+              title: 'Встигнете за 30 хвилин',
+              subtitle: 'Короткий сценарій для буднього вечора',
+              recipes: quickRecipes,
+              onOpen: onOpenRecipe,
+            ),
+          ],
+          if (visibleSaved.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            _PersonalizedRecipeShelf(
+              key: const ValueKey('home-saved-recipe-shelf'),
+              title: 'Зі збереженого',
+              subtitle: 'Рецепти, до яких ви хотіли повернутися',
+              recipes: visibleSaved,
+              onOpen: onOpenRecipe,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ResumeCookingCard extends StatelessWidget {
+  const _ResumeCookingCard({required this.progress, this.onTap});
+
+  final CookingProgress progress;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final recipe = progress.recipe;
+    final totalSteps =
+        recipe.instructions.isEmpty ? 1 : recipe.instructions.length;
+    final currentStep = (progress.step + 1).clamp(1, totalSteps);
+    final value = currentStep / totalSteps;
+    return ContentCard(
+      key: const ValueKey('home-resume-cooking'),
+      onTap: onTap,
+      semanticLabel: 'Продовжити готувати ${recipe.title}, '
+          'крок $currentStep з $totalSteps',
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 104,
+            height: 88,
+            child: ClipRRect(
+              borderRadius: AppRadius.md,
+              child: RecipePhoto(
+                recipe: recipe,
+                role: RecipeImageRole.list,
+                targetWidth: 160,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Продовжити готувати',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  recipe.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: value,
+                    minHeight: 5,
+                    backgroundColor: context.semantic.surfaceStrong,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Крок $currentStep з $totalSteps',
+                  style: context.semantic.dataLabel,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Icon(
+            Icons.arrow_forward_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonalizedRecipeShelf extends StatelessWidget {
+  const _PersonalizedRecipeShelf({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.recipes,
+    required this.onOpen,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Recipe> recipes;
+  final ValueChanged<Recipe> onOpen;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: context.semantic.textSecondary,
+                ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth >= 700) {
+                return Row(
+                  children: [
+                    for (var index = 0; index < recipes.length; index++) ...[
+                      if (index > 0) const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _ShelfRecipeCard(
+                          recipe: recipes[index],
+                          onTap: () => onOpen(recipes[index]),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              }
+              return SizedBox(
+                height: 104,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recipes.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpacing.sm),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: 284,
+                    child: _ShelfRecipeCard(
+                      recipe: recipes[index],
+                      onTap: () => onOpen(recipes[index]),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+}
+
+class _ShelfRecipeCard extends StatelessWidget {
+  const _ShelfRecipeCard({required this.recipe, required this.onTap});
+
+  final Recipe recipe;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 104,
+        child: ContentCard(
+          onTap: onTap,
+          semanticLabel: 'Відкрити рецепт ${recipe.title}',
+          padding: const EdgeInsets.all(AppSpacing.xs),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 88,
+                child: ClipRRect(
+                  borderRadius: AppRadius.md,
+                  child: RecipePhoto(
+                    recipe: recipe,
+                    role: RecipeImageRole.list,
+                    targetWidth: 140,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recipe.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${recipe.totalTimeMinutes} хв  ·  ${recipe.category}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.semantic.dataLabel,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.arrow_outward_rounded,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 /// A one-shot editorial entrance that starts only when its section approaches

@@ -19,6 +19,7 @@ import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
 import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
+import 'package:frontend/features/recipes/services/cooking_progress_store.dart';
 import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
 void main() {
@@ -140,11 +141,51 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Home builds shelves from cooking, duration and saved signals',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(390, 1000);
+    final progress = CookingProgress(
+      recipe: _recipes[1],
+      step: 0,
+      updatedAt: DateTime.utc(2026, 9, 6),
+    );
+
+    await tester.pumpWidget(_homeApp(
+      _HomeFixtureState.data,
+      disableAnimations: true,
+      cookingProgress: progress,
+      savedRecipes: [_recipes.first],
+    ));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('home-personalized-sections')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('home-resume-cooking')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-quick-recipe-shelf')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-saved-recipe-shelf')),
+      findsOneWidget,
+    );
+    expect(find.text('Крок 1 з 2'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _homeApp(
   _HomeFixtureState state, {
   bool disableAnimations = false,
+  CookingProgress? cookingProgress,
+  List<Recipe> savedRecipes = const [],
 }) =>
     ProviderScope(
       overrides: [
@@ -152,6 +193,12 @@ Widget _homeApp(
         authProvider.overrideWith((_) => AuthNotifier.testing()),
         isPremiumProvider.overrideWithValue(false),
         recipeServiceProvider.overrideWithValue(_HomeRecipeService(state)),
+        activeCookingProgressProvider.overrideWith(
+          (_) async => cookingProgress,
+        ),
+        favoriteRecipesProvider.overrideWith(
+          (_) async => savedRecipes,
+        ),
         collectionListProvider.overrideWith((_) async => const []),
       ],
       child: MaterialApp(

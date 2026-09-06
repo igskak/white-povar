@@ -12,6 +12,7 @@ import '../../../collections/models/collection.dart';
 import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
+import '../../../recipes/services/cooking_progress_store.dart';
 import '../widgets/home_scene.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
@@ -41,6 +42,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final brand = bootstrap.brandConfig.brand;
     final recipes = ref.watch(recipeListProvider);
     final user = ref.watch(currentUserProvider);
+    final cookingProgress =
+        ref.watch(activeCookingProgressProvider).valueOrNull;
+    final savedRecipes =
+        ref.watch(favoriteRecipesProvider).valueOrNull ?? const <Recipe>[];
     // 13g: the course card is locked for guests and free users, active for
     // premium, and hidden entirely when the brand publishes no course.
     final courseLocked = !ref.watch(isPremiumProvider);
@@ -55,9 +60,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               ? _DesktopHome(
                   brand: brand,
                   recipes: recipes,
-                  onRefresh: () =>
-                      ref.read(recipeListProvider.notifier).loadRecipes(),
+                  onRefresh: _refreshHome,
                   onOpenRecipe: _openRecipe,
+                  onResumeCooking: _resumeCooking,
                   onCollectionTap: () => _openCollection(
                     context,
                     courseTag: brand.courseTag,
@@ -66,14 +71,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onUnlockCourse: () => context.push('/subscription'),
                   courseLocked: courseLocked,
                   courseCollection: featuredCollection,
+                  cookingProgress: cookingProgress,
+                  savedRecipes: savedRecipes,
                 )
               : _MobileHome(
                   brand: brand,
                   recipes: recipes,
                   userName: user?.email,
-                  onRefresh: () =>
-                      ref.read(recipeListProvider.notifier).loadRecipes(),
+                  onRefresh: _refreshHome,
                   onOpenRecipe: _openRecipe,
+                  onResumeCooking: _resumeCooking,
                   onProfileTap: () => context.go('/profile'),
                   onScanTap: () => context.go('/camera'),
                   onTypeTap: () => context.go('/search'),
@@ -85,12 +92,23 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onUnlockCourse: () => context.push('/subscription'),
                   courseLocked: courseLocked,
                   courseCollection: featuredCollection,
+                  cookingProgress: cookingProgress,
+                  savedRecipes: savedRecipes,
                 ),
     );
   }
 
   void _openRecipe(Recipe recipe) =>
       context.push('/recipes/${recipe.id}', extra: recipe);
+
+  void _resumeCooking(Recipe recipe) =>
+      context.push('/recipes/${recipe.id}/cook');
+
+  Future<void> _refreshHome() async {
+    ref.invalidate(activeCookingProgressProvider);
+    ref.invalidate(favoriteRecipesProvider);
+    await ref.read(recipeListProvider.notifier).loadRecipes();
+  }
 
   void _openCollection(
     BuildContext context, {
@@ -112,6 +130,7 @@ class _MobileHome extends StatelessWidget {
     required this.userName,
     required this.onRefresh,
     required this.onOpenRecipe,
+    required this.onResumeCooking,
     required this.onProfileTap,
     required this.onScanTap,
     required this.onTypeTap,
@@ -119,6 +138,8 @@ class _MobileHome extends StatelessWidget {
     required this.onUnlockCourse,
     required this.courseLocked,
     required this.courseCollection,
+    required this.cookingProgress,
+    required this.savedRecipes,
   });
 
   final BrandDetails brand;
@@ -126,6 +147,7 @@ class _MobileHome extends StatelessWidget {
   final String? userName;
   final Future<void> Function() onRefresh;
   final ValueChanged<Recipe> onOpenRecipe;
+  final ValueChanged<Recipe> onResumeCooking;
   final VoidCallback onProfileTap;
   final VoidCallback onScanTap;
   final VoidCallback onTypeTap;
@@ -133,6 +155,8 @@ class _MobileHome extends StatelessWidget {
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
   final ContentCollection? courseCollection;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -185,8 +209,11 @@ class _MobileHome extends StatelessWidget {
                 courseLocked: courseLocked,
                 courseCollection: courseCollection,
                 onOpenRecipe: onOpenRecipe,
+                onResumeCooking: onResumeCooking,
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
+                cookingProgress: cookingProgress,
+                savedRecipes: savedRecipes,
               ),
             ),
           ];
@@ -211,20 +238,26 @@ class _DesktopHome extends StatelessWidget {
     required this.recipes,
     required this.onRefresh,
     required this.onOpenRecipe,
+    required this.onResumeCooking,
     required this.onCollectionTap,
     required this.onUnlockCourse,
     required this.courseLocked,
     required this.courseCollection,
+    required this.cookingProgress,
+    required this.savedRecipes,
   });
 
   final BrandDetails brand;
   final AsyncValue<List<Recipe>> recipes;
   final Future<void> Function() onRefresh;
   final ValueChanged<Recipe> onOpenRecipe;
+  final ValueChanged<Recipe> onResumeCooking;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
   final ContentCollection? courseCollection;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -250,10 +283,13 @@ class _DesktopHome extends StatelessWidget {
                 brand: brand,
                 recipes: items,
                 onOpenRecipe: onOpenRecipe,
+                onResumeCooking: onResumeCooking,
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
                 courseLocked: courseLocked,
                 courseCollection: courseCollection,
+                cookingProgress: cookingProgress,
+                savedRecipes: savedRecipes,
               );
             },
           ),
@@ -266,19 +302,25 @@ class _DesktopHomeContent extends StatelessWidget {
     required this.brand,
     required this.recipes,
     required this.onOpenRecipe,
+    required this.onResumeCooking,
     required this.onCollectionTap,
     required this.onUnlockCourse,
     required this.courseLocked,
     required this.courseCollection,
+    required this.cookingProgress,
+    required this.savedRecipes,
   });
 
   final BrandDetails brand;
   final List<Recipe> recipes;
   final ValueChanged<Recipe> onOpenRecipe;
+  final ValueChanged<Recipe> onResumeCooking;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final bool courseLocked;
   final ContentCollection? courseCollection;
+  final CookingProgress? cookingProgress;
+  final List<Recipe> savedRecipes;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
@@ -293,9 +335,12 @@ class _DesktopHomeContent extends StatelessWidget {
                 courseLocked: courseLocked,
                 courseCollection: courseCollection,
                 onOpenRecipe: onOpenRecipe,
+                onResumeCooking: onResumeCooking,
                 onSeeAll: () => context.go('/search'),
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
+                cookingProgress: cookingProgress,
+                savedRecipes: savedRecipes,
               ),
             ),
           ),
