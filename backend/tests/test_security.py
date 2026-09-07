@@ -6,8 +6,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jose import jwk, jwt
 
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
+
 from app.core.security import SupabaseAuth
 from app.api.v1.endpoints import auth as auth_endpoint
+from app.main import app
 
 
 def _claims(auth: SupabaseAuth, **overrides):
@@ -146,3 +150,24 @@ def test_chef_membership_is_read_from_trusted_user_record():
         auth_endpoint._chef_id_from_user_result(Result())
         == "7fc59573-8297-4287-a3d8-5ac4a61cc507"
     )
+
+
+def test_a_request_without_credentials_is_401_and_not_403():
+    """A missing bearer means the caller was never authenticated.
+
+    FastAPI's own HTTPBearer(auto_error=True) would answer 403 here, which the
+    clients read as an authorization refusal. Studio in particular hides its
+    entry point on 403 alone, so an absent token used to be indistinguishable
+    from "this account is not a member" and quietly hid the feature.
+    """
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(auth_endpoint.verify_firebase_token(credentials=None))
+
+    assert error.value.status_code == 401
+    assert error.value.headers["WWW-Authenticate"] == "Bearer"
+
+
+def test_protected_route_answers_401_when_the_bearer_header_is_absent():
+    response = TestClient(app).get("/api/v1/auth/me")
+
+    assert response.status_code == 401

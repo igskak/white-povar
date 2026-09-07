@@ -11,7 +11,6 @@ from app.core.tenant import TenantContext, require_tenant_context
 from app.schemas.preferences import PreferenceProfile, StoredPreferenceProfile
 
 router = APIRouter()
-security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
 
@@ -49,8 +48,23 @@ def _chef_id_from_user_result(user_result) -> Optional[str]:
     chef_id = user_result.data[0].get("chef_id")
     return str(chef_id) if chef_id else None
 
-async def verify_firebase_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+async def verify_firebase_token(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(optional_security),
+) -> User:
     """Verify Supabase JWT token and return user info"""
+    # HTTPBearer's own auto_error answers a missing header with 403, which reads
+    # as "we know who you are and the answer is no" and is indistinguishable
+    # from a genuine authorization refusal. A request that carried no
+    # credentials was never authenticated at all, so it gets 401 and callers can
+    # tell an absent token apart from a real refusal. Studio membership depends
+    # on that distinction: it hides its entry point on 403 alone.
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = credentials.credentials
     logger.info("Authentication token received")
 
