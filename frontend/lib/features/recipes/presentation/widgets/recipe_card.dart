@@ -109,8 +109,6 @@ class RecipeCard extends ConsumerWidget {
             theme.textTheme.titleLarge ?? DefaultTextStyle.of(context).style;
         final brandTheme = theme.extension<BrandThemeExtension>();
         final hoverColor = brandTheme?.accent ?? theme.colorScheme.primary;
-        final hoverForeground =
-            brandTheme?.onAccent ?? theme.colorScheme.onPrimary;
 
         return Semantics(
           button: onTap != null,
@@ -202,31 +200,26 @@ class RecipeCard extends ConsumerWidget {
                                 label: '$matchedIngredients збіг',
                               ),
                             ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                right: AppSpacing.sm,
-                              ),
-                              child: IgnorePointer(
-                                child: AnimatedSlide(
-                                  offset: hovered
-                                      ? Offset.zero
-                                      : const Offset(.22, 0),
-                                  duration: duration,
-                                  curve: Curves.easeOutCubic,
-                                  child: AnimatedOpacity(
-                                    key: ValueKey(
-                                      'recipe-card-arrow-${recipe.id}',
-                                    ),
-                                    opacity: hovered ? 1 : 0,
-                                    duration: duration,
-                                    curve: Curves.easeOut,
-                                    child: _HoverArrow(
-                                      color: hoverColor,
-                                      foregroundColor: hoverForeground,
-                                    ),
+                          Positioned(
+                            right: AppSpacing.sm,
+                            bottom: showMatchIndicator && matchedIngredients > 0
+                                ? 52
+                                : AppSpacing.sm,
+                            child: IgnorePointer(
+                              child: AnimatedSlide(
+                                offset: hovered
+                                    ? Offset.zero
+                                    : const Offset(.22, 0),
+                                duration: duration,
+                                curve: Curves.easeOutCubic,
+                                child: AnimatedOpacity(
+                                  key: ValueKey(
+                                    'recipe-card-arrow-${recipe.id}',
                                   ),
+                                  opacity: hovered ? 1 : 0,
+                                  duration: duration,
+                                  curve: Curves.easeOut,
+                                  child: _HoverOpenBadge(recipeId: recipe.id),
                                 ),
                               ),
                             ),
@@ -544,35 +537,48 @@ class _PointerHoverBuilderState extends State<_PointerHoverBuilder> {
       );
 }
 
-class _HoverArrow extends StatelessWidget {
-  const _HoverArrow({
-    required this.color,
-    required this.foregroundColor,
-  });
+class _HoverOpenBadge extends StatelessWidget {
+  const _HoverOpenBadge({required this.recipeId});
 
-  final Color color;
-  final Color foregroundColor;
+  final String recipeId;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
+  Widget build(BuildContext context) => Container(
+        key: ValueKey('recipe-card-open-badge-$recipeId'),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: AppRadius.lg,
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           boxShadow: [
             BoxShadow(
-              color: AppColorsV2.ink.withOpacity(.20),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
+              color: AppColorsV2.ink.withOpacity(.14),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Icon(
-            Icons.arrow_outward_rounded,
-            size: 20,
-            color: foregroundColor,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Відкрити',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(width: AppSpacing.xxs),
+            Icon(
+              Icons.arrow_forward_rounded,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ],
         ),
       );
 }

@@ -68,6 +68,7 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
               _CollectionGate(onOpen: () => _openGate(authenticated)),
               const SizedBox(height: AppSpacing.xl),
             ],
+            _buildProgress(collection),
             Text('Матеріали', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: AppSpacing.md),
             LayoutBuilder(builder: (context, constraints) {
@@ -118,6 +119,60 @@ class _CollectionDetailPageState extends ConsumerState<CollectionDetailPage> {
         ),
       )),
     ]);
+  }
+
+  Widget _buildProgress(ContentCollection collection) {
+    final index =
+        collection.items.indexWhere((item) => item.id == _resumeItemId);
+    if (index < 0) return const SizedBox.shrink();
+    final item = collection.items[index];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Semantics(
+        liveRegion: true,
+        label:
+            'Прогрес колекції: матеріал ${index + 1} з ${collection.items.length}',
+        child: ContentCard(
+          key: const ValueKey('collection-progress-feedback'),
+          onTap: item.isLocked ? null : () => _openItem(collection, item),
+          semanticLabel: 'Продовжити ${item.content.title}',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.play_circle_outline_rounded,
+                      color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      'Продовжити: ${item.content.title}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  Text(
+                    '${index + 1} / ${collection.items.length}',
+                    style: context.semantic.dataLabel,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  key: const ValueKey('collection-progress-indicator'),
+                  value: (index + 1) / collection.items.length,
+                  minHeight: 5,
+                  backgroundColor: context.semantic.surfaceStrong,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openGate(bool authenticated) {

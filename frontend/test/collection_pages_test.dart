@@ -168,6 +168,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Продовжити'), findsOneWidget, reason: 'width: $width');
+      expect(
+        find.byKey(const ValueKey('collection-progress-feedback')),
+        findsOneWidget,
+        reason: 'width: $width',
+      );
+      expect(
+        tester
+            .widget<LinearProgressIndicator>(find.byKey(
+              const ValueKey('collection-progress-indicator'),
+            ))
+            .value,
+        1,
+      );
       expect(tester.takeException(), isNull, reason: 'width: $width');
     }
   });

@@ -1264,7 +1264,7 @@ class _RecipeFeed extends StatelessWidget {
 /// Editorial storefront for the brand's featured collection. It previews the
 /// real collection whenever its detail has loaded, then falls back to the
 /// published recipe feed so Home never collapses into a generic paywall box.
-class BrandCourseCard extends StatelessWidget {
+class BrandCourseCard extends StatefulWidget {
   const BrandCourseCard({
     super.key,
     required this.courseName,
@@ -1283,15 +1283,21 @@ class BrandCourseCard extends StatelessWidget {
   final List<Recipe> fallbackRecipes;
 
   @override
+  State<BrandCourseCard> createState() => _BrandCourseCardState();
+}
+
+class _BrandCourseCardState extends State<BrandCourseCard> {
+  bool _activating = false;
+
+  @override
   Widget build(BuildContext context) {
-    final title = collection?.title.trim().isNotEmpty == true
-        ? collection!.title
-        : courseName;
-    final description = collection?.description.trim().isNotEmpty == true
-        ? collection!.description
+    final title = widget.collection?.title.trim().isNotEmpty == true
+        ? widget.collection!.title
+        : widget.courseName;
+    final description = widget.collection?.description.trim().isNotEmpty == true
+        ? widget.collection!.description
         : 'Авторські рецепти й практичні матеріали, зібрані в одну програму.';
-    final isLocked = collection?.isLocked ?? locked;
-    final action = isLocked ? onUnlock : onOpen;
+    final isLocked = widget.collection?.isLocked ?? widget.locked;
     final previews = _previewRecipes();
 
     return LayoutBuilder(
@@ -1300,19 +1306,21 @@ class BrandCourseCard extends StatelessWidget {
         final content = _CourseShowcaseCopy(
           title: title,
           description: description,
-          itemCount: collection?.itemCount,
+          itemCount: widget.collection?.itemCount,
           locked: isLocked,
           compact: !desktop,
+          activating: _activating,
         );
         final media = _CoursePreviewMosaic(
           title: title,
-          coverUrl: collection?.coverUrl,
+          coverUrl: widget.collection?.coverUrl,
           recipes: previews,
         );
 
         return ContentCard(
           key: const ValueKey('premium-collection-showcase'),
-          onTap: action,
+          onTap: _activating ? null : () => _activate(isLocked),
+          variant: ContentCardVariant.raised,
           semanticLabel: isLocked
               ? 'Відкрити Premium для колекції $title'
               : 'Відкрити колекцію $title',
@@ -1342,11 +1350,22 @@ class BrandCourseCard extends StatelessWidget {
 
   List<Recipe> _previewRecipes() {
     final candidates = [
-      ...?collection?.items.map((item) => item.content),
-      ...fallbackRecipes,
+      ...?widget.collection?.items.map((item) => item.content),
+      ...widget.fallbackRecipes,
     ];
     final seen = <String>{};
     return candidates.where((recipe) => seen.add(recipe.id)).take(3).toList();
+  }
+
+  Future<void> _activate(bool isLocked) async {
+    if (_activating) return;
+    setState(() => _activating = true);
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      await Future<void>.delayed(const Duration(milliseconds: 160));
+    }
+    if (!mounted) return;
+    (isLocked ? widget.onUnlock : widget.onOpen)();
+    if (mounted) setState(() => _activating = false);
   }
 }
 
@@ -1357,6 +1376,7 @@ class _CourseShowcaseCopy extends StatelessWidget {
     required this.itemCount,
     required this.locked,
     required this.compact,
+    required this.activating,
   });
 
   final String title;
@@ -1364,6 +1384,7 @@ class _CourseShowcaseCopy extends StatelessWidget {
   final int? itemCount;
   final bool locked;
   final bool compact;
+  final bool activating;
 
   @override
   Widget build(BuildContext context) {
@@ -1423,35 +1444,56 @@ class _CourseShowcaseCopy extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
-          Container(
+          AnimatedContainer(
             key: const ValueKey('premium-collection-cta'),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : AppMotion.fast,
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             decoration: BoxDecoration(
               color: accent,
               borderRadius: AppRadius.sm,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  locked
-                      ? Icons.workspace_premium_outlined
-                      : Icons.collections_bookmark_outlined,
-                  size: 19,
-                  color: onAccent,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    locked ? 'Відкрити Premium' : 'Відкрити майстерню',
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: onAccent,
-                      fontWeight: FontWeight.w700,
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : AppMotion.fast,
+              child: Row(
+                key: ValueKey(activating),
+                children: [
+                  Icon(
+                    activating
+                        ? Icons.hourglass_top_rounded
+                        : locked
+                            ? Icons.workspace_premium_outlined
+                            : Icons.collections_bookmark_outlined,
+                    size: 19,
+                    color: onAccent,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      activating
+                          ? 'Відкриваємо…'
+                          : locked
+                              ? 'Відкрити Premium'
+                              : 'Відкрити майстерню',
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: onAccent,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                Icon(Icons.arrow_forward_rounded, size: 20, color: onAccent),
-              ],
+                  Icon(
+                    activating
+                        ? Icons.more_horiz_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 20,
+                    color: onAccent,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

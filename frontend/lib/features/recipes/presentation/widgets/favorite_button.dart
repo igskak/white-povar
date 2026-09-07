@@ -27,12 +27,28 @@ class FavoriteButton extends ConsumerWidget {
           )
         : false;
 
-    return IconButton(
-      tooltip: saved ? 'Прибрати зі збереженого' : 'Зберегти рецепт',
-      onPressed: () => _toggle(context, ref, signedIn, saved),
-      icon: Icon(
-        saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-        color: color,
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      liveRegion: true,
+      value: saved ? 'Збережено' : 'Не збережено',
+      child: IconButton(
+        tooltip: saved ? 'Прибрати зі збереженого' : 'Зберегти рецепт',
+        onPressed: () => _toggle(context, ref, signedIn, saved),
+        icon: AnimatedSwitcher(
+          duration:
+              reduceMotion ? Duration.zero : const Duration(milliseconds: 180),
+          switchInCurve: Curves.easeOutBack,
+          switchOutCurve: Curves.easeIn,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(scale: animation, child: child),
+          ),
+          child: Icon(
+            saved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+            key: ValueKey('favorite-icon-$recipeId-$saved'),
+            color: color,
+          ),
+        ),
       ),
     );
   }

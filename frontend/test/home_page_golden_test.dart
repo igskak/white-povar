@@ -15,6 +15,7 @@ import 'package:frontend/core/branding/tenant_bootstrap.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
 import 'package:frontend/features/collections/providers/collection_provider.dart';
 import 'package:frontend/features/home/presentation/pages/home_page.dart';
+import 'package:frontend/features/home/presentation/widgets/home_scene.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
 import 'package:frontend/features/recipes/repositories/recipe_repository.dart';
@@ -122,6 +123,15 @@ void main() {
     expect(
       find.descendant(
         of: cardFinder,
+        matching: find.byKey(
+          const ValueKey('recipe-card-open-badge-home-1'),
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: cardFinder,
         matching: find.text('30 хв  ·  Вечеря  ·  Італійська'),
       ),
       findsOneWidget,
@@ -139,6 +149,38 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Premium showcase confirms activation before navigation',
+      (tester) async {
+    var unlocks = 0;
+    await tester.pumpWidget(MaterialApp(
+      theme: AppThemeV2.light(_brandConfig),
+      home: Scaffold(
+        body: SizedBox(
+          width: 390,
+          child: BrandCourseCard(
+            courseName: 'Майстерня Олександра',
+            locked: true,
+            onOpen: () {},
+            onUnlock: () => unlocks++,
+            fallbackRecipes: _recipes,
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(
+      find.byKey(const ValueKey('premium-collection-showcase')),
+    );
+    await tester.pump();
+
+    expect(find.text('Відкриваємо…'), findsOneWidget);
+    expect(unlocks, 0);
+
+    await tester.pump(const Duration(milliseconds: 180));
+    expect(unlocks, 1);
     expect(tester.takeException(), isNull);
   });
 

@@ -28,4 +28,4 @@ preferences, and every interaction must remain usable with touch and keyboard.
 - [x] 4. Responsive recipe-card interactions
 - [x] 5. Personalized shelves
 - [x] 6. Sticky discovery bar
-- [ ] 7. Action microfeedback
+- [x] 7. Action microfeedback
