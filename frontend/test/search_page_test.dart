@@ -319,6 +319,28 @@ void main() {
       expect(repository.searchDiets.last, 'no_meat');
     });
 
+    testWidgets(
+        'a server that ignores the diet parameter yields nothing, not meat',
+        (tester) async {
+      // An API deployed before the diet facet ignores the unknown query
+      // parameter and answers with an unfiltered page. Trusting that would put
+      // meat in front of somebody who asked for none, so the client re-checks
+      // the facet and fails closed on recipes it cannot classify.
+      final repository = _StaleApiRepository();
+      await tester.pumpWidget(_testApp(repository: repository));
+
+      await tester.tap(find.text('Підказки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Без м\u2019яса').last);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      final state = ProviderScope.containerOf(
+        tester.element(find.byType(SearchPage)),
+      ).read(simpleTextSearchProvider);
+      expect(state.results, isEmpty);
+    });
+
     testWidgets('desktop breakpoint survives navigation-shell constraints',
         (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
@@ -416,6 +438,23 @@ class _DeferredSearchRepository extends _RepositoryBase {
 
   void complete(String query, List<Recipe> recipes) =>
       _requests[query]!.complete(recipes);
+}
+
+/// Answers as an API deployed before the diet facet does: the unknown query
+/// parameter is ignored and every recipe comes back, with no `diet` field.
+class _StaleApiRepository extends _SearchRepository {
+  @override
+  Future<List<Recipe>> getRecipes(
+          {String? cuisine,
+          String? category,
+          int? difficulty,
+          int? maxTime,
+          bool? isFeatured,
+          String? diet,
+          int? minServings,
+          int limit = 20,
+          int offset = 0}) async =>
+      [_recipe('unfiltered')];
 }
 
 class _NoMatchVoiceRepository extends _SearchRepository {

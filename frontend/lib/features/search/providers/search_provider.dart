@@ -301,7 +301,16 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
         minServings: filters.minServings,
       );
       if (identical(_cancelToken, cancelToken)) {
-        state = SimpleSearchState(results: results, filters: filters);
+        // Re-check the facets the server was asked for. With a current API
+        // this removes nothing — but an API that predates a facet ignores the
+        // unknown query parameter and answers with an unfiltered page, and a
+        // dietary filter that silently returns meat is worse than one that
+        // returns nothing. `matches` fails closed on an unclassified recipe,
+        // so a stale server costs an empty list, never a broken promise.
+        state = SimpleSearchState(
+          results: results.where(filters.matches).toList(growable: false),
+          filters: filters,
+        );
       }
     } on RecipeRepositoryException catch (e) {
       if (identical(_cancelToken, cancelToken)) {
