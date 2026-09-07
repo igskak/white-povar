@@ -11,6 +11,22 @@ from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
+
+def _diet_type_predicate(diet_types: List[str]) -> str:
+    """PostgREST `or=` clause matching a diet, plus rows not yet classified.
+
+    NULL rows are deliberately kept in the result set rather than filtered out
+    in SQL: they are the ones the backfill has not reached and the ones that
+    genuinely have no ingredients, and the endpoint resolves them from their
+    ingredient list before answering. Dropping them here would make the filter
+    silently empty on a freshly migrated database — exactly the failure this
+    column exists to remove. Once the backfill has run there are no NULLs left
+    and this collapses to the indexed `IN`.
+    """
+    allowed = ','.join(diet_types)
+    return f'diet_type.in.({allowed}),diet_type.is.null'
+
+
 class SupabaseService:
     """Service class for Supabase database operations"""
     
@@ -97,6 +113,10 @@ class SupabaseService:
                         query = query.lte('total_time_minutes', value)
                     elif key == 'tags_contains':
                         query = query.contains('tags', value)
+                    elif key == 'diet_type_in':
+                        query = query.or_(_diet_type_predicate(value))
+                    elif key == 'min_servings':
+                        query = query.gte('servings', value)
                     elif isinstance(value, list):
                         query = query.in_(key, value)
                     else:
@@ -541,6 +561,8 @@ class SupabaseService:
         difficulty: Optional[int] = None,
         max_total_time: Optional[int] = None,
         is_featured: Optional[bool] = None,
+        diet_types: Optional[List[str]] = None,
+        min_servings: Optional[int] = None,
         limit: int = 20,
         offset: int = 0,
     ) -> Dict[str, Any]:
@@ -570,6 +592,10 @@ class SupabaseService:
                 request = request.lte('total_time_minutes', max_total_time)
             if is_featured is not None:
                 request = request.eq('is_featured', is_featured)
+            if diet_types:
+                request = request.or_(_diet_type_predicate(diet_types))
+            if min_servings is not None:
+                request = request.gte('servings', min_servings)
 
             result = (
                 request.order('created_at', desc=True)

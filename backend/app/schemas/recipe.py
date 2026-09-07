@@ -73,6 +73,11 @@ class RecipeBase(BaseModel):
     video_url: Optional[str] = Field(None, description="External video URL (YouTube, TikTok, etc.)")
     video_file_path: Optional[str] = Field(None, description="Path to uploaded video file in storage")
     tags: List[str] = Field(default_factory=list)
+    diet: Optional[Literal['meat', 'fish', 'vegetarian', 'vegan']] = Field(
+        None,
+        description="Derived diet. None means not classified — clients must "
+                    "treat it as unknown, never as plant-based.",
+    )
     is_featured: bool = Field(default=False)
     is_premium: bool = Field(default=False, description="Whether this recipe requires premium subscription")
     

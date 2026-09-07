@@ -89,6 +89,7 @@ class _SearchGoldenRepository implements RecipeRepository {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async =>
       fixtureState == _SearchFixtureState.noResults ? const [] : _recipes;
@@ -119,6 +120,8 @@ class _SearchGoldenRepository implements RecipeRepository {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async =>

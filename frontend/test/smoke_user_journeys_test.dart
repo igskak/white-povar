@@ -194,6 +194,8 @@ class _FakeRecipeService implements RecipeService {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -221,6 +223,7 @@ class _FakeRecipeService implements RecipeService {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async {
     return [];
@@ -262,6 +265,8 @@ class _FakeRecipeRepository implements RecipeRepository {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -285,6 +290,7 @@ class _FakeRecipeRepository implements RecipeRepository {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async {
     return [];

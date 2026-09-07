@@ -15,6 +15,8 @@ class RecipeService {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -30,6 +32,8 @@ class RecipeService {
           if (difficulty != null) 'difficulty': difficulty,
           if (maxTime != null) 'max_time': maxTime,
           if (isFeatured != null) 'is_featured': isFeatured,
+          if (diet != null) 'diet': diet,
+          if (minServings != null) 'min_servings': minServings,
           'limit': limit,
           'offset': offset,
         },
@@ -136,12 +140,18 @@ class RecipeService {
   // Search recipes
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async {
     try {
       final response = await _apiClient.get<Map<String, dynamic>>(
         '/api/v1/search/catalog',
-        queryParameters: {'q': query, 'limit': 20, 'offset': 0},
+        queryParameters: {
+          'q': query,
+          if (diet != null) 'diet': diet,
+          'limit': 20,
+          'offset': 0,
+        },
         cancelToken: cancelToken,
       );
       if (response.statusCode == 200) {

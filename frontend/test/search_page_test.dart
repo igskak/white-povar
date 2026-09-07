@@ -251,6 +251,74 @@ void main() {
       expect(find.text('Обраний рецепт'), findsNothing);
     });
 
+    testWidgets(
+        'the "Без м\u2019яса" quick collection filters instead of searching '
+        'for its own label', (tester) async {
+      // The original bug: tapping the chip typed "Без м\u2019яса" into the
+      // search box, so the catalogue was asked for a recipe whose title
+      // contains that phrase and always answered with nothing.
+      final repository = _SearchRepository();
+      await tester.pumpWidget(_testApp(repository: repository));
+
+      await tester.tap(find.text('Підказки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Без м\u2019яса'));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      // No text search was issued, and the search box is untouched.
+      expect(repository.queries, isEmpty);
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty);
+      // The catalogue was browsed with a real diet facet instead.
+      expect(repository.browseCalls.single['diet'], 'no_meat');
+    });
+
+    testWidgets('a quick collection is removable and toggles off',
+        (tester) async {
+      final repository = _SearchRepository();
+      await tester.pumpWidget(_testApp(repository: repository));
+
+      await tester.tap(find.text('Підказки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Без м\u2019яса').last);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      // It shows up as an active, removable facet rather than vanishing into
+      // the query box.
+      expect(find.text('Скинути'), findsOneWidget);
+      expect(repository.browseCalls.single['diet'], 'no_meat');
+
+      await tester.tap(find.text('Без м\u2019яса').first);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      expect(find.text('Скинути'), findsNothing);
+    });
+
+    testWidgets('a diet filter composes with a typed query server-side',
+        (tester) async {
+      final repository = _SearchRepository();
+      await tester.pumpWidget(_testApp(repository: repository));
+
+      await tester.enterText(find.byType(TextField), 'паста');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      expect(repository.searchDiets, [null]);
+
+      await tester.tap(find.text('Підказки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Без м\u2019яса').last);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      // The query is re-run with the diet attached, not narrowed only on the
+      // client, so paging stays honest.
+      expect(repository.queries, ['паста', 'паста']);
+      expect(repository.searchDiets.last, 'no_meat');
+    });
+
     testWidgets('desktop breakpoint survives navigation-shell constraints',
         (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
@@ -327,11 +395,13 @@ Widget _testApp({
 
 class _SearchRepository extends _RepositoryBase {
   final List<String> queries = [];
+  final List<String?> searchDiets = [];
 
   @override
   Future<List<Recipe>> searchRecipes(String query,
-      {CancelToken? cancelToken}) async {
+      {String? diet, CancelToken? cancelToken}) async {
     queries.add(query);
+    searchDiets.add(diet);
     return [_recipe('search-$query')];
   }
 }
@@ -341,7 +411,7 @@ class _DeferredSearchRepository extends _RepositoryBase {
 
   @override
   Future<List<Recipe>> searchRecipes(String query,
-          {CancelToken? cancelToken}) =>
+          {String? diet, CancelToken? cancelToken}) =>
       (_requests[query] ??= Completer<List<Recipe>>()).future;
 
   void complete(String query, List<Recipe> recipes) =>
@@ -434,6 +504,8 @@ abstract class _RepositoryBase implements RecipeRepository {
         confirmationRequired: const [],
       );
 
+  final List<Map<String, Object?>> browseCalls = [];
+
   @override
   Future<Recipe> createRecipe(Recipe recipe) async => recipe;
   @override
@@ -442,14 +514,27 @@ abstract class _RepositoryBase implements RecipeRepository {
   Future<Recipe?> getRecipe(String id) async => _recipe(id);
   @override
   Future<List<Recipe>> getRecipes(
-          {String? cuisine,
-          String? category,
-          int? difficulty,
-          int? maxTime,
-          bool? isFeatured,
-          int limit = 20,
-          int offset = 0}) async =>
-      [_recipe('all')];
+      {String? cuisine,
+      String? category,
+      int? difficulty,
+      int? maxTime,
+      bool? isFeatured,
+      String? diet,
+      int? minServings,
+      int limit = 20,
+      int offset = 0}) async {
+    browseCalls.add({
+      'cuisine': cuisine,
+      'category': category,
+      'difficulty': difficulty,
+      'maxTime': maxTime,
+      'isFeatured': isFeatured,
+      'diet': diet,
+      'minServings': minServings,
+    });
+    return [_recipe('all')];
+  }
+
   @override
   Future<List<Recipe>> getRecipesByChef(String chefId,
           {int limit = 20, int offset = 0}) async =>

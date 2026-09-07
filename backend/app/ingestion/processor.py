@@ -11,6 +11,7 @@ from app.schemas.ingestion import (
 )
 from app.schemas.recipe import RecipeCreate, IngredientCreate, NutritionBase
 from app.services.database import supabase_service
+from app.services.diet import classify_diet
 from app.ingestion.extractor import text_extractor
 from app.ingestion.language import language_detector
 from app.ingestion.ai_parser import ai_parser
@@ -222,6 +223,10 @@ class RecipeProcessor:
             'servings': parsed_recipe.servings,
             'instructions': '\n'.join(parsed_recipe.instructions),  # Convert list to text
             'tags': tags,  # Include cuisine in tags
+            # Derived once, here, so discovery can filter "без м'яса" with an
+            # indexed predicate instead of scanning ingredients per query.
+            'diet_type': classify_diet(
+                tags, [ing.name for ing in parsed_recipe.ingredients]),
             'is_featured': False
         }
 

@@ -90,6 +90,8 @@ class _FavoriteService implements RecipeService {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async =>
@@ -98,7 +100,7 @@ class _FavoriteService implements RecipeService {
   Future<Map<String, dynamic>> getSearchFilterOptions() async => const {};
   @override
   Future<List<Recipe>> searchRecipes(String query,
-          {CancelToken? cancelToken}) async =>
+          {String? diet, CancelToken? cancelToken}) async =>
       [];
   @override
   Future<void> toggleFavorite(String recipeId) async {}

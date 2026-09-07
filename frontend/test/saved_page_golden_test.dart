@@ -139,6 +139,7 @@ class _SavedRecipeService extends RecipeService {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async =>
       const [];

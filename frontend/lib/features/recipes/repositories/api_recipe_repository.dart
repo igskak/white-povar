@@ -15,11 +15,12 @@ class ApiRecipeRepository implements RecipeRepository {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async {
     try {
       return await _recipeService.searchRecipes(query,
-          cancelToken: cancelToken);
+          diet: diet, cancelToken: cancelToken);
     } on ApiError catch (e) {
       throw _handleApiError(e);
     } catch (e) {
@@ -51,6 +52,8 @@ class ApiRecipeRepository implements RecipeRepository {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) async {
@@ -61,6 +64,8 @@ class ApiRecipeRepository implements RecipeRepository {
         difficulty: difficulty,
         maxTime: maxTime,
         isFeatured: isFeatured,
+        diet: diet,
+        minServings: minServings,
         limit: limit,
         offset: offset,
       );

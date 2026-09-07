@@ -23,6 +23,7 @@ from app.api.v1.endpoints.recipes import (
     _premium_teaser,
     _recipe_from_row,
 )
+from app.services.diet import DIET_FILTERS, allowed_diet_types, row_matches_diet
 from app.services.voice_intent_service import parse_voice_intent
 from app.services.analytics_service import emit_analytics
 
@@ -475,6 +476,11 @@ async def search_catalog(
     difficulty: Optional[int] = Query(None, ge=1, le=5),
     max_total_time: Optional[int] = Query(None, ge=0),
     is_featured: Optional[bool] = None,
+    diet: Optional[str] = Query(
+        None,
+        description=f"Dietary filter. One of: {', '.join(sorted(DIET_FILTERS))}",
+    ),
+    min_servings: Optional[int] = Query(None, ge=1),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: Optional[User] = Depends(get_optional_user),
@@ -486,6 +492,11 @@ async def search_catalog(
     from the resolved tenant context.  The row projection deliberately retains
     premium metadata so discovery can render a locked teaser.
     """
+    if diet and diet not in DIET_FILTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported diet filter. One of: {', '.join(sorted(DIET_FILTERS))}",
+        )
     try:
         profile = None
         if current_user:
@@ -505,11 +516,18 @@ async def search_catalog(
             max_total_time=min(value for value in [max_total_time, profile_time] if value is not None)
             if max_total_time is not None or profile_time is not None else None,
             is_featured=is_featured,
+            diet_types=allowed_diet_types(diet),
+            min_servings=min_servings,
             limit=limit,
             offset=offset,
         )
+        # `diet_types` keeps unclassified rows in the page rather than dropping
+        # them in SQL, so the diet is settled here from the ingredient list.
+        # Once the backfill has run, every row arrives already classified and
+        # this is a stored-value comparison.
         rows = [row for row in result.data or []
-                if not _row_contains_any(row, profile_allergens)
+                if row_matches_diet(row, diet)
+                and not _row_contains_any(row, profile_allergens)
                 and not _row_contains_any(row, profile_dislikes)]
         recipes = []
         for row in rows[:limit]:

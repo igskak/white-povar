@@ -12,6 +12,27 @@ extension ContentKindIngredients on ContentKind {
 
 enum RecipeImageRole { primary, list, grid, featured, detail }
 
+/// The recipe's diet, derived server-side from its ingredients.
+///
+/// Absent (`null`) means *unclassified*, not plant-based: content with no
+/// ingredient list — a technique, a video — cannot be judged, and a dietary
+/// filter must fail closed rather than promise a dish is meat-free.
+enum RecipeDiet { meat, fish, vegetarian, vegan }
+
+extension RecipeDietFacts on RecipeDiet {
+  bool get hasMeat => this == RecipeDiet.meat;
+  bool get hasFish => this == RecipeDiet.fish;
+  bool get hasAnimalFlesh => hasMeat || hasFish;
+}
+
+RecipeDiet? _recipeDietFromJson(dynamic value) => switch (value) {
+      'meat' => RecipeDiet.meat,
+      'fish' => RecipeDiet.fish,
+      'vegetarian' => RecipeDiet.vegetarian,
+      'vegan' => RecipeDiet.vegan,
+      _ => null,
+    };
+
 ContentKind _contentKindFromJson(dynamic value) => switch (value) {
       'technique' => ContentKind.technique,
       'process' => ContentKind.process,
@@ -139,6 +160,7 @@ class Recipe extends Equatable {
   final String? videoUrl;
   final String? videoFilePath;
   final List<String> tags;
+  final RecipeDiet? diet;
   final bool isFeatured;
   final bool isPremium;
   final bool isLocked;
@@ -165,6 +187,7 @@ class Recipe extends Equatable {
     this.videoUrl,
     this.videoFilePath,
     required this.tags,
+    this.diet,
     required this.isFeatured,
     this.isPremium = false,
     this.isLocked = false,
@@ -205,6 +228,7 @@ class Recipe extends Equatable {
       videoUrl: json['video_url']?.toString(),
       videoFilePath: json['video_file_path']?.toString(),
       tags: _parseStringList(json['tags']),
+      diet: _recipeDietFromJson(json['diet']),
       isFeatured: json['is_featured'] == true,
       isPremium: json['is_premium'] == true,
       isLocked: json['is_locked'] == true,
@@ -263,6 +287,7 @@ class Recipe extends Equatable {
       'video_url': videoUrl,
       'video_file_path': videoFilePath,
       'tags': tags,
+      'diet': diet?.name,
       'is_featured': isFeatured,
       'is_premium': isPremium,
       'is_locked': isLocked,
@@ -292,6 +317,7 @@ class Recipe extends Equatable {
         videoUrl,
         videoFilePath,
         tags,
+        diet,
         isFeatured,
         isPremium,
         isLocked,

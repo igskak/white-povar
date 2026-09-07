@@ -33,6 +33,15 @@ migrations и не deploy.
 4. Проверить bootstrap/catalogue/offers/tenant data через production API или
    SQL read-only checks. При migration error остановиться: транзакция rollback
    выполнен автоматически.
+5. Post-migration backfill (только один раз, после
+   `2026_09_06_recipe_diet_type`): выполнить
+   `python3 backend/tools/backfill_diet_type.py` (dry run), сверить output,
+   затем `--apply`. Скрипт идемпотентен и делает backup изменяемых строк.
+   Не блокирует deploy: до backfill discovery классифицирует `diet_type IS
+   NULL` строки по ингредиентам на чтении, поэтому фильтр «Без м'яса» уже
+   корректен — backfill лишь переводит эту работу в индекс и делает
+   `total_count` точным. После изменения лексикона в
+   `backend/app/services/diet.py` перезапустить с `--recheck --apply`.
 
 ## 2. DEPLOY-01 — API, then web
 

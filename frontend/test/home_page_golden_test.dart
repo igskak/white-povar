@@ -193,6 +193,8 @@ class _HomeRecipeService extends RecipeService {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   }) {
@@ -236,6 +238,7 @@ class _HomeRecipeService extends RecipeService {
   @override
   Future<List<Recipe>> searchRecipes(
     String query, {
+    String? diet,
     CancelToken? cancelToken,
   }) async =>
       const [];

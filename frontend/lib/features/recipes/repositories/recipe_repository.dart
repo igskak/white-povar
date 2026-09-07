@@ -30,8 +30,10 @@ class VoiceRecommendation {
 /// Abstract repository interface for recipe operations
 /// This decouples business logic from data access implementation
 abstract class RecipeRepository {
-  /// Search recipes by text query
-  Future<List<Recipe>> searchRecipes(String query, {CancelToken? cancelToken});
+  /// Search recipes by text query, optionally narrowed to a diet
+  /// (`no_meat`, `vegan`, `pescatarian`).
+  Future<List<Recipe>> searchRecipes(String query,
+      {String? diet, CancelToken? cancelToken});
 
   /// Server-side typed intent retrieval for completed voice transcripts.
   Future<VoiceIntentSearchResult> searchVoiceIntent(String transcript,
@@ -44,6 +46,8 @@ abstract class RecipeRepository {
     int? difficulty,
     int? maxTime,
     bool? isFeatured,
+    String? diet,
+    int? minServings,
     int limit = 20,
     int offset = 0,
   });

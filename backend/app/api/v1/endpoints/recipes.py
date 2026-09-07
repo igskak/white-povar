@@ -6,6 +6,8 @@ import logging
 from app.schemas.recipe import Recipe, RecipeList, RecipeFilters, RecipeCreate
 from app.schemas.chef import ChefConfig
 from app.services.database import supabase_service
+from app.services.diet import (DIET_FILTERS, allowed_diet_types,
+                               row_diet_type, row_matches_diet)
 from app.services.analytics_service import emit_analytics
 from app.api.v1.endpoints.auth import get_optional_user, verify_firebase_token, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
@@ -327,6 +329,9 @@ def _content_item_from_row(recipe_data: Dict[str, Any]) -> Recipe:
         'video_url': _normalize_video_url(row.get('video_url')),
         'video_file_path': _normalize_video_file_path(row.get('video_file_path')),
         'tags': row.get('tags', []),
+        # Resolved from the original row: the teaser projection below strips
+        # the ingredients this would otherwise be inferred from.
+        'diet': row_diet_type(recipe_data),
         'is_featured': row.get('is_featured', False),
         'is_premium': row.get('is_premium', False),
         'created_at': row.get('created_at'),
@@ -354,6 +359,9 @@ def _premium_teaser(recipe_data: Dict[str, Any]) -> Recipe:
     """Project list/detail metadata without ingredients, steps or video URLs."""
     teaser = _recipe_from_row({
         **recipe_data,
+        # Settle the diet while the ingredients are still here, so a locked
+        # teaser can still be filtered out of a "без м'яса" result.
+        'diet_type': row_diet_type(recipe_data),
         'recipe_ingredients': [],
         'recipe_nutrition': [],
         'instructions': [],
@@ -371,12 +379,22 @@ async def get_recipes(
     category: Optional[str] = Query(None, description="Filter by category"),
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
     is_featured: Optional[bool] = Query(None, description="Filter featured recipes"),
+    diet: Optional[str] = Query(
+        None,
+        description=f"Dietary filter. One of: {', '.join(sorted(DIET_FILTERS))}",
+    ),
+    min_servings: Optional[int] = Query(None, ge=1, description="Minimum servings"),
     limit: int = Query(20, ge=1, le=100, description="Number of recipes to return"),
     offset: int = Query(0, ge=0, description="Number of recipes to skip"),
     current_user: Optional[User] = Depends(get_optional_user),
     tenant: TenantContext = Depends(require_tenant_context),
 ):
     """Get recipes with optional filtering (respects user subscription tier)"""
+    if diet and diet not in DIET_FILTERS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported diet filter. One of: {', '.join(sorted(DIET_FILTERS))}",
+        )
     logger.info(
         "GET /recipes/ called by %s",
         current_user.id if current_user else "guest",
@@ -397,6 +415,10 @@ async def get_recipes(
             filters['is_featured'] = is_featured
         if tags:
             filters['tags_contains'] = tags
+        if diet:
+            filters['diet_type_in'] = allowed_diet_types(diet)
+        if min_servings:
+            filters['min_servings'] = min_servings
 
         # Get recipes from database
         logger.info(f"🔍 Fetching recipes with filters: {filters}")
@@ -410,6 +432,12 @@ async def get_recipes(
         recipes = []
         for recipe_data in result.data:
             try:
+                # The diet predicate keeps rows the backfill has not reached
+                # (diet_type IS NULL) in the page; settle those here from the
+                # ingredient list rather than showing meat to somebody who
+                # excluded it.
+                if not row_matches_diet(recipe_data, diet):
+                    continue
                 access = await resolve_recipe_access(recipe_data, tenant, current_user)
                 if not access.exists_in_tenant:
                     continue

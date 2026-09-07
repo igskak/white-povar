@@ -14,7 +14,7 @@ SPEC.loader.exec_module(migrate)
 def test_manifest_files_checksums_and_dependencies_are_valid():
     manifest = migrate.load_manifest()
     managed = [item for item in manifest if item.get("managed", True)]
-    assert len(managed) == 26
+    assert len(managed) == 27
     assert all(len(migrate.checksum(item)) == 64 for item in manifest)
     assert manifest[0]["id"] == "legacy_subscription_schema"
     assert any(item["id"] == "2026_07_15_commerce_access" for item in manifest)
@@ -31,6 +31,15 @@ def test_manifest_files_checksums_and_dependencies_are_valid():
         "2026_07_15_studio_assets",
         "2026_07_16_studio_content_merchandising",
     }
+    diet_type = next(
+        item for item in manifest if item["id"] == "2026_09_06_recipe_diet_type"
+    )
+    diet_sql = (migrate.MIGRATIONS_DIR / diet_type["filename"]).read_text(encoding="utf-8")
+    # The column must stay nullable: NULL is "not yet classified", which the
+    # API resolves at read time, and a NOT NULL default would assert a diet
+    # nobody computed.
+    assert "ADD COLUMN IF NOT EXISTS diet_type TEXT" in diet_sql
+    assert "NOT NULL" not in diet_sql
 
 
 def test_status_reports_pending_applied_and_checksum_mismatch():

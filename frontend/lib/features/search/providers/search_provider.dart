@@ -7,10 +7,38 @@ import '../../recipes/repositories/recipe_repository.dart';
 import '../../recipes/repositories/api_recipe_repository.dart';
 import '../../recipes/providers/recipe_provider.dart';
 
+/// A dietary constraint, sent to the catalogue as `diet=<wireName>`.
+///
+/// This is an *exclusion*: the server answers it from a derived per-recipe
+/// diet rather than by matching text, because "без м'яса" is a property of the
+/// ingredient list and no recipe's title contains the phrase.
+enum DietFilter {
+  noMeat('no_meat', 'Без м’яса'),
+  vegan('vegan', 'Веганські'),
+  pescatarian('pescatarian', 'Риба, без м’яса');
+
+  const DietFilter(this.wireName, this.label);
+
+  final String wireName;
+  final String label;
+
+  /// Which recipe diets satisfy this filter. An unclassified recipe
+  /// (`diet == null`) satisfies none of them: a dietary promise fails closed.
+  bool allows(RecipeDiet? diet) => switch (this) {
+        DietFilter.noMeat =>
+          diet == RecipeDiet.vegetarian || diet == RecipeDiet.vegan,
+        DietFilter.vegan => diet == RecipeDiet.vegan,
+        DietFilter.pescatarian => diet == RecipeDiet.fish ||
+            diet == RecipeDiet.vegetarian ||
+            diet == RecipeDiet.vegan,
+      };
+}
+
 /// Structured Discover filters.
 ///
-/// Deliberately limited to fields the catalogue already exposes
-/// (`getRecipes`): no new backend contract, no invented facets.
+/// Every facet here is one the catalogue endpoint can actually answer, so a
+/// filter always reaches the server rather than being pasted into the search
+/// box as text.
 class SearchFilters {
   const SearchFilters({
     this.cuisine,
@@ -18,6 +46,8 @@ class SearchFilters {
     this.difficulty,
     this.maxTime,
     this.isFeatured,
+    this.diet,
+    this.minServings,
   });
 
   final String? cuisine;
@@ -25,6 +55,8 @@ class SearchFilters {
   final int? difficulty;
   final int? maxTime;
   final bool? isFeatured;
+  final DietFilter? diet;
+  final int? minServings;
 
   static const empty = SearchFilters();
 
@@ -33,7 +65,9 @@ class SearchFilters {
       category != null ||
       difficulty != null ||
       maxTime != null ||
-      isFeatured != null;
+      isFeatured != null ||
+      diet != null ||
+      minServings != null;
 
   int get activeCount => [
         cuisine,
@@ -41,6 +75,8 @@ class SearchFilters {
         difficulty,
         maxTime,
         isFeatured,
+        diet,
+        minServings,
       ].where((value) => value != null).length;
 
   /// `null` clears a facet; omitting the argument keeps it.
@@ -50,6 +86,8 @@ class SearchFilters {
     Object? difficulty = _unset,
     Object? maxTime = _unset,
     Object? isFeatured = _unset,
+    Object? diet = _unset,
+    Object? minServings = _unset,
   }) =>
       SearchFilters(
         cuisine: identical(cuisine, _unset) ? this.cuisine : cuisine as String?,
@@ -62,6 +100,10 @@ class SearchFilters {
         isFeatured: identical(isFeatured, _unset)
             ? this.isFeatured
             : isFeatured as bool?,
+        diet: identical(diet, _unset) ? this.diet : diet as DietFilter?,
+        minServings: identical(minServings, _unset)
+            ? this.minServings
+            : minServings as int?,
       );
 
   /// Narrows an existing result list, used when a text query already ran
@@ -78,6 +120,10 @@ class SearchFilters {
     if (difficulty != null && recipe.difficulty != difficulty) return false;
     if (maxTime != null && recipe.totalTimeMinutes > maxTime!) return false;
     if (isFeatured != null && recipe.isFeatured != isFeatured) return false;
+    // The diet the server derived, not a word list re-implemented here: the
+    // lexicon lives once, on the backend, and rides along on the recipe.
+    if (diet != null && !diet!.allows(recipe.diet)) return false;
+    if (minServings != null && recipe.servings < minServings!) return false;
     return true;
   }
 
@@ -88,11 +134,13 @@ class SearchFilters {
       other.category == category &&
       other.difficulty == difficulty &&
       other.maxTime == maxTime &&
-      other.isFeatured == isFeatured;
+      other.isFeatured == isFeatured &&
+      other.diet == diet &&
+      other.minServings == minServings;
 
   @override
-  int get hashCode =>
-      Object.hash(cuisine, category, difficulty, maxTime, isFeatured);
+  int get hashCode => Object.hash(
+      cuisine, category, difficulty, maxTime, isFeatured, diet, minServings);
 }
 
 const Object _unset = Object();
@@ -186,6 +234,9 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
       try {
         final results = await _recipeRepository.searchRecipes(
           query,
+          // The diet goes to the server so paging stays honest; `matches`
+          // below only narrows the facets the text endpoint cannot express.
+          diet: filters.diet?.wireName,
           cancelToken: cancelToken,
         );
         if (identical(_cancelToken, cancelToken)) {
@@ -246,6 +297,8 @@ class SimpleSearchNotifier extends StateNotifier<SimpleSearchState> {
         difficulty: filters.difficulty,
         maxTime: filters.maxTime,
         isFeatured: filters.isFeatured,
+        diet: filters.diet?.wireName,
+        minServings: filters.minServings,
       );
       if (identical(_cancelToken, cancelToken)) {
         state = SimpleSearchState(results: results, filters: filters);

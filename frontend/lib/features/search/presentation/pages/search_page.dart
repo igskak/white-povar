@@ -42,10 +42,32 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     'Паста',
   ];
 
-  static const _filters = [
-    _DiscoveryFilter('До 30 хв', Icons.schedule_outlined),
-    _DiscoveryFilter('Без м’яса', Icons.eco_outlined),
-    _DiscoveryFilter('Для родини', Icons.people_outline),
+  // Quick collections are filters, not search terms. Each carries the facet it
+  // sets: tapping one used to type its own label into the search box, which
+  // asked the catalogue for recipes whose title contains "Без м'яса" and so
+  // could only ever return nothing.
+  static final _filters = <_DiscoveryFilter>[
+    _DiscoveryFilter(
+      'До 30 хв',
+      Icons.schedule_outlined,
+      apply: (filters) => filters.copyWith(maxTime: 30),
+      isOn: (filters) => filters.maxTime == 30,
+      clear: (filters) => filters.copyWith(maxTime: null),
+    ),
+    _DiscoveryFilter(
+      DietFilter.noMeat.label,
+      Icons.eco_outlined,
+      apply: (filters) => filters.copyWith(diet: DietFilter.noMeat),
+      isOn: (filters) => filters.diet == DietFilter.noMeat,
+      clear: (filters) => filters.copyWith(diet: null),
+    ),
+    _DiscoveryFilter(
+      'Для родини',
+      Icons.people_outline,
+      apply: (filters) => filters.copyWith(minServings: 4),
+      isOn: (filters) => filters.minServings == 4,
+      clear: (filters) => filters.copyWith(minServings: null),
+    ),
   ];
 
   @override
@@ -146,6 +168,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
   }
 
+  /// A suggestion *is* search text ("Паста"), so it still goes to the box.
   void _applySuggestion(String value) {
     setState(() {
       _activeTag = null;
@@ -153,6 +176,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     });
     _updateLocation();
     _performSearch(value);
+  }
+
+  /// A quick collection is a facet, so it goes to the filters and leaves the
+  /// search box alone — it composes with whatever the user has typed.
+  void _toggleQuickFilter(_DiscoveryFilter filter) {
+    final current = ref.read(simpleTextSearchProvider).filters;
+    ref
+        .read(simpleTextSearchProvider.notifier)
+        .applyFilters(filter.toggle(current));
   }
 
   /// The course is a collection, not a recipe tag: filtering the catalogue by
@@ -254,6 +286,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       showFilterButton: !isDesktop,
                       activeTag: _activeTag,
                       filters: _filters,
+                      activeFilters: searchState.filters,
                       onToggleFilters: () =>
                           setState(() => _showFilters = !_showFilters),
                       onOpenFilterSheet: _openFilterSheet,
@@ -270,7 +303,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           _performSearch(value);
                         }
                       },
-                      onFilterSelected: _applySuggestion,
+                      onFilterSelected: _toggleQuickFilter,
                       voiceState: voiceState,
                       confirmationRequired: searchState.confirmationRequired,
                       onStartVoice: _requestVoiceConsent,
@@ -302,8 +335,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   width: 260,
                   child: _DesktopFilterRail(
                     filters: _filters,
-                    activeFilter: _activeTag,
-                    onSelected: _applySuggestion,
+                    activeFilters: searchState.filters,
+                    onSelected: _toggleQuickFilter,
                     onOpenFilterSheet: _openFilterSheet,
                     activeFilterCount: searchState.filters.activeCount,
                   ),
@@ -601,6 +634,7 @@ class _SearchHeader extends StatelessWidget {
       required this.onChanged,
       required this.onSubmitted,
       required this.onFilterSelected,
+      required this.activeFilters,
       required this.voiceState,
       required this.confirmationRequired,
       required this.onStartVoice,
@@ -619,7 +653,8 @@ class _SearchHeader extends StatelessWidget {
   final VoidCallback onClear;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
-  final ValueChanged<String> onFilterSelected;
+  final ValueChanged<_DiscoveryFilter> onFilterSelected;
+  final SearchFilters activeFilters;
   final VoiceInputState voiceState;
   final List<String> confirmationRequired;
   final VoidCallback onStartVoice;
@@ -721,8 +756,8 @@ class _SearchHeader extends StatelessWidget {
                               .map((filter) => AppChip(
                                   label: filter.label,
                                   avatar: Icon(filter.icon, size: 16),
-                                  onSelected: (_) =>
-                                      onFilterSelected(filter.label)))
+                                  selected: filter.isOn(activeFilters),
+                                  onSelected: (_) => onFilterSelected(filter)))
                               .toList()))
                   : const SizedBox.shrink()),
         const SizedBox(height: AppSpacing.sm),
@@ -953,15 +988,15 @@ class _SearchResults extends StatelessWidget {
 class _DesktopFilterRail extends StatelessWidget {
   const _DesktopFilterRail({
     required this.filters,
-    required this.activeFilter,
+    required this.activeFilters,
     required this.onSelected,
     required this.onOpenFilterSheet,
     required this.activeFilterCount,
   });
 
   final List<_DiscoveryFilter> filters;
-  final String? activeFilter;
-  final ValueChanged<String> onSelected;
+  final SearchFilters activeFilters;
+  final ValueChanged<_DiscoveryFilter> onSelected;
   final VoidCallback onOpenFilterSheet;
   final int activeFilterCount;
 
@@ -989,10 +1024,10 @@ class _DesktopFilterRail extends StatelessWidget {
               child: ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                 shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
-                selected: activeFilter == filter.label,
+                selected: filter.isOn(activeFilters),
                 leading: Icon(filter.icon),
                 title: Text(filter.label),
-                onTap: () => onSelected(filter.label),
+                onTap: () => onSelected(filter),
               ),
             ),
           const Divider(height: AppSpacing.xl),
@@ -1013,10 +1048,29 @@ String _recommendationDetails(VoiceRecommendation recommendation) {
   return parts.isEmpty ? 'Частковий збіг запиту' : parts.join('. ');
 }
 
+/// A quick collection: a labelled patch on the structured filters.
+///
+/// It deliberately holds no search text. A chip that typed its own label into
+/// the query box was asking the catalogue for a recipe *named* "Без м'яса",
+/// which no recipe is, so the chip could only ever answer "нічого не знайшли".
 class _DiscoveryFilter {
-  const _DiscoveryFilter(this.label, this.icon);
+  const _DiscoveryFilter(
+    this.label,
+    this.icon, {
+    required this.apply,
+    required this.isOn,
+    required this.clear,
+  });
+
   final String label;
   final IconData icon;
+  final SearchFilters Function(SearchFilters) apply;
+  final bool Function(SearchFilters) isOn;
+  final SearchFilters Function(SearchFilters) clear;
+
+  /// Tapping a chip toggles it, so a second tap undoes it in place.
+  SearchFilters toggle(SearchFilters filters) =>
+      isOn(filters) ? clear(filters) : apply(filters);
 }
 
 /// Active facets shown above the results, each removable, plus a full reset
@@ -1050,6 +1104,12 @@ class _ActiveFilterChips extends StatelessWidget {
       if (filters.isFeatured == true)
         _chip(
             'Вибір шефа', () => onChanged(filters.copyWith(isFeatured: null))),
+      if (filters.diet != null)
+        _chip(
+            filters.diet!.label, () => onChanged(filters.copyWith(diet: null))),
+      if (filters.minServings != null)
+        _chip('Від ${filters.minServings} порцій',
+            () => onChanged(filters.copyWith(minServings: null))),
     ];
 
     return Padding(
@@ -1078,7 +1138,7 @@ class _ActiveFilterChips extends StatelessWidget {
 }
 
 /// Progressive-disclosure facet sheet. Only exposes cuisine, category,
-/// difficulty, time and isFeatured — the fields `getRecipes` already accepts.
+/// difficulty, time, diet and isFeatured — the fields `getRecipes` accepts.
 class _FilterSheet extends StatefulWidget {
   const _FilterSheet({
     required this.initial,
@@ -1144,6 +1204,17 @@ class _FilterSheetState extends State<_FilterSheet> {
                           .map((time) => 'До \$time хв')
                           .toList()
                           .indexOf(value)])),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _section(context, 'Раціон'),
+            _options(
+              DietFilter.values.map((diet) => diet.label).toList(),
+              selected: _draft.diet?.label,
+              onSelected: (value) => setState(() => _draft = _draft.copyWith(
+                  diet: value == null
+                      ? null
+                      : DietFilter.values
+                          .firstWhere((diet) => diet.label == value))),
             ),
             const SizedBox(height: AppSpacing.md),
             _section(context, 'Складність'),
