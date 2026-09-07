@@ -209,6 +209,7 @@ class HomeFeedSections extends StatelessWidget {
     this.cookingProgress,
     this.savedRecipes = const [],
     this.onResumeCooking,
+    this.heroAnchorKey,
   });
 
   final BrandDetails brand;
@@ -221,6 +222,7 @@ class HomeFeedSections extends StatelessWidget {
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
   final ValueChanged<Recipe>? onResumeCooking;
+  final Key? heroAnchorKey;
 
   @override
   Widget build(BuildContext context) {
@@ -234,15 +236,18 @@ class HomeFeedSections extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EditorialReveal(
-            key: const ValueKey('home-editorial-hero-reveal'),
-            debugLabel: 'home-editorial-hero',
-            delay: const Duration(milliseconds: 40),
-            child: RecipeCard.featured(
-              key: const ValueKey('mobile-featured-recipe-hero'),
-              recipe: featured,
-              compact: true,
-              onTap: () => onOpenRecipe(featured),
+          KeyedSubtree(
+            key: heroAnchorKey,
+            child: _EditorialReveal(
+              key: const ValueKey('home-editorial-hero-reveal'),
+              debugLabel: 'home-editorial-hero',
+              delay: const Duration(milliseconds: 40),
+              child: RecipeCard.featured(
+                key: const ValueKey('mobile-featured-recipe-hero'),
+                recipe: featured,
+                compact: true,
+                onTap: () => onOpenRecipe(featured),
+              ),
             ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[
@@ -304,6 +309,7 @@ class HomeDesktopSections extends StatelessWidget {
     this.cookingProgress,
     this.savedRecipes = const [],
     this.onResumeCooking,
+    this.heroAnchorKey,
   });
 
   final BrandDetails brand;
@@ -317,6 +323,7 @@ class HomeDesktopSections extends StatelessWidget {
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
   final ValueChanged<Recipe>? onResumeCooking;
+  final Key? heroAnchorKey;
 
   /// The page's own vertical margins, shared with the Studio desktop preview
   /// so the editor frames the composition the way the app does.
@@ -333,14 +340,17 @@ class HomeDesktopSections extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _EditorialReveal(
-            key: const ValueKey('home-editorial-hero-reveal'),
-            debugLabel: 'home-editorial-hero',
-            delay: const Duration(milliseconds: 40),
-            child: _BordeauxDesktopHero(
-              brand: brand,
-              recipe: featured,
-              onTap: () => onOpenRecipe(featured),
+          KeyedSubtree(
+            key: heroAnchorKey,
+            child: _EditorialReveal(
+              key: const ValueKey('home-editorial-hero-reveal'),
+              debugLabel: 'home-editorial-hero',
+              delay: const Duration(milliseconds: 40),
+              child: _BordeauxDesktopHero(
+                brand: brand,
+                recipe: featured,
+                onTap: () => onOpenRecipe(featured),
+              ),
             ),
           ),
           if (brand.voice.courseName != null && brand.courseTag != null) ...[

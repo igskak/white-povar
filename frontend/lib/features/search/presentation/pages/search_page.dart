@@ -80,12 +80,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     final initialValue = widget.initialRoute?.query ?? widget.initialRoute?.tag;
-    if (initialValue == null) return;
-
-    _searchController.text = initialValue;
-    _activeTag = widget.initialRoute?.tag;
+    if (initialValue != null) {
+      _searchController.text = initialValue;
+      _activeTag = widget.initialRoute?.tag;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _performSearch(initialValue);
+      if (!mounted) return;
+      if (initialValue != null) _performSearch(initialValue);
+      if (widget.initialRoute?.openFilters == true) _openFilterSheet();
     });
   }
 
@@ -98,6 +100,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (value == _searchController.text && route.tag == _activeTag) return;
     _searchController.text = value;
     _activeTag = route.tag;
+    if (route.openFilters && oldWidget.initialRoute?.openFilters != true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openFilterSheet();
+      });
+    }
     if (value.isEmpty) {
       ref.read(simpleTextSearchProvider.notifier).clearSearch();
     } else {

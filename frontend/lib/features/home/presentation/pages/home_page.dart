@@ -28,6 +28,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  final GlobalKey _heroAnchorKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +75,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                   courseCollection: featuredCollection,
                   cookingProgress: cookingProgress,
                   savedRecipes: savedRecipes,
+                  heroAnchorKey: _heroAnchorKey,
+                  onSearch: () => context.go('/search'),
+                  onFilters: () => context.go('/search?filters=1'),
+                  onScan: () => context.go('/camera'),
+                  onPremium: () => context.push('/subscription'),
                 )
               : _MobileHome(
                   brand: brand,
@@ -94,6 +101,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                   courseCollection: featuredCollection,
                   cookingProgress: cookingProgress,
                   savedRecipes: savedRecipes,
+                  heroAnchorKey: _heroAnchorKey,
+                  onSearch: () => context.go('/search'),
+                  onFilters: () => context.go('/search?filters=1'),
+                  onPremium: () => context.push('/subscription'),
                 ),
     );
   }
@@ -140,6 +151,10 @@ class _MobileHome extends StatelessWidget {
     required this.courseCollection,
     required this.cookingProgress,
     required this.savedRecipes,
+    required this.heroAnchorKey,
+    required this.onSearch,
+    required this.onFilters,
+    required this.onPremium,
   });
 
   final BrandDetails brand;
@@ -157,26 +172,39 @@ class _MobileHome extends StatelessWidget {
   final ContentCollection? courseCollection;
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
+  final GlobalKey heroAnchorKey;
+  final VoidCallback onSearch;
+  final VoidCallback onFilters;
+  final VoidCallback onPremium;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: RefreshIndicator(
-          onRefresh: onRefresh,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: HomeIntro(
-                  brand: brand,
-                  userName: userName,
-                  onProfileTap: onProfileTap,
-                  onScanTap: onScanTap,
-                  onTypeTap: onTypeTap,
+        body: _HomeDiscoveryOverlay(
+          heroAnchorKey: heroAnchorKey,
+          onSearch: onSearch,
+          onFilters: onFilters,
+          onScan: onScanTap,
+          onPremium: onPremium,
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: HomeIntro(
+                    brand: brand,
+                    userName: userName,
+                    onProfileTap: onProfileTap,
+                    onScanTap: onScanTap,
+                    onTypeTap: onTypeTap,
+                  ),
                 ),
-              ),
-              ..._recipeSlivers(recipes, onOpenRecipe, context),
-              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
-            ],
+                ..._recipeSlivers(recipes, onOpenRecipe, context),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AppSpacing.xxl),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -214,6 +242,7 @@ class _MobileHome extends StatelessWidget {
                 onUnlockCourse: onUnlockCourse,
                 cookingProgress: cookingProgress,
                 savedRecipes: savedRecipes,
+                heroAnchorKey: heroAnchorKey,
               ),
             ),
           ];
@@ -245,6 +274,11 @@ class _DesktopHome extends StatelessWidget {
     required this.courseCollection,
     required this.cookingProgress,
     required this.savedRecipes,
+    required this.heroAnchorKey,
+    required this.onSearch,
+    required this.onFilters,
+    required this.onScan,
+    required this.onPremium,
   });
 
   final BrandDetails brand;
@@ -258,40 +292,53 @@ class _DesktopHome extends StatelessWidget {
   final ContentCollection? courseCollection;
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
+  final GlobalKey heroAnchorKey;
+  final VoidCallback onSearch;
+  final VoidCallback onFilters;
+  final VoidCallback onScan;
+  final VoidCallback onPremium;
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: RefreshIndicator(
-          onRefresh: onRefresh,
-          child: recipes.when(
-            loading: () => const _DesktopHomeSkeleton(),
-            error: (_, __) => StateView.error(
-              title: 'Не вдалося завантажити рецепти',
-              subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
-              onRetry: onRefresh,
-            ),
-            data: (items) {
-              if (items.isEmpty) {
-                return const StateView.empty(
-                  title: 'На кухні поки тихо',
-                  subtitle:
-                      'Свіжі рецепти з’являться тут після оновлення каталогу.',
-                  icon: Icons.menu_book_outlined,
+        body: _HomeDiscoveryOverlay(
+          heroAnchorKey: heroAnchorKey,
+          onSearch: onSearch,
+          onFilters: onFilters,
+          onScan: onScan,
+          onPremium: onPremium,
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: recipes.when(
+              loading: () => const _DesktopHomeSkeleton(),
+              error: (_, __) => StateView.error(
+                title: 'Не вдалося завантажити рецепти',
+                subtitle: 'Перевірте з’єднання та спробуйте ще раз.',
+                onRetry: onRefresh,
+              ),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const StateView.empty(
+                    title: 'На кухні поки тихо',
+                    subtitle:
+                        'Свіжі рецепти з’являться тут після оновлення каталогу.',
+                    icon: Icons.menu_book_outlined,
+                  );
+                }
+                return _DesktopHomeContent(
+                  brand: brand,
+                  recipes: items,
+                  onOpenRecipe: onOpenRecipe,
+                  onResumeCooking: onResumeCooking,
+                  onCollectionTap: onCollectionTap,
+                  onUnlockCourse: onUnlockCourse,
+                  courseLocked: courseLocked,
+                  courseCollection: courseCollection,
+                  cookingProgress: cookingProgress,
+                  savedRecipes: savedRecipes,
+                  heroAnchorKey: heroAnchorKey,
                 );
-              }
-              return _DesktopHomeContent(
-                brand: brand,
-                recipes: items,
-                onOpenRecipe: onOpenRecipe,
-                onResumeCooking: onResumeCooking,
-                onCollectionTap: onCollectionTap,
-                onUnlockCourse: onUnlockCourse,
-                courseLocked: courseLocked,
-                courseCollection: courseCollection,
-                cookingProgress: cookingProgress,
-                savedRecipes: savedRecipes,
-              );
-            },
+              },
+            ),
           ),
         ),
       );
@@ -309,6 +356,7 @@ class _DesktopHomeContent extends StatelessWidget {
     required this.courseCollection,
     required this.cookingProgress,
     required this.savedRecipes,
+    required this.heroAnchorKey,
   });
 
   final BrandDetails brand;
@@ -321,6 +369,7 @@ class _DesktopHomeContent extends StatelessWidget {
   final ContentCollection? courseCollection;
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
+  final GlobalKey heroAnchorKey;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
@@ -341,10 +390,268 @@ class _DesktopHomeContent extends StatelessWidget {
                 onUnlockCourse: onUnlockCourse,
                 cookingProgress: cookingProgress,
                 savedRecipes: savedRecipes,
+                heroAnchorKey: heroAnchorKey,
               ),
             ),
           ),
         ],
+      );
+}
+
+class _HomeDiscoveryOverlay extends StatefulWidget {
+  const _HomeDiscoveryOverlay({
+    required this.child,
+    required this.heroAnchorKey,
+    required this.onSearch,
+    required this.onFilters,
+    required this.onScan,
+    required this.onPremium,
+  });
+
+  final Widget child;
+  final GlobalKey heroAnchorKey;
+  final VoidCallback onSearch;
+  final VoidCallback onFilters;
+  final VoidCallback onScan;
+  final VoidCallback onPremium;
+
+  @override
+  State<_HomeDiscoveryOverlay> createState() => _HomeDiscoveryOverlayState();
+}
+
+class _HomeDiscoveryOverlayState extends State<_HomeDiscoveryOverlay> {
+  bool _visible = false;
+
+  bool _handleScroll(ScrollNotification notification) {
+    if (notification.depth == 0 && notification.metrics.axis == Axis.vertical) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncVisibility();
+      });
+    }
+    return false;
+  }
+
+  void _syncVisibility() {
+    final heroBox = widget.heroAnchorKey.currentContext?.findRenderObject();
+    final overlayBox = context.findRenderObject();
+    if (heroBox is! RenderBox || overlayBox is! RenderBox) return;
+    final heroBottom = heroBox.localToGlobal(Offset(0, heroBox.size.height)).dy;
+    final overlayTop = overlayBox.localToGlobal(Offset.zero).dy +
+        MediaQuery.paddingOf(context).top +
+        AppSpacing.xs;
+    final nextVisible = heroBottom <= overlayTop;
+    if (nextVisible != _visible && mounted) {
+      setState(() => _visible = nextVisible);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration = reduceMotion ? Duration.zero : AppMotion.medium;
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontal = AppLayout.gutter(width);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        NotificationListener<ScrollNotification>(
+          onNotification: _handleScroll,
+          child: widget.child,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontal,
+                AppSpacing.xs,
+                horizontal,
+                0,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 920),
+                  child: IgnorePointer(
+                    ignoring: !_visible,
+                    child: AnimatedSlide(
+                      offset: _visible ? Offset.zero : const Offset(0, -.35),
+                      duration: duration,
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        key: const ValueKey('home-discovery-opacity'),
+                        opacity: _visible ? 1 : 0,
+                        duration: duration,
+                        curve: Curves.easeOutCubic,
+                        child: _HomeDiscoveryBar(
+                          onSearch: widget.onSearch,
+                          onFilters: widget.onFilters,
+                          onScan: widget.onScan,
+                          onPremium: widget.onPremium,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HomeDiscoveryBar extends StatelessWidget {
+  const _HomeDiscoveryBar({
+    required this.onSearch,
+    required this.onFilters,
+    required this.onScan,
+    required this.onPremium,
+  });
+
+  final VoidCallback onSearch;
+  final VoidCallback onFilters;
+  final VoidCallback onScan;
+  final VoidCallback onPremium;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Material(
+      key: const ValueKey('home-sticky-discovery-bar'),
+      color: scheme.surfaceContainerLowest.withOpacity(.96),
+      elevation: AppElevation.level3,
+      shadowColor: scheme.shadow.withOpacity(.16),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.xl,
+        side:
+            BorderSide(color: context.semantic.outlineVariant.withOpacity(.8)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final expanded = constraints.maxWidth >= 620;
+          return Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxs),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: InkWell(
+                    key: const ValueKey('home-discovery-search'),
+                    onTap: onSearch,
+                    borderRadius: AppRadius.lg,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search_rounded,
+                              size: 21, color: scheme.primary),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              expanded ? 'Знайти рецепт' : 'Пошук',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.labelLarge,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                _DiscoveryAction(
+                  actionKey: const ValueKey('home-discovery-filters'),
+                  icon: Icons.tune_rounded,
+                  label: 'Фільтри',
+                  showLabel: expanded,
+                  onTap: onFilters,
+                ),
+                _DiscoveryAction(
+                  actionKey: const ValueKey('home-discovery-scan'),
+                  icon: Icons.center_focus_strong_rounded,
+                  label: 'Сканувати',
+                  showLabel: expanded,
+                  onTap: onScan,
+                ),
+                const SizedBox(width: AppSpacing.xxs),
+                Semantics(
+                  button: true,
+                  label: 'Відкрити Premium',
+                  child: FilledButton.tonalIcon(
+                    key: const ValueKey('home-discovery-premium'),
+                    onPressed: onPremium,
+                    icon:
+                        const Icon(Icons.workspace_premium_outlined, size: 19),
+                    label: Text(expanded ? 'Premium' : 'PRO'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DiscoveryAction extends StatelessWidget {
+  const _DiscoveryAction({
+    required this.actionKey,
+    required this.icon,
+    required this.label,
+    required this.showLabel,
+    required this.onTap,
+  });
+
+  final Key actionKey;
+  final IconData icon;
+  final String label;
+  final bool showLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: label,
+        child: InkWell(
+          key: actionKey,
+          onTap: onTap,
+          borderRadius: AppRadius.lg,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: showLabel ? AppSpacing.sm : AppSpacing.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 20),
+                  if (showLabel) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(label, style: Theme.of(context).textTheme.labelLarge),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
       );
 }
 

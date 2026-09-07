@@ -69,6 +69,11 @@ void main() {
       expect(search.tag, 'maisternia-oleksandra');
       expect(search.toUri().toString(),
           '/search?q=%D0%B1%D0%BE%D1%80%D1%89&tag=maisternia-oleksandra');
+      final filters = SearchRouteLocation.fromUri(
+        Uri.parse('/search?filters=1'),
+      );
+      expect(filters.openFilters, isTrue);
+      expect(filters.toUri().toString(), '/search?filters=1');
       expect(offer.offerId, 'maisternia');
       expect(offer.returnTo, '/collections/spring');
       expect(OfferRouteLocation.safeReturnPath('https://other.test'), isNull);

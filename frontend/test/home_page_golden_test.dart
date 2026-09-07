@@ -191,6 +191,52 @@ void main() {
     expect(find.text('Крок 1 з 2'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('discovery bar appears only after the hero leaves the viewport',
+      (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view
+      ..devicePixelRatio = 1
+      ..physicalSize = const Size(1280, 1000);
+
+    await tester.pumpWidget(
+      _homeApp(_HomeFixtureState.data, disableAnimations: true),
+    );
+    await tester.pump();
+
+    final opacityFinder = find.byKey(const ValueKey('home-discovery-opacity'));
+    expect(tester.widget<AnimatedOpacity>(opacityFinder).opacity, 0);
+    expect(
+      find.byKey(const ValueKey('home-sticky-discovery-bar')),
+      findsOneWidget,
+    );
+
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, -1200),
+    );
+    await tester.pump();
+
+    await tester.pump();
+    expect(tester.widget<AnimatedOpacity>(opacityFinder).opacity, 1);
+    expect(find.byKey(const ValueKey('home-discovery-search')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('home-discovery-filters')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-discovery-scan')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('home-discovery-premium')), findsOneWidget);
+
+    await tester.drag(
+      find.byType(CustomScrollView),
+      const Offset(0, 1200),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.widget<AnimatedOpacity>(opacityFinder).opacity, 0);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Widget _homeApp(

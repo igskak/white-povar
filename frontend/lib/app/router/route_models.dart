@@ -1,12 +1,18 @@
 class SearchRouteLocation {
-  const SearchRouteLocation({this.query, this.tag});
+  const SearchRouteLocation({
+    this.query,
+    this.tag,
+    this.openFilters = false,
+  });
 
   final String? query;
   final String? tag;
+  final bool openFilters;
 
   factory SearchRouteLocation.fromUri(Uri uri) => SearchRouteLocation(
         query: _nonEmpty(uri.queryParameters['q']),
         tag: _nonEmpty(uri.queryParameters['tag']),
+        openFilters: uri.queryParameters['filters'] == '1',
       );
 
   Uri toUri() => Uri(
@@ -14,6 +20,7 @@ class SearchRouteLocation {
         queryParameters: {
           if (query != null) 'q': query!,
           if (tag != null) 'tag': tag!,
+          if (openFilters) 'filters': '1',
         },
       );
 }
