@@ -26,6 +26,6 @@ preferences, and every interaction must remain usable with touch and keyboard.
 - [x] 2. Shared recipe transition
 - [x] 3. Editorial section reveals
 - [x] 4. Responsive recipe-card interactions
-- [ ] 5. Personalized shelves
+- [x] 5. Personalized shelves
 - [ ] 6. Sticky discovery bar
 - [ ] 7. Action microfeedback

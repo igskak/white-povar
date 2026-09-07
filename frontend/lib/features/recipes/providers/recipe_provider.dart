@@ -117,6 +117,13 @@ final favoriteRecipesProvider = FutureProvider<List<Recipe>>((ref) async {
   }
 });
 
+/// The unfinished cooking session on this device. Auto-dispose makes Home
+/// re-read the snapshot when it is rebuilt after navigation or an app restart.
+final activeCookingProgressProvider =
+    FutureProvider.autoDispose<CookingProgress?>((ref) {
+  return CookingProgressStore().read();
+});
+
 /// The single in-memory source of truth for saved state across cards, detail
 /// and Saved. It is cleared as soon as the auth session ends.
 final favoriteIdsProvider =

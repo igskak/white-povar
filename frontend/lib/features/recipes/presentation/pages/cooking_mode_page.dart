@@ -62,13 +62,17 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     });
   }
 
-  Future<void> _saveProgress(Recipe recipe) => _progressStore.save(
-        CookingProgress(
-            recipe: recipe,
-            step: _step,
-            updatedAt: DateTime.now().toUtc(),
-            timerEndsAt: _timerEndsAt),
-      );
+  Future<void> _saveProgress(Recipe recipe) async {
+    await _progressStore.save(
+      CookingProgress(
+        recipe: recipe,
+        step: _step,
+        updatedAt: DateTime.now().toUtc(),
+        timerEndsAt: _timerEndsAt,
+      ),
+    );
+    ref.invalidate(activeCookingProgressProvider);
+  }
 
   Future<void> _startTimer(Recipe recipe) async {
     final minutes = await showDialog<int>(
@@ -139,6 +143,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                 if (_step == recipe.instructions.length - 1) {
                   setState(() => _complete = true);
                   await _progressStore.clear();
+                  ref.invalidate(activeCookingProgressProvider);
                   if (isAuthenticated) {
                     try {
                       await ref
