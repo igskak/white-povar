@@ -525,9 +525,14 @@ async def search_catalog(
         # them in SQL, so the diet is settled here from the ingredient list.
         # Once the backfill has run, every row arrives already classified and
         # this is a stored-value comparison.
-        rows = [row for row in result.data or []
-                if row_matches_diet(row, diet)
-                and not _row_contains_any(row, profile_allergens)
+        raw_rows = result.data or []
+        diet_rows = [row for row in raw_rows if row_matches_diet(row, diet)]
+        # The rows the diet check just removed were counted by SQL, which had
+        # to let unclassified ones through. Leaving them in the total promises
+        # a next page that does not exist.
+        dropped_by_diet = len(raw_rows) - len(diet_rows)
+        rows = [row for row in diet_rows
+                if not _row_contains_any(row, profile_allergens)
                 and not _row_contains_any(row, profile_dislikes)]
         recipes = []
         for row in rows[:limit]:
@@ -539,6 +544,8 @@ async def search_catalog(
         total_count = getattr(result, 'count', None)
         if total_count is None:
             total_count = len(rows)
+        elif dropped_by_diet:
+            total_count = max(len(rows), total_count - dropped_by_diet)
         has_more = offset + len(recipes) < total_count
         facets = {
             'tags': sorted({tag for row in rows for tag in row.get('tags', [])}),

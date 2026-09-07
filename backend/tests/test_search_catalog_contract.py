@@ -297,3 +297,35 @@ def test_premium_teaser_still_honours_the_diet_filter(monkeypatch):
 
     assert [str(recipe.id) for recipe in result.recipes] == [locked_plant['id']]
     assert result.recipes[0].is_locked is True
+
+
+def test_unclassified_rows_do_not_inflate_the_total_or_promise_a_next_page(monkeypatch):
+    """SQL must let NULL-diet rows through, but they must not be counted.
+
+    Seen in production: 12 recipes returned, total_count 13, has_more true and
+    a next_offset that fetched nothing — the phantom page was the one
+    unclassifiable technique.
+    """
+    tenant = TenantContext(chef_id=str(uuid4()), slug='tenant-a')
+    plant = _with_ingredients(_row(str(uuid4()), tenant.chef_id),
+                              'Картопля', diet_type='vegan')
+    unknown = _row(str(uuid4()), tenant.chef_id)  # technique: no ingredients
+
+    class Result:
+        data = [plant, unknown]
+        count = 2
+
+    async def fake_search(**_):
+        return Result()
+
+    monkeypatch.setattr(search.supabase_service, 'search_catalog_recipes', fake_search)
+    result = asyncio.run(search.search_catalog(
+        q=None, tags=None, difficulty=None, max_total_time=None,
+        is_featured=None, diet='no_meat', min_servings=None, limit=20, offset=0,
+        current_user=None, tenant=tenant,
+    ))
+
+    assert len(result.recipes) == 1
+    assert result.total_count == 1
+    assert result.has_more is False
+    assert result.next_offset is None
