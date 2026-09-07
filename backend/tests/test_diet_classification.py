@@ -171,3 +171,18 @@ def test_allowed_diet_types():
     assert allowed_diet_types('vegan') == ['vegan']
     assert allowed_diet_types(None) is None
     assert allowed_diet_types('nonsense') is None
+
+
+def test_composed_sauce_names_do_not_hide_their_meat():
+    """Found in production: a lasagne whose only meat is inside its sauce.
+
+    "Соус болоньєзе" carries no other animal word, so a lasagne built on it
+    read as vegetarian and would have appeared under "Без м'яса".
+    """
+    assert classify_diet([], ['листи для лазаньї', 'соус болоньєзе',
+                              'сир пармезан']) == 'meat'
+    assert classify_diet([], ['bolognese sauce', 'pasta']) == 'meat'
+
+
+def test_bolognese_stem_does_not_swallow_unrelated_words():
+    assert classify_diet([], ['болгарський перець', 'олія']) == 'vegan'

@@ -89,6 +89,9 @@ MEAT_STEMS = (
     'гуск', 'гусин', 'гуся', 'goose',
     'кролик', 'кроляч', 'rabbit',
     'фарш', 'mince', 'ковбас', 'сосиск', 'сардельк', 'sausage',
+    # Composed names that hide their meat: a lasagne listing "соус болоньєзе"
+    # as one ingredient has no other animal word in its list.
+    'болонь', 'bolognes',
     'сало', 'смалець', 'шпик', 'lard',
     'печінк', 'печень', 'ліверн', 'liver',
     'желатин', 'gelatin',
