@@ -13,11 +13,19 @@ import '../../../subscription/paywall_provider.dart';
 import '../../../subscription/purchase_adapter.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
-final profileAccountDataLoadingProvider = Provider<bool>((ref) {
+/// Auto-disposed on purpose: a keep-alive Provider watching an autoDispose one
+/// pins it for the life of the container, which would freeze the Studio
+/// membership answer — including a failed one — until the app is reloaded.
+final profileAccountDataLoadingProvider = Provider.autoDispose<bool>((ref) {
   final studioSession = ref.watch(studioSessionProvider);
   final entitlement = ref.watch(paywallProvider);
-  return studioSession.isLoading ||
-      entitlement.phase == PaywallPhase.productsLoading;
+  // Only the first resolution holds the page back. A retry after a failed
+  // membership check keeps its own card busy instead of replacing the whole
+  // profile with a spinner for the length of one request.
+  final studioUnresolved = studioSession.isLoading &&
+      !studioSession.hasValue &&
+      !studioSession.hasError;
+  return studioUnresolved || entitlement.phase == PaywallPhase.productsLoading;
 });
 
 class ProfilePage extends ConsumerWidget {
@@ -157,7 +165,13 @@ class _SignedInProfile extends ConsumerWidget {
               ? const SizedBox.shrink()
               : _StudioAccessCard(role: session.role),
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          // A refused check (403) resolves to null above and stays invisible.
+          // Reaching here means the question went unanswered, so say that and
+          // offer the retry rather than silently reading as "not a member".
+          error: (_, __) => _StudioAccessUnknownCard(
+            retrying: studioSession.isLoading,
+            onRetry: () => ref.invalidate(studioSessionProvider),
+          ),
         ),
         Card(
             child: Column(children: [
@@ -393,6 +407,55 @@ class _StudioAccessCard extends StatelessWidget {
                   icon: Icons.arrow_forward,
                   expand: true,
                   onPressed: () => context.go('/studio/brand'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// Shown when the Studio membership check itself failed.
+///
+/// It deliberately claims nothing about membership: a non-member is refused
+/// with a 403, which never reaches this branch.
+class _StudioAccessUnknownCard extends StatelessWidget {
+  const _StudioAccessUnknownCard({
+    required this.retrying,
+    required this.onRetry,
+  });
+
+  final bool retrying;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.cloud_off_outlined),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text('Доступ до Studio не перевірено',
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                ]),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Запит не дійшов до сервера. Решта профілю працює.',
+                    style: Theme.of(context).textTheme.bodyMedium),
+                const SizedBox(height: AppSpacing.md),
+                AppButton(
+                  label: 'Повторити',
+                  icon: Icons.refresh,
+                  variant: AppButtonVariant.secondary,
+                  isLoading: retrying,
+                  expand: true,
+                  onPressed: onRetry,
                 ),
               ],
             ),

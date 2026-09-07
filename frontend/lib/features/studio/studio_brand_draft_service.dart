@@ -5,21 +5,32 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/providers/auth_provider.dart';
+
 final studioBrandDraftServiceProvider = Provider<StudioBrandDraftService>(
   (ref) => StudioBrandDraftService(ref.watch(apiClientProvider)),
 );
 
+/// Whether this account may open Studio, for the tenant it is signed in to.
+///
+/// Watching the session re-resolves membership on sign-in and sign-out, so the
+/// answer can never outlive the account it was computed for — and so a request
+/// that went out before the bearer token was attached is not the last word for
+/// the rest of the app session.
 final studioSessionProvider = FutureProvider.autoDispose<StudioSession?>(
   (ref) async {
+    if (ref.watch(currentUserProvider) == null) return null;
     try {
-      return ref.read(studioBrandDraftServiceProvider).session();
+      // `return await` and not `return`: without the await the future escapes
+      // this try block and the mapping below never runs.
+      return await ref.read(studioBrandDraftServiceProvider).session();
     } on ApiError catch (error) {
       // Studio membership is intentionally private: a non-member simply does
-      // not see its entry point in the consumer profile.
-      if (error.type == ApiErrorType.forbidden ||
-          error.type == ApiErrorType.unauthorized) {
-        return null;
-      }
+      // not see its entry point in the consumer profile. Only 403 carries that
+      // answer. A 401 means the request was never authenticated, which is a
+      // failure to ask rather than a refusal, and caching it as "not a member"
+      // would hide Studio from a member until the page is reloaded.
+      if (error.type == ApiErrorType.forbidden) return null;
       rethrow;
     }
   },

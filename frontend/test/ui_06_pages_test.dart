@@ -198,6 +198,62 @@ void main() {
     expect(find.text('Адміністратор'), findsOneWidget);
   });
 
+  testWidgets('an unanswered Studio check offers a retry, not a silent no',
+      (tester) async {
+    const user = User(
+      id: 'editor-1',
+      email: 'editor@example.com',
+      appMetadata: {},
+      userMetadata: {},
+      aud: 'authenticated',
+      createdAt: '2026-07-15T00:00:00Z',
+    );
+    var attempts = 0;
+    final paywall = PaywallNotifier(
+      FakePurchaseAdapter(),
+      () async => const PaywallSnapshot(phase: PaywallPhase.idle),
+    );
+    await paywall.refreshEntitlement();
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        currentUserProvider.overrideWithValue(user),
+        isPremiumProvider.overrideWithValue(false),
+        paywallProvider.overrideWith((_) => paywall),
+        studioSessionProvider.overrideWith((_) async {
+          attempts += 1;
+          if (attempts == 1) throw StateError('the check never reached us');
+          return const StudioSession(
+              role: 'editor', tenantSlug: 'ohorodnik-oleksandr');
+        }),
+      ],
+      child: MaterialApp(
+        theme: AppThemeV2.light(_brand),
+        home: const ProfilePage(),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.text('Доступ до Studio не перевірено'), findsOneWidget);
+    expect(find.text('Creator Studio'), findsNothing);
+    // The failed check costs the profile nothing else.
+    expect(find.text('Підписка'), findsOneWidget);
+
+    await tester.tap(find.text('Повторити'));
+    await tester.pump();
+
+    // The retry stays inside its card instead of blanking the page.
+    expect(find.text('Підписка'), findsOneWidget);
+    expect(find.text('Доступ до Studio не перевірено'), findsOneWidget);
+
+    await tester.pump();
+
+    expect(attempts, 2);
+    expect(find.text('Доступ до Studio не перевірено'), findsNothing);
+    expect(find.text('Creator Studio'), findsOneWidget);
+    expect(find.text('Редактор'), findsOneWidget);
+  });
+
   testWidgets('profile guest goldens at design breakpoints', (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
