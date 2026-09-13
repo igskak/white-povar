@@ -9,6 +9,7 @@ from app.services.database import supabase_service
 from app.services.diet import (DIET_FILTERS, allowed_diet_types,
                                row_diet_type, row_matches_diet)
 from app.services.analytics_service import emit_analytics
+from app.services.units import unit_name_from_id
 from app.api.v1.endpoints.auth import get_optional_user, verify_firebase_token, User
 from app.core.premium_access import filter_recipes_by_subscription, check_recipe_access
 from app.services.subscription_service import subscription_service
@@ -151,26 +152,7 @@ def _recipe_payload_to_rows(payload: Dict[str, Any], *, partial: bool = False) -
 
 def _get_unit_name_from_id(unit_id: str) -> str:
     """Convert unit_id to unit name"""
-    if not unit_id:
-        return 'од.'
-
-    # Simple unit mapping - in production you'd query the units table.
-    # That table only carries name_en/name_it, so there is no Ukrainian column
-    # to read from; the app ships a single Ukrainian locale, so the
-    # abbreviations are spelled out here rather than served in English.
-    unit_mapping = {
-        '00000000-0000-0000-0000-000000000001': 'г',
-        '00000000-0000-0000-0000-000000000010': 'мл',
-        '00000000-0000-0000-0000-000000000020': 'шт',
-        '00000000-0000-0000-0000-000000000031': 'ст. л.',
-        '00000000-0000-0000-0000-000000000032': 'ч. л.',
-        '00000000-0000-0000-0000-000000000002': 'кг',
-        '00000000-0000-0000-0000-000000000011': 'л',
-        '00000000-0000-0000-0000-000000000021': 'скл.',
-        '00000000-0000-0000-0000-000000000041': 'унц.',
-        '00000000-0000-0000-0000-000000000051': 'фунт'
-    }
-    return unit_mapping.get(unit_id, 'од.')
+    return unit_name_from_id(unit_id)
 
 
 def _get_category_name_from_id(category_id: str) -> str:

@@ -7,6 +7,7 @@ import logging
 
 from app.core.settings import settings
 from app.schemas.brand_config import validate_brand_config
+from app.services.units import UNIT_NAMES, unit_name_from_id
 from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -362,7 +363,13 @@ class SupabaseService:
     async def get_shopping_list_items(self, user_id: str, chef_id: str) -> List[Dict[str, Any]]:
         result = (self.get_client(use_service_key=True).table('shopping_list_items').select('*')
                   .eq('user_id', user_id).eq('chef_id', chef_id).order('checked').order('category').order('name').execute())
-        return result.data or []
+        rows = result.data or []
+        for row in rows:
+            # Rows added from a recipe before units were resolved hold the raw
+            # unit_id, which fails the 24-char unit contract on every read.
+            if row.get('unit') in UNIT_NAMES:
+                row['unit'] = UNIT_NAMES[row['unit']]
+        return rows
 
     async def create_shopping_list_item(self, user_id: str, chef_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         result = self.get_client(use_service_key=True).table('shopping_list_items').insert(
@@ -386,9 +393,10 @@ class SupabaseService:
                 continue
             amount = ingredient.get('amount')
             missing.append({
-                'user_id': user_id, 'chef_id': chef_id, 'recipe_id': recipe['id'], 'name': name,
+                'user_id': user_id, 'chef_id': chef_id, 'recipe_id': recipe['id'], 'name': name[:120],
                 'quantity': float(amount) * factor if amount else None,
-                'unit': ingredient.get('unit_id'), 'category': 'Інше', 'checked': False,
+                'unit': unit_name_from_id(ingredient['unit_id']) if ingredient.get('unit_id') else None,
+                'category': 'Інше', 'checked': False,
             })
         if missing:
             self.get_client(use_service_key=True).table('shopping_list_items').insert(missing).execute()
