@@ -10,6 +10,8 @@ import 'package:frontend/core/api/api_client.dart';
 import 'package:frontend/core/branding/brand_config.dart';
 import 'package:frontend/features/auth/models/auth_state.dart';
 import 'package:frontend/features/auth/providers/auth_provider.dart';
+import 'package:frontend/features/pantry/providers/pantry_provider.dart';
+import 'package:frontend/features/pantry/services/pantry_service.dart';
 import 'package:frontend/features/recipes/models/recipe.dart';
 import 'package:frontend/features/recipes/presentation/pages/recipe_detail_page.dart';
 import 'package:frontend/features/recipes/providers/recipe_provider.dart';
@@ -215,6 +217,20 @@ void main() {
       expect(find.text('Запланувати'), findsOneWidget);
     });
 
+    testWidgets('a failed shopping add tells the user instead of throwing',
+        (tester) async {
+      await _openSecondaryActions(tester, ContentKind.recipe,
+          pantryService: _FailingPantryService());
+
+      await tester.tap(find.text('Додати до покупок'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Не вдалося додати до покупок. Спробуйте ще раз'),
+          findsOneWidget);
+      expect(find.text('Відсутні інгредієнти додано до покупок'), findsNothing);
+    });
+
     testWidgets('a recipe still shows the section while its list is empty',
         (tester) async {
       await tester.pumpWidget(_app(
@@ -232,12 +248,14 @@ void main() {
 /// Opens the "Покупки та план" menu of a signed-in, unlocked detail page.
 Future<void> _openSecondaryActions(
   WidgetTester tester,
-  ContentKind kind,
-) async {
+  ContentKind kind, {
+  PantryService? pantryService,
+}) async {
   await tester.pumpWidget(_app(
     recipe: _recipe(isPremium: false, contentKind: kind),
     hasPremiumAccess: true,
     authenticated: true,
+    pantryService: pantryService,
   ));
   await tester.pump();
 
@@ -261,6 +279,20 @@ class _SilentRecipeService extends RecipeService {
   Future<void> recordHistory(String recipeId, String event) async {}
 }
 
+class _FailingPantryService extends PantryService {
+  _FailingPantryService()
+      : super(ApiClient(
+          baseUrl: 'https://example.invalid',
+          tokenProvider: () async => null,
+          tenantSlug: 'ohorodnik-oleksandr',
+          locale: 'uk',
+        ));
+
+  @override
+  Future<void> addRecipe(String recipeId, int servings) =>
+      Future.error(StateError('422'));
+}
+
 const _signedIn = AppAuthState.authenticated(
   User(
     id: 'user-1',
@@ -278,6 +310,7 @@ Widget _app({
   Future<Recipe>? recipeFuture,
   Recipe? initialRecipe,
   bool disableAnimations = false,
+  PantryService? pantryService,
 }) =>
     ProviderScope(
       overrides: [
@@ -292,6 +325,8 @@ Widget _app({
         // A signed-in view records history on open, which would otherwise
         // reach for a tenant bootstrap this page-level test never loads.
         recipeServiceProvider.overrideWithValue(_SilentRecipeService()),
+        if (pantryService != null)
+          pantryServiceProvider.overrideWithValue(pantryService),
       ],
       child: MaterialApp(
         theme: AppThemeV2.light(_brand),

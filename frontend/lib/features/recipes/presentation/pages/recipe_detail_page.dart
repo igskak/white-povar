@@ -99,9 +99,18 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
             onAddToShopping: locked || !auth.isAuthenticated
                 ? null
                 : () async {
-                    await ref
-                        .read(pantryServiceProvider)
-                        .addRecipe(recipe.id, recipe.servings);
+                    try {
+                      await ref
+                          .read(pantryServiceProvider)
+                          .addRecipe(recipe.id, recipe.servings);
+                    } catch (_) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Не вдалося додати до покупок. Спробуйте ще раз')));
+                      return;
+                    }
                     ref.invalidate(shoppingProvider);
                     if (!mounted) return;
                     ScaffoldMessenger.of(this.context).showSnackBar(
@@ -112,10 +121,19 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
             onAddToPlan: locked || !auth.isAuthenticated
                 ? null
                 : () async {
-                    await ref.read(menuPlanServiceProvider).add(
-                        day: DateTime.now(),
-                        recipeId: recipe.id,
-                        servings: recipe.servings);
+                    try {
+                      await ref.read(menuPlanServiceProvider).add(
+                          day: DateTime.now(),
+                          recipeId: recipe.id,
+                          servings: recipe.servings);
+                    } catch (_) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Не вдалося запланувати рецепт. Спробуйте ще раз')));
+                      return;
+                    }
                     if (!mounted) return;
                     ScaffoldMessenger.of(this.context).showSnackBar(
                         const SnackBar(
