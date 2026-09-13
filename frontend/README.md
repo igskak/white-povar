@@ -12,7 +12,6 @@ production target.
 - Flutter 3.x
 - Riverpod, Go Router
 - Supabase (supabase_flutter)
-- Firebase (firebase_core, firebase_auth)
 
 ## Configuration
 
@@ -45,22 +44,6 @@ flutter run \
 `TENANT_SLUG` is required for CI, staging, and production builds. Local
 development may omit it only with `ENVIRONMENT=development`, which uses the
 pilot `ohorodnik-oleksandr` tenant.
-
-## Firebase
-
-Firebase is initialized via `lib/firebase_options.dart`.
-
-If you need to regenerate configs:
-
-```bash
-flutter pub global activate flutterfire_cli
-flutterfire configure
-```
-
-This will update:
-- `android/app/google-services.json`
-- `ios/Runner/GoogleService-Info.plist`
-- `lib/firebase_options.dart`
 
 ## Install Dependencies
 
