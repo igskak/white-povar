@@ -55,6 +55,10 @@ class AuthService {
       if (_currentUser != null) {
         unawaited(_syncUserWithBackend(_currentUser!));
       }
+    }, onError: (Object _, StackTrace __) {
+      // gotrue reports a failed background refresh (e.g. offline) on this
+      // stream and retries on its own; unhandled, it surfaces as an
+      // uncaught error. AuthDiagnostics already logs it.
     });
   }
 
