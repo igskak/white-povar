@@ -77,8 +77,9 @@ int renderWidthFor(int pixelWidth) {
 /// Network photography sized for the slot it fills.
 ///
 /// [targetWidth] is the logical width of that slot; it is scaled by the device
-/// pixel ratio to pick the transformation and the decode size, so a phone never
-/// downloads or rasterises a full-resolution original.
+/// pixel ratio to pick the transformation and the decode size. When server
+/// transformations are disabled, the original is still downloaded; decode
+/// hints alone do not reduce network traffic (and web may ignore them).
 class RemoteImage extends StatelessWidget {
   const RemoteImage({
     super.key,
