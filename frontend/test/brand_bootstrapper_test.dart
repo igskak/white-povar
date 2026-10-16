@@ -28,6 +28,25 @@ const _bundled = '''
 final _remote = _bundled.replaceAll('bundled-pilot-1', 'remote-v2');
 
 void main() {
+  test('cached startup does not wait for the API and still adopts a refresh',
+      () async {
+    final storage = _MemoryStorage()..value = _remote;
+    final remote = _DeferredRemote(
+      _bundled.replaceAll('bundled-pilot-1', 'remote-v3'),
+    );
+    TenantBootstrap? late;
+    final started = await _bootstrap(storage, remote)
+        .load(onLateArrival: (value) => late = value)
+        .timeout(const Duration(seconds: 1));
+
+    expect(started.configVersion, 'remote-v2');
+    expect(late, isNull);
+    remote.deliver();
+    await pumpEventQueue();
+    expect(late?.configVersion, 'remote-v3');
+    expect(storage.value, contains('remote-v3'));
+  });
+
   test('first offline start uses the bundled pilot tenant', () async {
     final storage = _MemoryStorage();
     final result = await _bootstrap(storage, _ThrowingRemote()).load();

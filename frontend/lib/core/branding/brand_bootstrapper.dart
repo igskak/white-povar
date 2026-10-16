@@ -65,7 +65,7 @@ class BrandBootstrapper {
     required BrandBootstrapStorage storage,
     required BrandBootstrapRemoteLoader remoteLoader,
     BundledBootstrapLoader? bundledLoader,
-    Duration startupBudget = const Duration(seconds: 6),
+    Duration startupBudget = const Duration(seconds: 2),
     Duration remoteTimeout = const Duration(seconds: 30),
     Duration retryDelay = const Duration(seconds: 2),
     int remoteAttempts = 2,
@@ -97,8 +97,9 @@ class BrandBootstrapper {
 
   /// Returns the configuration this session runs on. Published changes apply
   /// immediately when they arrive inside the startup budget; a slower response
-  /// still refreshes the cache in the background, so the next cold start picks
-  /// it up rather than the session changing brand mid-flight.
+  /// still refreshes the cache and the running session through [onLateArrival].
+  /// With a valid cache and a live update callback, startup need not wait for
+  /// the network at all.
   Future<TenantBootstrap> load({
     ValueChanged<TenantBootstrap>? onLateArrival,
   }) async {
@@ -108,7 +109,10 @@ class BrandBootstrapper {
     // Deliberately not awaited past the budget: the refresh keeps running and
     // persists whatever it eventually gets.
     final refresh = _refreshFromRemote();
-    final fresh = await refresh.timeout(_startupBudget, onTimeout: () => null);
+    final budget = cached != null && onLateArrival != null
+        ? Duration.zero
+        : _startupBudget;
+    final fresh = await refresh.timeout(budget, onTimeout: () => null);
     if (fresh == null && onLateArrival != null) {
       // The API sleeps between sessions, so a wake-up routinely outruns the
       // startup budget. Handing the late answer back means a just-published
