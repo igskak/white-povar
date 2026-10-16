@@ -132,7 +132,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 : () async {
                     await _runAction(
                       success: 'Рецепт заплановано на сьогодні',
-                      failure: 'Не вдалося запланувати рецепт. Спробуйте ще раз',
+                      failure:
+                          'Не вдалося запланувати рецепт. Спробуйте ще раз',
                       action: () => ref.read(menuPlanServiceProvider).add(
                             day: DateTime.now(),
                             recipeId: recipe.id,
