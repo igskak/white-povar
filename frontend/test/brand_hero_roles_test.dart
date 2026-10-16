@@ -16,20 +16,18 @@ import 'package:frontend/features/recipes/providers/recipe_provider.dart';
 import 'package:frontend/features/recipes/services/recipe_service.dart';
 import 'package:frontend/features/subscription/providers/subscription_provider.dart';
 
-const _homeHero = ValueKey('home-brand-hero');
 const _collectionsHero = ValueKey('collections-brand-hero');
 
 void main() {
   testWidgets(
-      'Home uses brand photography on mobile and recipe photography on desktop',
+      'Home uses the configured home photograph in its compact author block',
       (tester) async {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     tester.view.devicePixelRatio = 1;
 
-    // The compact brand intro uses the published Home photo. The desktop hero
-    // promotes a recipe, so its title and photography must describe the same
-    // content.
+    // The compact B composition uses the same `home` role in its author block
+    // on both breakpoints. It must not substitute the circular avatar.
     for (final width in [390.0, 1280.0]) {
       tester.view.physicalSize = Size(width, 1000);
       await tester.pumpWidget(
@@ -37,17 +35,7 @@ void main() {
       );
       await _settleFeed(tester);
 
-      expect(
-          find.byKey(_homeHero), width < 1024 ? findsOneWidget : findsNothing,
-          reason: 'width: $width');
-      expect(find.byKey(const ValueKey('featured-recipe-hero')),
-          width < 1024 ? findsNothing : findsOneWidget,
-          reason: 'width: $width');
-      expect(find.byKey(const ValueKey('desktop-author-avatar')),
-          width < 1024 ? findsNothing : findsOneWidget,
-          reason: 'width: $width');
-      expect(find.byKey(const ValueKey('desktop-author-photo')),
-          width < 1024 ? findsNothing : findsOneWidget,
+      expect(find.byKey(const ValueKey('desktop-author-photo')), findsOneWidget,
           reason: 'width: $width');
       expect(tester.takeException(), isNull);
     }
@@ -69,7 +57,6 @@ void main() {
 
       // Guard against a false pass from a Home that never finished loading.
       expect(find.text(_recipe.title), findsWidgets, reason: 'width: $width');
-      expect(find.byKey(_homeHero), findsNothing, reason: 'width: $width');
       expect(find.byKey(const ValueKey('desktop-author-photo')), findsNothing,
           reason: 'width: $width');
     }

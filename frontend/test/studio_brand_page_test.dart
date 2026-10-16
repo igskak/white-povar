@@ -16,7 +16,6 @@ import 'package:frontend/core/branding/brand_providers.dart';
 import 'package:frontend/core/branding/tenant_bootstrap.dart';
 import 'package:frontend/core/widgets/design_system.dart';
 import 'package:frontend/features/home/presentation/widgets/home_scene.dart';
-import 'package:frontend/features/recipes/presentation/widgets/recipe_photo.dart';
 import 'package:frontend/features/studio/presentation/pages/studio_brand_page.dart';
 import 'package:frontend/features/studio/presentation/widgets/studio_preview.dart';
 import 'package:frontend/features/studio/studio_brand_draft_service.dart';
@@ -294,26 +293,29 @@ void main() {
     await tester.pumpWidget(_previewApp(config, tab: StudioPreviewTab.home));
     await tester.pump();
 
-    // The phone keeps the brand header and the capture entry points…
+    // The phone keeps the compact introduction and author block…
     expect(find.byType(HomeIntro), findsOneWidget);
     expect(find.byType(HomeDesktopSections), findsNothing);
-    final phoneBanner = tester.getSize(find.byType(BrandHeroBanner).first);
+    final phoneBanner = tester.getSize(
+      find.byKey(const ValueKey('desktop-author-photo')).first,
+    );
 
     await tester.pumpWidget(_previewApp(config,
         tab: StudioPreviewTab.home, viewport: StudioPreviewViewport.desktop));
     await tester.pump();
 
-    // …while the desktop leaves both to the shell and opens on the photo.
+    // …while desktop uses the same Home scene and crop contract.
     expect(find.byType(HomeDesktopSections), findsOneWidget);
     expect(find.byType(HomeIntro), findsNothing);
     expect(find.text('Від шефа'), findsOneWidget);
 
-    // The desktop hero promotes a recipe and therefore uses that recipe's
-    // photograph rather than the chef's Home banner.
-    expect(find.byKey(const ValueKey('home-brand-hero')), findsNothing);
-    final desktopBanner = tester.getSize(find.byType(RecipePhoto).first);
-    expect(phoneBanner.aspectRatio, closeTo(BrandMediaAspectRatio.banner, .01));
-    expect(desktopBanner.aspectRatio, greaterThan(1.6));
+    final desktopBanner = tester.getSize(
+      find.byKey(const ValueKey('desktop-author-photo')).first,
+    );
+    expect(phoneBanner.aspectRatio,
+        closeTo(BrandMediaAspectRatio.homeAuthor, .01));
+    expect(desktopBanner.aspectRatio,
+        closeTo(BrandMediaAspectRatio.homeAuthor, .01));
     expect(tester.takeException(), isNull);
   });
 
@@ -324,10 +326,11 @@ void main() {
         .widget<AspectRatio>(find.byKey(ValueKey('studio-crop-$slot')))
         .aspectRatio;
 
-    expect(ratioOf('banner'), BrandMediaAspectRatio.banner);
+    expect(ratioOf('banner'), BrandMediaAspectRatio.homeAuthor);
     expect(ratioOf('banner-desktop'), BrandMediaAspectRatio.bannerOnDesktop());
-    expect(ratioOf('banner-desktop'), lessThan(ratioOf('banner')),
-        reason: 'the desktop editorial hero uses a taller image crop');
+    expect(ratioOf('banner-desktop'), ratioOf('banner'),
+        reason:
+            'the compact author photo uses one crop contract at every width');
   });
 
   testWidgets('login has no desktop composition to promise', (tester) async {

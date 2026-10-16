@@ -73,7 +73,7 @@ void main() {
       }
     });
 
-    testWidgets('keeps the selected image visible while detail data loads',
+    testWidgets('shows the public summary while waiting for verified detail',
         (tester) async {
       final recipe = _recipe(isPremium: false);
       final detail = Completer<Recipe>();
@@ -91,7 +91,11 @@ void main() {
       );
       expect(
           find.byKey(const ValueKey('mobile-recipe-skeleton')), findsOneWidget);
-      expect(find.text(recipe.description), findsNothing);
+      expect(find.text(recipe.title), findsOneWidget);
+      expect(find.text(recipe.description), findsOneWidget);
+      expect(find.text('Секретний інгредієнт'), findsNothing);
+      expect(find.text('Не показувати цей крок'), findsNothing);
+      expect(find.text('Почати готувати'), findsNothing);
 
       detail.complete(recipe);
       await tester.pumpAndSettle();

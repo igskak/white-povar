@@ -143,25 +143,6 @@ class RecipeCard extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          IgnorePointer(
-                            child: AnimatedOpacity(
-                              opacity: hovered ? 1 : 0,
-                              duration: duration,
-                              curve: Curves.easeOut,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                    colors: [
-                                      Colors.transparent,
-                                      AppColorsV2.ink.withOpacity(.16),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                           if (recipe.isPremium)
                             const Positioned(
                               top: AppSpacing.sm,
@@ -187,9 +168,16 @@ class RecipeCard extends ConsumerWidget {
                               ),
                             ),
                           Positioned(
-                            top: 0,
-                            right: 0,
-                            child: FavoriteButton(recipeId: recipe.id),
+                            top: AppSpacing.xs,
+                            right: AppSpacing.xs,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color:
+                                    context.semantic.surface.withOpacity(.94),
+                                shape: BoxShape.circle,
+                              ),
+                              child: FavoriteButton(recipeId: recipe.id),
+                            ),
                           ),
                           if (showMatchIndicator && matchedIngredients > 0)
                             Positioned(

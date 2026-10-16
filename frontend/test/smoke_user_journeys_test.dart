@@ -45,11 +45,11 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('Сканувати інгредієнти'), findsOneWidget);
+      expect(find.text('Сканувати'), findsWidgets);
       expect(find.text('Ой, друзі, ну це щось...'), findsOneWidget);
       expect(find.text('Майстерня Олександра'), findsOneWidget);
-      expect(find.byKey(const ValueKey('mobile-featured-recipe-hero')),
-          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('home-showcase-home-1')), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Test Pasta'),
         300,

@@ -13,6 +13,7 @@ import '../../../collections/providers/collection_provider.dart';
 import '../../../recipes/models/recipe.dart';
 import '../../../recipes/providers/recipe_provider.dart';
 import '../../../recipes/services/cooking_progress_store.dart';
+import '../../../search/providers/search_provider.dart';
 import '../widgets/home_scene.dart';
 import '../../../subscription/providers/subscription_provider.dart';
 
@@ -76,8 +77,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                   cookingProgress: cookingProgress,
                   savedRecipes: savedRecipes,
                   heroAnchorKey: _heroAnchorKey,
-                  onSearch: () => context.go('/search'),
-                  onFilters: () => context.go('/search?filters=1'),
+                  onSearch: _openSearch,
+                  onFilters: _openFilters,
+                  onQuickFilter: _openFilteredSearch,
                   onScan: () => context.go('/camera'),
                   onPremium: () => context.push('/subscription'),
                 )
@@ -90,7 +92,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   onResumeCooking: _resumeCooking,
                   onProfileTap: () => context.go('/profile'),
                   onScanTap: () => context.go('/camera'),
-                  onTypeTap: () => context.go('/search'),
+                  onTypeTap: _openSearch,
                   onCollectionTap: () => _openCollection(
                     context,
                     courseTag: brand.courseTag,
@@ -102,8 +104,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                   cookingProgress: cookingProgress,
                   savedRecipes: savedRecipes,
                   heroAnchorKey: _heroAnchorKey,
-                  onSearch: () => context.go('/search'),
-                  onFilters: () => context.go('/search?filters=1'),
+                  onSearch: _openSearch,
+                  onFilters: _openFilters,
+                  onQuickFilter: _openFilteredSearch,
                   onPremium: () => context.push('/subscription'),
                 ),
     );
@@ -119,6 +122,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(activeCookingProgressProvider);
     ref.invalidate(favoriteRecipesProvider);
     await ref.read(recipeListProvider.notifier).loadRecipes();
+  }
+
+  void _openSearch() {
+    ref.read(simpleTextSearchProvider.notifier).clearSearch();
+    context.go('/search');
+  }
+
+  void _openFilters() {
+    ref.read(simpleTextSearchProvider.notifier).clearSearch();
+    context.go('/search?filters=1');
+  }
+
+  void _openFilteredSearch(SearchFilters filters) {
+    ref.read(simpleTextSearchProvider.notifier).applyFilters(filters);
+    context.go('/search');
   }
 
   void _openCollection(
@@ -154,6 +172,7 @@ class _MobileHome extends StatelessWidget {
     required this.heroAnchorKey,
     required this.onSearch,
     required this.onFilters,
+    required this.onQuickFilter,
     required this.onPremium,
   });
 
@@ -175,6 +194,7 @@ class _MobileHome extends StatelessWidget {
   final GlobalKey heroAnchorKey;
   final VoidCallback onSearch;
   final VoidCallback onFilters;
+  final ValueChanged<SearchFilters> onQuickFilter;
   final VoidCallback onPremium;
 
   @override
@@ -197,6 +217,7 @@ class _MobileHome extends StatelessWidget {
                     onProfileTap: onProfileTap,
                     onScanTap: onScanTap,
                     onTypeTap: onTypeTap,
+                    onQuickFilter: onQuickFilter,
                   ),
                 ),
                 ..._recipeSlivers(recipes, onOpenRecipe, context),
@@ -277,6 +298,7 @@ class _DesktopHome extends StatelessWidget {
     required this.heroAnchorKey,
     required this.onSearch,
     required this.onFilters,
+    required this.onQuickFilter,
     required this.onScan,
     required this.onPremium,
   });
@@ -295,6 +317,7 @@ class _DesktopHome extends StatelessWidget {
   final GlobalKey heroAnchorKey;
   final VoidCallback onSearch;
   final VoidCallback onFilters;
+  final ValueChanged<SearchFilters> onQuickFilter;
   final VoidCallback onScan;
   final VoidCallback onPremium;
 
@@ -336,6 +359,8 @@ class _DesktopHome extends StatelessWidget {
                   cookingProgress: cookingProgress,
                   savedRecipes: savedRecipes,
                   heroAnchorKey: heroAnchorKey,
+                  onQuickFilter: onQuickFilter,
+                  onSearch: onSearch,
                 );
               },
             ),
@@ -357,6 +382,8 @@ class _DesktopHomeContent extends StatelessWidget {
     required this.cookingProgress,
     required this.savedRecipes,
     required this.heroAnchorKey,
+    required this.onQuickFilter,
+    required this.onSearch,
   });
 
   final BrandDetails brand;
@@ -370,6 +397,8 @@ class _DesktopHomeContent extends StatelessWidget {
   final CookingProgress? cookingProgress;
   final List<Recipe> savedRecipes;
   final GlobalKey heroAnchorKey;
+  final ValueChanged<SearchFilters> onQuickFilter;
+  final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
@@ -385,7 +414,8 @@ class _DesktopHomeContent extends StatelessWidget {
                 courseCollection: courseCollection,
                 onOpenRecipe: onOpenRecipe,
                 onResumeCooking: onResumeCooking,
-                onSeeAll: () => context.go('/search'),
+                onSeeAll: onSearch,
+                onQuickFilter: onQuickFilter,
                 onCollectionTap: onCollectionTap,
                 onUnlockCourse: onUnlockCourse,
                 cookingProgress: cookingProgress,

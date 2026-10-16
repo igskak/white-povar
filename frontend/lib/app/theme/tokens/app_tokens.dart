@@ -110,14 +110,17 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
 
   /// Handoff Spec §1 — light column.
   static const SemanticColors light = SemanticColors(
-    background: Color(0xFFF4F0E8),
-    surface: Color(0xFFF8F4ED),
-    surfaceRaised: Color(0xFFFFFCF7),
-    surfaceStrong: Color(0xFFE8E0D4),
-    outline: Color(0xFF8C7E75),
-    outlineVariant: Color(0xFFD6CCC1),
-    textPrimary: Color(0xFF201817),
-    textSecondary: Color(0xFF6B5E58),
+    // Variant B: paper-like neutrals let food photography and the tenant
+    // accent do the expressive work. Widgets consume these semantic roles so
+    // the same composition remains legible in the dark theme.
+    background: Color(0xFFFAF9F6),
+    surface: Color(0xFFFFFFFF),
+    surfaceRaised: Color(0xFFFFFFFF),
+    surfaceStrong: Color(0xFFF0EEE8),
+    outline: Color(0xFF8A887F),
+    outlineVariant: Color(0xFFE1DFD8),
+    textPrimary: Color(0xFF272D25),
+    textSecondary: Color(0xFF68665E),
     success: Color(0xFF3E6B4A),
     warning: Color(0xFFB0832E),
     error: Color(0xFFA8362A),

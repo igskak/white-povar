@@ -12,6 +12,7 @@ import '../../../recipes/models/recipe.dart';
 import '../../../recipes/presentation/widgets/recipe_card.dart';
 import '../../../recipes/presentation/widgets/recipe_photo.dart';
 import '../../../recipes/services/cooking_progress_store.dart';
+import '../../../search/providers/search_provider.dart';
 
 /// The Home entry points, shared with the Creator Studio live preview (13m).
 ///
@@ -98,8 +99,8 @@ class ScanBanner extends StatelessWidget {
   }
 }
 
-/// The intro block of the compact Home: brand header, editorial greeting and
-/// the two capture entry points.
+/// The compact Home introduction. It keeps the primary job (choose a recipe)
+/// ahead of brand decoration, matching the same quiet hierarchy as desktop.
 ///
 /// Lives here rather than inside `HomePage` because the Studio preview renders
 /// this very widget. A section added to Home therefore appears in the editor
@@ -112,6 +113,7 @@ class HomeIntro extends StatelessWidget {
     required this.onProfileTap,
     required this.onScanTap,
     required this.onTypeTap,
+    required this.onQuickFilter,
   });
 
   final BrandDetails brand;
@@ -119,10 +121,11 @@ class HomeIntro extends StatelessWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onScanTap;
   final VoidCallback onTypeTap;
+  final ValueChanged<SearchFilters> onQuickFilter;
 
   @override
   Widget build(BuildContext context) => ResponsiveContainer(
-        maxWidth: 480,
+        maxWidth: 680,
         child: SafeArea(
           bottom: false,
           child: Padding(
@@ -138,53 +141,79 @@ class HomeIntro extends StatelessWidget {
                     child: UserAvatar(name: userName),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xl),
                 Text(
-                  'АВТОРСЬКА КУХНЯ',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.8,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  brand.voice.greeting,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
+                  'Що приготуємо сьогодні?',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontFamily: context.brandTheme.displayFontFamily,
+                        fontFamily: AppFonts.body,
                         fontWeight: FontWeight.w600,
-                        height: 1.02,
+                        height: 1.1,
                       ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Улюблені рецепти. З увагою до деталей.',
+                  brand.voice.greeting.isEmpty
+                      ? 'Збережіть ідею для сніданку, вечері або затишного вечора.'
+                      : brand.voice.greeting,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: context.semantic.textSecondary,
                       ),
                 ),
-                if (brand.heroFor('home') != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  BrandHeroBanner(
-                    key: const ValueKey('home-brand-hero'),
-                    brand: brand,
-                    role: 'home',
-                  ),
-                ],
                 const SizedBox(height: AppSpacing.md),
-                ScanBanner(onTap: onScanTap),
-                const SizedBox(height: AppSpacing.xs),
-                // Secondary path for anyone who would rather type than shoot.
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: AppButton(
-                    label: 'Ввести вручну',
-                    icon: Icons.keyboard_alt_outlined,
-                    variant: AppButtonVariant.text,
-                    onPressed: onTypeTap,
+                Semantics(
+                  button: true,
+                  label: 'Знайти рецепт',
+                  child: InkWell(
+                    key: const ValueKey('home-intro-search'),
+                    onTap: onTypeTap,
+                    borderRadius: AppRadius.md,
+                    child: Ink(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.semantic.surface,
+                        border:
+                            Border.all(color: context.semantic.outlineVariant),
+                        borderRadius: AppRadius.md,
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.search_rounded,
+                            color: Theme.of(context).colorScheme.secondary),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text('Шукати рецепт',
+                            style: Theme.of(context).textTheme.bodyMedium),
+                      ]),
+                    ),
                   ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _HomeQuickFilter(
+                      label: 'До 30 хв',
+                      onTap: () =>
+                          onQuickFilter(const SearchFilters(maxTime: 30)),
+                    ),
+                    _HomeQuickFilter(
+                      label: 'Без м’яса',
+                      onTap: () => onQuickFilter(
+                        const SearchFilters(diet: DietFilter.noMeat),
+                      ),
+                    ),
+                    _HomeQuickFilter(
+                      label: 'Сніданки',
+                      onTap: () => onQuickFilter(
+                          const SearchFilters(category: 'Сніданки')),
+                    ),
+                    _HomeQuickFilter(
+                      label: 'Сканувати',
+                      icon: Icons.photo_camera_outlined,
+                      onTap: onScanTap,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ],
@@ -226,11 +255,10 @@ class HomeFeedSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final featured = recipes.firstWhere(
-      (recipe) => recipe.isFeatured,
-      orElse: () => recipes.first,
-    );
-    final feed = recipes.where((recipe) => recipe.id != featured.id).toList();
+    final showcase = _showcaseRecipes(recipes);
+    final showcaseIds = showcase.map((recipe) => recipe.id).toSet();
+    final feed =
+        recipes.where((recipe) => !showcaseIds.contains(recipe.id)).toList();
     return ResponsiveContainer(
       maxWidth: 480,
       child: Column(
@@ -242,11 +270,9 @@ class HomeFeedSections extends StatelessWidget {
               key: const ValueKey('home-editorial-hero-reveal'),
               debugLabel: 'home-editorial-hero',
               delay: const Duration(milliseconds: 40),
-              child: RecipeCard.featured(
-                key: const ValueKey('mobile-featured-recipe-hero'),
-                recipe: featured,
-                compact: true,
-                onTap: () => onOpenRecipe(featured),
+              child: _HomeRecipeShowcase(
+                recipes: showcase,
+                onOpenRecipe: onOpenRecipe,
               ),
             ),
           ),
@@ -268,13 +294,17 @@ class HomeFeedSections extends StatelessWidget {
           ],
           HomePersonalizedSections(
             recipes: recipes,
-            featuredRecipeId: featured.id,
+            featuredRecipeId: showcase.first.id,
             cookingProgress: cookingProgress,
             savedRecipes: savedRecipes,
             compact: true,
             onOpenRecipe: onOpenRecipe,
             onResumeCooking: onResumeCooking,
           ),
+          if (brand.heroFor('home') != null) ...[
+            const SizedBox(height: AppSpacing.xl),
+            _DesktopAuthorStory(brand: brand),
+          ],
           if (feed.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
             Text('Свіже від автора',
@@ -304,6 +334,7 @@ class HomeDesktopSections extends StatelessWidget {
     this.courseCollection,
     required this.onOpenRecipe,
     required this.onSeeAll,
+    required this.onQuickFilter,
     required this.onCollectionTap,
     required this.onUnlockCourse,
     this.cookingProgress,
@@ -318,6 +349,7 @@ class HomeDesktopSections extends StatelessWidget {
   final ContentCollection? courseCollection;
   final ValueChanged<Recipe> onOpenRecipe;
   final VoidCallback onSeeAll;
+  final ValueChanged<SearchFilters> onQuickFilter;
   final VoidCallback onCollectionTap;
   final VoidCallback onUnlockCourse;
   final CookingProgress? cookingProgress;
@@ -331,11 +363,10 @@ class HomeDesktopSections extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final featured = recipes.firstWhere(
-      (recipe) => recipe.isFeatured,
-      orElse: () => recipes.first,
-    );
-    final feed = recipes.where((item) => item.id != featured.id).toList();
+    final showcase = _showcaseRecipes(recipes);
+    final showcaseIds = showcase.map((recipe) => recipe.id).toSet();
+    final feed =
+        recipes.where((item) => !showcaseIds.contains(item.id)).toList();
     return ResponsiveContainer(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,10 +377,20 @@ class HomeDesktopSections extends StatelessWidget {
               key: const ValueKey('home-editorial-hero-reveal'),
               debugLabel: 'home-editorial-hero',
               delay: const Duration(milliseconds: 40),
-              child: _BordeauxDesktopHero(
-                brand: brand,
-                recipe: featured,
-                onTap: () => onOpenRecipe(featured),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _DesktopHomeIntro(
+                    brand: brand,
+                    onSearch: onSeeAll,
+                    onQuickFilter: onQuickFilter,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _HomeRecipeShowcase(
+                    recipes: showcase,
+                    onOpenRecipe: onOpenRecipe,
+                  ),
+                ],
               ),
             ),
           ),
@@ -371,7 +412,7 @@ class HomeDesktopSections extends StatelessWidget {
           ],
           HomePersonalizedSections(
             recipes: recipes,
-            featuredRecipeId: featured.id,
+            featuredRecipeId: showcase.first.id,
             cookingProgress: cookingProgress,
             savedRecipes: savedRecipes,
             onOpenRecipe: onOpenRecipe,
@@ -405,12 +446,12 @@ class HomeDesktopSections extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+                crossAxisCount: constraints.maxWidth >= 1180 ? 4 : 3,
                 crossAxisSpacing: AppSpacing.md,
                 mainAxisSpacing: AppSpacing.md,
                 mainAxisExtent: RecipeCard.gridMainAxisExtent(
                   availableWidth: constraints.maxWidth,
-                  columns: 3,
+                  columns: constraints.maxWidth >= 1180 ? 4 : 3,
                 ),
               ),
               itemCount: feed.length,
@@ -424,6 +465,176 @@ class HomeDesktopSections extends StatelessWidget {
       ),
     );
   }
+}
+
+List<Recipe> _showcaseRecipes(List<Recipe> recipes) {
+  final featured = recipes.firstWhere(
+    (recipe) => recipe.isFeatured,
+    orElse: () => recipes.first,
+  );
+  return [
+    featured,
+    ...recipes.where((recipe) => recipe.id != featured.id),
+  ].take(3).toList();
+}
+
+class _HomeQuickFilter extends StatelessWidget {
+  const _HomeQuickFilter({required this.label, required this.onTap, this.icon});
+
+  final String label;
+  final IconData? icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => ActionChip(
+        avatar: icon == null ? null : Icon(icon, size: 17),
+        label: Text(label),
+        onPressed: onTap,
+      );
+}
+
+class _DesktopHomeIntro extends StatelessWidget {
+  const _DesktopHomeIntro({
+    required this.brand,
+    required this.onSearch,
+    required this.onQuickFilter,
+  });
+
+  final BrandDetails brand;
+  final VoidCallback onSearch;
+  final ValueChanged<SearchFilters> onQuickFilter;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Що приготуємо сьогодні?',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontFamily: AppFonts.body,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 34,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  brand.voice.greeting.isEmpty
+                      ? 'Ідеї для вашої кухні — без зайвого шуму.'
+                      : brand.voice.greeting,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: context.semantic.textSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(spacing: AppSpacing.xs, children: [
+                  _HomeQuickFilter(
+                    label: 'До 30 хв',
+                    onTap: () =>
+                        onQuickFilter(const SearchFilters(maxTime: 30)),
+                  ),
+                  _HomeQuickFilter(
+                    label: 'Без м’яса',
+                    onTap: () => onQuickFilter(
+                      const SearchFilters(diet: DietFilter.noMeat),
+                    ),
+                  ),
+                  _HomeQuickFilter(
+                    label: 'Сніданки',
+                    onTap: () => onQuickFilter(
+                        const SearchFilters(category: 'Сніданки')),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xl),
+          SizedBox(
+            width: 290,
+            child: OutlinedButton.icon(
+              onPressed: onSearch,
+              icon: const Icon(Icons.search_rounded),
+              label: const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Шукати рецепт'),
+              ),
+            ),
+          ),
+        ],
+      );
+}
+
+/// First-screen recipe trio. The lead card is allowed more width, but all
+/// cards remain the existing role-aware [RecipeCard] with real save behavior.
+class _HomeRecipeShowcase extends StatelessWidget {
+  const _HomeRecipeShowcase(
+      {required this.recipes, required this.onOpenRecipe});
+
+  final List<Recipe> recipes;
+  final ValueChanged<Recipe> onOpenRecipe;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 700 && recipes.length > 1;
+          if (!isWide) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RecipeCard(
+                  key: ValueKey('home-showcase-${recipes.first.id}'),
+                  recipe: recipes.first,
+                  onTap: () => onOpenRecipe(recipes.first),
+                ),
+                if (recipes.length > 1) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Row(children: [
+                    for (var index = 1; index < recipes.length; index++) ...[
+                      if (index > 1) const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: RecipeCard(
+                          key: ValueKey('home-showcase-${recipes[index].id}'),
+                          recipe: recipes[index],
+                          onTap: () => onOpenRecipe(recipes[index]),
+                        ),
+                      ),
+                    ],
+                  ]),
+                ],
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 145,
+                child: RecipeCard(
+                  key: ValueKey('home-showcase-${recipes.first.id}'),
+                  recipe: recipes.first,
+                  onTap: () => onOpenRecipe(recipes.first),
+                ),
+              ),
+              for (var index = 1; index < recipes.length; index++) ...[
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  flex: 100,
+                  child: RecipeCard(
+                    key: ValueKey('home-showcase-${recipes[index].id}'),
+                    recipe: recipes[index],
+                    onTap: () => onOpenRecipe(recipes[index]),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      );
 }
 
 /// Home modules assembled only from signals the product already owns: the
@@ -873,266 +1084,6 @@ class _EditorialRevealState extends State<_EditorialReveal>
   }
 }
 
-class _BordeauxDesktopHero extends StatelessWidget {
-  const _BordeauxDesktopHero({
-    required this.brand,
-    required this.recipe,
-    required this.onTap,
-  });
-
-  final BrandDetails brand;
-  final Recipe recipe;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final semantic = context.semantic;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: semantic.outlineVariant),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) => SizedBox(
-          height: (constraints.maxWidth * .36).clamp(390.0, 520.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _DesktopAuthorSignature(brand: brand),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'АВТОРСЬКА КУХНЯ',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.secondary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _EditorialGreeting(text: brand.voice.greeting),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'Улюблені рецепти. З увагою до деталей.',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: semantic.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      ElevatedButton.icon(
-                        onPressed: onTap,
-                        iconAlignment: IconAlignment.end,
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        label: const Text('Обрати рецепт'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 6,
-                child: _DesktopFeaturedRecipeMedia(
-                  recipe: recipe,
-                  targetWidth: constraints.maxWidth * .6,
-                  labelWidth: constraints.maxWidth * .42,
-                  onTap: onTap,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DesktopFeaturedRecipeMedia extends StatefulWidget {
-  const _DesktopFeaturedRecipeMedia({
-    required this.recipe,
-    required this.targetWidth,
-    required this.labelWidth,
-    required this.onTap,
-  });
-
-  final Recipe recipe;
-  final double targetWidth;
-  final double labelWidth;
-  final VoidCallback onTap;
-
-  @override
-  State<_DesktopFeaturedRecipeMedia> createState() =>
-      _DesktopFeaturedRecipeMediaState();
-}
-
-class _DesktopFeaturedRecipeMediaState
-    extends State<_DesktopFeaturedRecipeMedia> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final semantic = context.semantic;
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    final duration =
-        disableAnimations ? Duration.zero : const Duration(milliseconds: 320);
-
-    return Semantics(
-      button: true,
-      label: 'Відкрити рецепт ${widget.recipe.title}',
-      child: Material(
-        color: semantic.surfaceStrong,
-        child: InkWell(
-          onTap: widget.onTap,
-          onHover: (value) => setState(() => _hovered = value),
-          mouseCursor: SystemMouseCursors.click,
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                RepaintBoundary(
-                  child: AnimatedScale(
-                    scale: _hovered ? 1.025 : 1,
-                    duration: duration,
-                    curve: Curves.easeOutCubic,
-                    child: RecipeImageHero(
-                      recipeId: widget.recipe.id,
-                      child: RecipePhoto(
-                        key: const ValueKey('featured-recipe-hero'),
-                        recipe: widget.recipe,
-                        role: RecipeImageRole.featured,
-                        targetWidth: widget.targetWidth,
-                      ),
-                    ),
-                  ),
-                ),
-                IgnorePointer(
-                  child: AnimatedOpacity(
-                    opacity: _hovered ? 1 : 0,
-                    duration: duration,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            theme.colorScheme.primary.withOpacity(.10),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: AnimatedContainer(
-                    duration: duration,
-                    curve: Curves.easeOutCubic,
-                    width: widget.labelWidth,
-                    constraints: const BoxConstraints(minWidth: 260),
-                    color: _hovered
-                        ? context.brandTheme.accentPressed
-                        : theme.colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                widget.recipe.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  color: theme.colorScheme.onPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.xxs),
-                              Text(
-                                '${widget.recipe.totalTimeMinutes} хв',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        AnimatedSlide(
-                          offset: _hovered ? const Offset(.18, 0) : Offset.zero,
-                          duration: duration,
-                          curve: Curves.easeOutCubic,
-                          child: Icon(
-                            Icons.arrow_forward_rounded,
-                            color: theme.colorScheme.onPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DesktopAuthorSignature extends StatelessWidget {
-  const _DesktopAuthorSignature({required this.brand});
-
-  final BrandDetails brand;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      key: const ValueKey('desktop-author-signature'),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BrandAvatar(
-          key: const ValueKey('desktop-author-avatar'),
-          brand: brand,
-          radius: 22,
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              brand.creatorName,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontFamily: context.brandTheme.displayFontFamily,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              'Автор рецептів',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: context.semantic.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 class _DesktopAuthorStory extends StatelessWidget {
   const _DesktopAuthorStory({required this.brand});
 
@@ -1146,101 +1097,68 @@ class _DesktopAuthorStory extends StatelessWidget {
       label: 'Про автора ${brand.name}',
       child: Container(
         key: const ValueKey('desktop-author-story'),
-        height: 280,
         decoration: BoxDecoration(
           color: semantic.surface,
           border: Border.all(color: semantic.outlineVariant),
+          borderRadius: AppRadius.md,
         ),
         child: LayoutBuilder(
-          builder: (context, constraints) => Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 5,
+          builder: (context, constraints) {
+            final stacked = constraints.maxWidth < 520;
+            final photo = SizedBox(
+              width: stacked ? double.infinity : 200,
+              height: stacked
+                  ? constraints.maxWidth / BrandMediaAspectRatio.homeAuthor
+                  : 100,
+              child: ClipRRect(
+                borderRadius: stacked
+                    ? const BorderRadius.vertical(top: Radius.circular(12))
+                    : const BorderRadius.horizontal(left: Radius.circular(12)),
                 child: BrandHero(
                   key: const ValueKey('desktop-author-photo'),
                   brand: brand,
                   role: 'home',
-                  targetWidth: constraints.maxWidth * 5 / 12,
+                  targetWidth: stacked ? constraints.maxWidth : 200,
                 ),
               ),
-              Expanded(
-                flex: 7,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.xl,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ЗНАЙОМТЕСЯ З АВТОРОМ',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.secondary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.8,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        brand.name,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontFamily: context.brandTheme.displayFontFamily,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Особиста добірка страв, перевірених на власній кухні.',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: semantic.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+            );
+            final copy = Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('ПРО АВТОРА',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.secondary,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4,
+                      )),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(brand.name,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontFamily: context.brandTheme.displayFontFamily,
+                        fontWeight: FontWeight.w600,
+                      )),
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text('Особиста добірка страв, перевірених на власній кухні.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: semantic.textSecondary,
+                      )),
+                ],
               ),
-            ],
-          ),
+            );
+            return stacked
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [photo, copy])
+                : Row(children: [photo, Expanded(child: copy)]);
+          },
         ),
       ),
-    );
-  }
-}
-
-class _EditorialGreeting extends StatelessWidget {
-  const _EditorialGreeting({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final split = text.split('—');
-    final base = theme.textTheme.headlineLarge?.copyWith(
-      fontFamily: context.brandTheme.displayFontFamily,
-      fontSize: 52,
-      fontWeight: FontWeight.w600,
-      height: .98,
-    );
-    if (split.length != 2) return Text(text, maxLines: 3, style: base);
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: '${split.first.trim()} —\n', style: base),
-          TextSpan(
-            text: split.last.trim(),
-            style: base?.copyWith(
-              color: theme.colorScheme.secondary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-      maxLines: 3,
-      overflow: TextOverflow.ellipsis,
     );
   }
 }

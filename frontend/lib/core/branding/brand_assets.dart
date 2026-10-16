@@ -16,25 +16,23 @@ abstract final class BrandMediaAspectRatio {
   static const double studioViewportWidth = 360;
   static const double login = (studioViewportWidth - AppSpacing.md * 2) / 172;
   static const double paywall = (studioViewportWidth - 22 * 2) / 130;
+
+  /// Existing collection banner frame.
   static const double banner = 2;
+
+  /// Compact Home author photo, shared by the public scene and Studio crops.
+  static const double homeAuthor = 2;
   static const double avatar = 1;
 
   /// The window the Studio previews and crops desktop against — the same
   /// reference width the responsive goldens use.
   static const double desktopWindowWidth = 1280;
 
-  /// The banner's shape on a desktop page of [windowWidth].
-  ///
-  /// [BrandHeroBanner] holds [banner] until its height reaches the ceiling, and
-  /// a desktop column keeps widening past that — so the same photo is cropped
-  /// to a flatter band there than on a phone. Derived rather than written down,
-  /// so the crop thumbnail cannot promise a shape the page stopped rendering.
+  /// Retained for Studio callers that label desktop separately. Home uses the
+  /// same compact author frame at every width, so its crop is no longer a
+  /// different wide editorial hero on desktop.
   static double bannerOnDesktop([double windowWidth = desktopWindowWidth]) {
-    // What the editorial desktop header and page gutters leave.
-    final column = math.min(windowWidth, AppLayout.contentMax) -
-        AppLayout.gutter(windowWidth) * 2;
-    final heroHeight = (column * .36).clamp(390.0, 520.0);
-    return column * .6 / heroHeight;
+    return homeAuthor;
   }
 }
 

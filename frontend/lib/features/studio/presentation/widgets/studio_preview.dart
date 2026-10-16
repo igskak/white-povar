@@ -180,6 +180,7 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
                 onProfileTap: () {},
                 onScanTap: () {},
                 onTypeTap: () {},
+                onQuickFilter: (_) {},
               ),
               HomeFeedSections(
                 brand: widget.config.brand,
@@ -207,6 +208,7 @@ class _StudioBrandPreviewState extends State<StudioBrandPreview> {
             courseLocked: true,
             onOpenRecipe: (_) {},
             onSeeAll: () {},
+            onQuickFilter: (_) {},
             onCollectionTap: () {},
             onUnlockCourse: () {},
           ),

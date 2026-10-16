@@ -33,9 +33,8 @@ class RecipeDetailPage extends ConsumerStatefulWidget {
   /// preview. The server re-checks the grant before it unlocks anything.
   final String? collectionId;
 
-  /// The list projection selected on the previous screen. It is only used to
-  /// keep the image transition alive while the authoritative detail payload
-  /// loads.
+  /// The list projection selected on the previous screen. Its image and public
+  /// summary remain visible while the server verifies access to the body.
   final Recipe? initialRecipe;
 
   @override
@@ -44,6 +43,10 @@ class RecipeDetailPage extends ConsumerStatefulWidget {
 
 class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
   bool _viewRecorded = false;
+  bool _actionInFlight = false;
+  String? _servingsRecipeId;
+  int? _selectedServings;
+  final Set<String> _checkedIngredientIds = <String>{};
 
   String get _cookingLocation => PreviewGrant.appendTo(
       '/recipes/${widget.recipeId}/cook', widget.collectionId);
@@ -69,6 +72,9 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
           onRetry: () => ref.invalidate(recipeDetailProvider(_request)),
         ),
         data: (recipe) {
+          final selectedServings = _servingsRecipeId == recipe.id
+              ? _selectedServings ?? recipe.servings
+              : recipe.servings;
           if (auth.isAuthenticated && !_viewRecorded) {
             _viewRecorded = true;
             // Never block rendering or offline access on a private history write.
@@ -96,48 +102,43 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
                 : canCook
                     ? () => context.push(_cookingLocation)
                     : null,
-            onAddToShopping: locked || !auth.isAuthenticated
+            selectedServings: selectedServings,
+            checkedIngredientIds: _servingsRecipeId == recipe.id
+                ? _checkedIngredientIds
+                : const <String>{},
+            onDecreaseServings: selectedServings > 1
+                ? () => _setServings(recipe.id, selectedServings - 1)
+                : null,
+            onIncreaseServings: () =>
+                _setServings(recipe.id, selectedServings + 1),
+            onIngredientToggled: (ingredientId) =>
+                _toggleIngredient(recipe.id, ingredientId),
+            onAddToShopping: locked || !auth.isAuthenticated || _actionInFlight
                 ? null
                 : () async {
-                    try {
-                      await ref
-                          .read(pantryServiceProvider)
-                          .addRecipe(recipe.id, recipe.servings);
-                    } catch (_) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Не вдалося додати до покупок. Спробуйте ще раз')));
-                      return;
-                    }
-                    ref.invalidate(shoppingProvider);
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                'Відсутні інгредієнти додано до покупок')));
+                    await _runAction(
+                      success: 'Відсутні інгредієнти додано до покупок',
+                      failure: 'Не вдалося додати до покупок. Спробуйте ще раз',
+                      action: () async {
+                        await ref
+                            .read(pantryServiceProvider)
+                            .addRecipe(recipe.id, selectedServings);
+                        ref.invalidate(shoppingProvider);
+                      },
+                    );
                   },
-            onAddToPlan: locked || !auth.isAuthenticated
+            onAddToPlan: locked || !auth.isAuthenticated || _actionInFlight
                 ? null
                 : () async {
-                    try {
-                      await ref.read(menuPlanServiceProvider).add(
-                          day: DateTime.now(),
-                          recipeId: recipe.id,
-                          servings: recipe.servings);
-                    } catch (_) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Не вдалося запланувати рецепт. Спробуйте ще раз')));
-                      return;
-                    }
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Рецепт заплановано на сьогодні')));
+                    await _runAction(
+                      success: 'Рецепт заплановано на сьогодні',
+                      failure: 'Не вдалося запланувати рецепт. Спробуйте ще раз',
+                      action: () => ref.read(menuPlanServiceProvider).add(
+                            day: DateTime.now(),
+                            recipeId: recipe.id,
+                            servings: selectedServings,
+                          ),
+                    );
                   },
           );
         },
@@ -179,6 +180,46 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
     }
     context.push(OfferRouteLocation.subscription(returnTo: returnTo).location);
   }
+
+  void _setServings(String recipeId, int value) => setState(() {
+        if (_servingsRecipeId != recipeId) _checkedIngredientIds.clear();
+        _servingsRecipeId = recipeId;
+        _selectedServings = value < 1 ? 1 : value;
+      });
+
+  void _toggleIngredient(String recipeId, String ingredientId) => setState(() {
+        if (_servingsRecipeId != recipeId) {
+          _servingsRecipeId = recipeId;
+          _selectedServings = null;
+          _checkedIngredientIds.clear();
+        }
+        if (!_checkedIngredientIds.add(ingredientId)) {
+          _checkedIngredientIds.remove(ingredientId);
+        }
+      });
+
+  Future<void> _runAction({
+    required Future<void> Function() action,
+    required String success,
+    required String failure,
+  }) async {
+    if (_actionInFlight) return;
+    setState(() => _actionInFlight = true);
+    try {
+      await action();
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(success)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(failure)));
+      }
+    } finally {
+      if (mounted) setState(() => _actionInFlight = false);
+    }
+  }
 }
 
 bool _hasVideo(Recipe recipe) =>
@@ -198,6 +239,11 @@ class _RecipeDetailContent extends StatelessWidget {
       required this.primaryActionLabel,
       required this.primaryActionIcon,
       this.onPrimaryAction,
+      required this.selectedServings,
+      required this.checkedIngredientIds,
+      this.onDecreaseServings,
+      this.onIncreaseServings,
+      this.onIngredientToggled,
       this.onAddToShopping,
       this.onAddToPlan});
   final Recipe recipe;
@@ -206,6 +252,11 @@ class _RecipeDetailContent extends StatelessWidget {
   final String primaryActionLabel;
   final IconData primaryActionIcon;
   final VoidCallback? onPrimaryAction;
+  final int selectedServings;
+  final Set<String> checkedIngredientIds;
+  final VoidCallback? onDecreaseServings;
+  final VoidCallback? onIncreaseServings;
+  final ValueChanged<String>? onIngredientToggled;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
@@ -220,23 +271,27 @@ class _RecipeDetailContent extends StatelessWidget {
               primaryActionLabel: primaryActionLabel,
               primaryActionIcon: primaryActionIcon,
               onPrimaryAction: onPrimaryAction,
+              selectedServings: selectedServings,
+              checkedIngredientIds: checkedIngredientIds,
+              onDecreaseServings: onDecreaseServings,
+              onIncreaseServings: onIncreaseServings,
+              onIngredientToggled: onIngredientToggled,
               onAddToShopping: onAddToShopping,
               onAddToPlan: onAddToPlan,
             );
           }
           return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _RecipeHero(recipe: recipe),
-                _RecipeBody(
-                  recipe: recipe,
-                  locked: locked,
-                  onUnlock: onUnlock,
-                  onAddToShopping: onAddToShopping,
-                  onAddToPlan: onAddToPlan,
-                ),
-              ],
+            child: _RecipeBody(
+              recipe: recipe,
+              locked: locked,
+              onUnlock: onUnlock,
+              selectedServings: selectedServings,
+              checkedIngredientIds: checkedIngredientIds,
+              onDecreaseServings: onDecreaseServings,
+              onIncreaseServings: onIncreaseServings,
+              onIngredientToggled: onIngredientToggled,
+              onAddToShopping: onAddToShopping,
+              onAddToPlan: onAddToPlan,
             ),
           );
         },
@@ -310,6 +365,11 @@ class _DesktopRecipeContent extends StatelessWidget {
     required this.primaryActionLabel,
     required this.primaryActionIcon,
     required this.onPrimaryAction,
+    required this.selectedServings,
+    required this.checkedIngredientIds,
+    this.onDecreaseServings,
+    this.onIncreaseServings,
+    this.onIngredientToggled,
     this.onAddToShopping,
     this.onAddToPlan,
   });
@@ -320,6 +380,11 @@ class _DesktopRecipeContent extends StatelessWidget {
   final String primaryActionLabel;
   final IconData primaryActionIcon;
   final VoidCallback? onPrimaryAction;
+  final int selectedServings;
+  final Set<String> checkedIngredientIds;
+  final VoidCallback? onDecreaseServings;
+  final VoidCallback? onIncreaseServings;
+  final ValueChanged<String>? onIngredientToggled;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
@@ -332,88 +397,105 @@ class _DesktopRecipeContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: ClipRRect(
-                    key: const ValueKey('desktop-recipe-hero-pane'),
-                    borderRadius: AppRadius.xl,
-                    child: AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: _RecipeHero(recipe: recipe),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.xxl),
-                Expanded(
-                  flex: 4,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ВІД ШЕФА',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.secondary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.6,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        recipe.title,
-                        style: theme.textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        recipe.description,
-                        style: theme.textTheme.bodyLarge
-                            ?.copyWith(color: context.semantic.textSecondary),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      _StatsRow(recipe: recipe),
-                      const SizedBox(height: AppSpacing.lg),
-                      // The actions live with the recipe rather than in a
-                      // full-width bar pinned to the bottom of the window,
-                      // which on a wide monitor parked the primary call to
-                      // action hundreds of pixels away from the content.
-                      if (locked)
-                        PremiumGateCard(
-                          title: 'Рецепт від шефа — у Premium',
-                          message:
-                              'Повний рецепт, відео й режим приготування доступні з Premium.',
-                          ctaLabel: 'Відкрити Premium',
-                          onUnlock: onUnlock,
-                        )
-                      else
-                        _DesktopRecipeActions(
-                          recipeId: recipe.id,
-                          primaryActionLabel: primaryActionLabel,
-                          primaryActionIcon: primaryActionIcon,
-                          onPrimaryAction: onPrimaryAction,
-                          showAddToShopping: recipe.contentKind.hasIngredients,
-                          onAddToShopping: onAddToShopping,
-                          onAddToPlan: onAddToPlan,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('До рецептів'),
             ),
-            if (!locked) ...[
-              const SizedBox(height: AppSpacing.xxxl),
-              ContentDetailSections(
-                contentKind: recipe.contentKind,
-                ingredients: recipe.ingredients,
-                steps: recipe.instructions,
-                leading: _hasVideo(recipe)
-                    ? _RecipeVideoSection(recipe: recipe)
-                    : null,
+            const SizedBox(height: AppSpacing.md),
+            Text(recipe.category.toUpperCase(),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                )),
+            const SizedBox(height: AppSpacing.xs),
+            Text(recipe.title,
+                style: theme.textTheme.headlineLarge?.copyWith(
+                  fontFamily: AppFonts.body,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 32,
+                )),
+            const SizedBox(height: AppSpacing.md),
+            Row(children: [
+              Expanded(
+                  child: _StatsRow(recipe: recipe, servings: selectedServings)),
+              const SizedBox(width: AppSpacing.lg),
+              if (!locked)
+                _DesktopRecipeActions(
+                  recipeId: recipe.id,
+                  primaryActionLabel: primaryActionLabel,
+                  primaryActionIcon: primaryActionIcon,
+                  onPrimaryAction: onPrimaryAction,
+                  showAddToShopping: recipe.contentKind.hasIngredients,
+                  onAddToShopping: onAddToShopping,
+                  onAddToPlan: onAddToPlan,
+                ),
+            ]),
+            const SizedBox(height: AppSpacing.xl),
+            if (locked)
+              PremiumGateCard(
+                title: 'Рецепт від шефа — у Premium',
+                message:
+                    'Повний рецепт, відео й режим приготування доступні з Premium.',
+                ctaLabel: 'Відкрити Premium',
+                onUnlock: onUnlock,
+              )
+            else
+              Row(
+                key: const ValueKey('recipe-sections-two-column'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            key: const ValueKey('desktop-recipe-hero-pane'),
+                            borderRadius: AppRadius.lg,
+                            child: AspectRatio(
+                              aspectRatio: 4 / 3,
+                              child: _RecipeHero(recipe: recipe),
+                            ),
+                          ),
+                          if (recipe.description.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.lg),
+                            Text(recipe.description,
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: context.semantic.textSecondary,
+                                )),
+                          ],
+                          if (_hasVideo(recipe)) ...[
+                            const SizedBox(height: AppSpacing.xl),
+                            _RecipeVideoSection(recipe: recipe),
+                          ],
+                          const SizedBox(height: AppSpacing.xl),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: AppLayout.narrowMax,
+                            ),
+                            child:
+                                RecipeStepsSection(steps: recipe.instructions),
+                          ),
+                        ]),
+                  ),
+                  if (recipe.contentKind.hasIngredients) ...[
+                    const SizedBox(width: AppSpacing.xxl),
+                    SizedBox(
+                      width: AppLayout.sideColumn,
+                      child: RecipeIngredientsSection(
+                        ingredients: recipe.ingredients,
+                        selectedServings: selectedServings,
+                        baseServings: recipe.servings,
+                        onDecreaseServings: onDecreaseServings,
+                        onIncreaseServings: onIncreaseServings,
+                        checkedIngredientIds: checkedIngredientIds,
+                        onIngredientToggled: onIngredientToggled,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
           ],
         ),
       ),
@@ -506,11 +588,21 @@ class _RecipeBody extends StatelessWidget {
       {required this.recipe,
       required this.locked,
       required this.onUnlock,
+      required this.selectedServings,
+      required this.checkedIngredientIds,
+      this.onDecreaseServings,
+      this.onIncreaseServings,
+      this.onIngredientToggled,
       this.onAddToShopping,
       this.onAddToPlan});
   final Recipe recipe;
   final bool locked;
   final VoidCallback onUnlock;
+  final int selectedServings;
+  final Set<String> checkedIngredientIds;
+  final VoidCallback? onDecreaseServings;
+  final VoidCallback? onIncreaseServings;
+  final ValueChanged<String>? onIngredientToggled;
   final Future<void> Function()? onAddToShopping;
   final Future<void> Function()? onAddToPlan;
 
@@ -549,7 +641,7 @@ class _RecipeBody extends StatelessWidget {
                       .bodyLarge
                       ?.copyWith(color: context.semantic.textSecondary)),
               const SizedBox(height: AppSpacing.lg),
-              _StatsRow(recipe: recipe),
+              _StatsRow(recipe: recipe, servings: selectedServings),
               if (!locked) ...[
                 const SizedBox(height: AppSpacing.sm),
                 _SecondaryRecipeActions(
@@ -558,6 +650,17 @@ class _RecipeBody extends StatelessWidget {
                   onAddToPlan: onAddToPlan,
                 ),
               ],
+              const SizedBox(height: AppSpacing.xl),
+              ClipRRect(
+                borderRadius: AppRadius.lg,
+                child: AspectRatio(
+                  aspectRatio: 1.4,
+                  child: _RecipeHero(
+                    recipe: recipe,
+                    transitionBorderRadius: AppRadius.lg,
+                  ),
+                ),
+              ),
               const SizedBox(height: AppSpacing.xl),
               if (locked)
                 PremiumGateCard(
@@ -572,6 +675,12 @@ class _RecipeBody extends StatelessWidget {
                   contentKind: recipe.contentKind,
                   ingredients: recipe.ingredients,
                   steps: recipe.instructions,
+                  selectedServings: selectedServings,
+                  baseServings: recipe.servings,
+                  onDecreaseServings: onDecreaseServings,
+                  onIncreaseServings: onIncreaseServings,
+                  checkedIngredientIds: checkedIngredientIds,
+                  onIngredientToggled: onIngredientToggled,
                   leading: _hasVideo(recipe)
                       ? _RecipeVideoSection(recipe: recipe)
                       : null,
@@ -662,8 +771,9 @@ class _BottomAction extends StatelessWidget {
 }
 
 class _StatsRow extends StatelessWidget {
-  const _StatsRow({required this.recipe});
+  const _StatsRow({required this.recipe, this.servings});
   final Recipe recipe;
+  final int? servings;
   @override
   Widget build(BuildContext context) => Container(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -684,7 +794,7 @@ class _StatsRow extends StatelessWidget {
             label: 'Складність'),
         _Stat(
             icon: Icons.people_outline_rounded,
-            value: '${recipe.servings}',
+            value: '${servings ?? recipe.servings}',
             label: 'Порції'),
       ]
               .map((item) => Expanded(
@@ -721,16 +831,26 @@ class _RecipeDetailSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          const detail = Padding(
-            padding: EdgeInsets.all(AppSpacing.xl),
+          final detail = Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppSkeleton(width: 260, height: 28),
-                SizedBox(height: AppSpacing.lg),
-                AppSkeleton(height: 92),
-                SizedBox(height: AppSpacing.xl),
-                AppSkeleton(height: 260),
+                if (recipe == null)
+                  const AppSkeleton(width: 260, height: 28)
+                else
+                  Text(recipe!.title,
+                      style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: AppSpacing.lg),
+                if (recipe == null)
+                  const AppSkeleton(height: 92)
+                else if (recipe!.description.isNotEmpty)
+                  Text(recipe!.description,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                const SizedBox(height: AppSpacing.xl),
+                // Never render ingredients or instructions from route extras:
+                // only the detail response can establish current access.
+                const AppSkeleton(height: 260),
               ],
             ),
           );
@@ -738,7 +858,8 @@ class _RecipeDetailSkeleton extends StatelessWidget {
             // Mirrors the loaded composition — hero pane on the left, recipe
             // summary on the right — so the page does not reflow once the
             // payload lands.
-            return Padding(
+            return SingleChildScrollView(
+                child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
               child: ResponsiveContainer(
                 child: Row(
@@ -764,11 +885,11 @@ class _RecipeDetailSkeleton extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.xxl),
-                    const Expanded(flex: 4, child: detail),
+                    Expanded(flex: 4, child: detail),
                   ],
                 ),
               ),
-            );
+            ));
           }
           return SingleChildScrollView(
             child: Column(
