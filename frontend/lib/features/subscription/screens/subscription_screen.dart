@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/brand_theme.dart';
-import '../../../app/theme/app_theme.dart';
 import '../../../app/theme/tokens/app_tokens.dart';
 import '../../../core/branding/brand_assets.dart';
 import '../../../core/branding/brand_config.dart';
@@ -39,36 +38,30 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final isDialog = width >= 600;
     final child = _PaywallCard(snapshot: snapshot, onClose: _close);
     if (isDesktop) {
-      return ForcedDarkTheme(
-        child: _DesktopPaywall(
-          brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
-          onClose: _close,
-          child: child,
-        ),
+      return _DesktopPaywall(
+        brand: ref.watch(tenantBootstrapProvider).brandConfig.brand,
+        onClose: _close,
+        child: child,
       );
     }
-    return ForcedDarkTheme(
-      child: Builder(builder: (context) {
-        final semantic = context.semantic;
-        return Scaffold(
-          // >= 600 presents as a centred dialog over a 45% scrim (13f).
-          backgroundColor:
-              isDialog ? AppColorsV2.ink.withOpacity(.45) : semantic.background,
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: isDialog
-                    ? Material(
-                        color: semantic.surface,
-                        borderRadius: AppRadius.lg,
-                        child: child)
-                    : child,
-              ),
-            ),
+    final semantic = context.semantic;
+    return Scaffold(
+      // >= 600 presents as a centred dialog over a soft scrim.
+      backgroundColor:
+          isDialog ? Colors.black.withOpacity(.24) : semantic.background,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: isDialog
+                ? Material(
+                    color: semantic.surface,
+                    borderRadius: AppRadius.lg,
+                    child: child)
+                : child,
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 
@@ -87,59 +80,76 @@ class _DesktopPaywall extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: AppColorsV2.ink,
-        body: Stack(
-          fit: StackFit.expand,
+  Widget build(BuildContext context) {
+    final heroHeight =
+        (MediaQuery.sizeOf(context).height - 48).clamp(320.0, 620.0).toDouble();
+    return Scaffold(
+      backgroundColor: context.semantic.background,
+      body: SafeArea(
+        child: Stack(
           children: [
-            Opacity(
-                opacity: .35, child: BrandHero(brand: brand, role: 'paywall')),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColorsV2.ink.withOpacity(.70),
-                    AppColorsV2.ink.withOpacity(.96),
-                  ],
-                ),
+            Positioned(
+              top: AppSpacing.lg,
+              left: AppSpacing.lg,
+              child: AppIconButton(
+                icon: Icons.close,
+                tooltip: 'Закрити',
+                filled: true,
+                onPressed: onClose,
               ),
             ),
-            SafeArea(
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: AppSpacing.lg,
-                    left: AppSpacing.lg,
-                    child: AppIconButton(
-                      icon: Icons.close,
-                      tooltip: 'Закрити',
-                      filled: true,
-                      onPressed: onClose,
-                    ),
-                  ),
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 1040),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 56),
-                        child: Row(
-                          children: [
-                            Expanded(child: _DesktopPremiumPitch(brand: brand)),
-                            const SizedBox(width: 64),
-                            SizedBox(width: 400, child: child),
-                          ],
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1080),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 56),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: heroHeight,
+                          child: ClipRRect(
+                            borderRadius: AppRadius.xl,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                BrandHero(brand: brand, role: 'paywall'),
+                                const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Color(0x33000000),
+                                        Color(0xCC000000),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(36),
+                                  child: Align(
+                                    alignment: Alignment.bottomLeft,
+                                    child: _DesktopPremiumPitch(brand: brand),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 48),
+                      SizedBox(width: 400, child: child),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _DesktopPremiumPitch extends StatelessWidget {
@@ -158,7 +168,7 @@ class _DesktopPremiumPitch extends StatelessWidget {
           Text(
             '${brand.name} Premium',
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  color: AppColorsV2.onInk,
+                  color: Colors.white,
                   fontFamily: context.brandTheme.displayFontFamily,
                   fontWeight: FontWeight.w700,
                 ),
@@ -169,7 +179,7 @@ class _DesktopPremiumPitch extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyLarge
-                ?.copyWith(color: context.semantic.textSecondary),
+                ?.copyWith(color: Colors.white.withOpacity(.86)),
           ),
           const SizedBox(height: AppSpacing.lg),
           const _DesktopBenefit(
@@ -200,7 +210,7 @@ class _DesktopBenefit extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodyLarge
-                    ?.copyWith(color: AppColorsV2.onInk)),
+                    ?.copyWith(color: Colors.white.withOpacity(.92))),
           ),
         ]),
       );

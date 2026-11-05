@@ -198,33 +198,40 @@ class _GuestState extends StatelessWidget {
   const _GuestState();
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const UserAvatar(radius: 36),
-                const SizedBox(height: AppSpacing.lg),
-                Text('Тримайте улюблені рецепти поруч',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                    'Каталог і пошук доступні без входу. Увійдіть, коли захочете зберігати рецепти та синхронізувати їх між пристроями.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge),
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  label: 'Увійти, щоб зберігати',
-                  icon: Icons.login,
-                  expand: true,
-                  onPressed: () => context
-                      .go('/login?returnTo=${Uri.encodeComponent('/saved')}'),
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const UserAvatar(radius: 36),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text('Тримайте улюблені рецепти поруч',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                          'Каталог і пошук доступні без входу. Увійдіть, коли захочете зберігати рецепти та синхронізувати їх між пристроями.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: AppSpacing.lg),
+                      AppButton(
+                        label: 'Увійти, щоб зберігати',
+                        icon: Icons.login,
+                        expand: true,
+                        onPressed: () => context.go(
+                            '/login?returnTo=${Uri.encodeComponent('/saved')}'),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

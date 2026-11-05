@@ -413,9 +413,8 @@ class _DesktopRecipeContent extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(recipe.title,
                 style: theme.textTheme.headlineLarge?.copyWith(
-                  fontFamily: AppFonts.body,
                   fontWeight: FontWeight.w600,
-                  fontSize: 32,
+                  fontSize: MediaQuery.sizeOf(context).width < 600 ? 34 : 46,
                 )),
             const SizedBox(height: AppSpacing.md),
             Row(children: [

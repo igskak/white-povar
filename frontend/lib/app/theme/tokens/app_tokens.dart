@@ -113,14 +113,14 @@ class SemanticColors extends ThemeExtension<SemanticColors> {
     // Variant B: paper-like neutrals let food photography and the tenant
     // accent do the expressive work. Widgets consume these semantic roles so
     // the same composition remains legible in the dark theme.
-    background: Color(0xFFFAF9F6),
-    surface: Color(0xFFFFFFFF),
+    background: Color(0xFFFAF8F4),
+    surface: Color(0xFFFFFDFA),
     surfaceRaised: Color(0xFFFFFFFF),
-    surfaceStrong: Color(0xFFF0EEE8),
-    outline: Color(0xFF8A887F),
-    outlineVariant: Color(0xFFE1DFD8),
-    textPrimary: Color(0xFF272D25),
-    textSecondary: Color(0xFF68665E),
+    surfaceStrong: Color(0xFFEEEAE2),
+    outline: Color(0xFF8D887E),
+    outlineVariant: Color(0xFFE4DFD6),
+    textPrimary: Color(0xFF292D25),
+    textSecondary: Color(0xFF6D6B64),
     success: Color(0xFF3E6B4A),
     warning: Color(0xFFB0832E),
     error: Color(0xFFA8362A),
@@ -237,12 +237,12 @@ class AppFonts {
 /// here. The light-mode aliases are retained so unmigrated widgets keep
 /// compiling while screens move onto `context.semantic`.
 class AppColorsV2 {
-  static const Color bg = Color(0xFFF4F0E8);
-  static const Color surface = Color(0xFFF8F4ED);
-  static const Color surfaceRaised = Color(0xFFFFFCF7);
-  static const Color surfaceStrong = Color(0xFFE8E0D4);
-  static const Color textPrimary = Color(0xFF201817);
-  static const Color textSecondary = Color(0xFF6B5E58);
+  static const Color bg = Color(0xFFFAF8F4);
+  static const Color surface = Color(0xFFFFFDFA);
+  static const Color surfaceRaised = Color(0xFFFFFFFF);
+  static const Color surfaceStrong = Color(0xFFEEEAE2);
+  static const Color textPrimary = Color(0xFF292D25);
+  static const Color textSecondary = Color(0xFF6D6B64);
 
   /// Product-tier colour, deliberately not a tenant brand role.
   static const Color premiumGold = Color(0xFFD9A441);

@@ -6,8 +6,8 @@ class ComponentThemes {
   static ElevatedButtonThemeData elevatedButtonTheme(ColorScheme scheme) =>
       ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          elevation: AppElevation.level1,
-          shadowColor: scheme.shadow.withOpacity(.22),
+          elevation: AppElevation.level0,
+          shadowColor: Colors.transparent,
           minimumSize: const Size(44, 46),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
@@ -115,7 +115,7 @@ class ComponentThemes {
         showCheckmark: false,
         surfaceTintColor: Colors.transparent,
         side: BorderSide(color: scheme.outlineVariant),
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.md),
+        shape: const StadiumBorder(),
         labelStyle: textTheme.bodySmall?.copyWith(
           color: scheme.onSurface,
           fontWeight: FontWeight.w600,

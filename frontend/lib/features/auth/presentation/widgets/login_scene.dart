@@ -31,8 +31,8 @@ class LoginHero extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      AppColorsV2.ink.withOpacity(.20),
-                      AppColorsV2.ink,
+                      Colors.transparent,
+                      context.semantic.background.withOpacity(.42),
                     ],
                   ),
                 ),

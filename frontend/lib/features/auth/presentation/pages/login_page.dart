@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_models.dart';
 import '../../../../core/branding/brand_assets.dart';
 import '../../../../core/branding/brand_providers.dart';
-import '../../../../app/theme/app_theme.dart';
 import '../../../../app/theme/tokens/app_tokens.dart';
 import '../../models/auth_state.dart';
 import '../../providers/auth_provider.dart';
@@ -114,56 +113,54 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       onGuestPressed: () => context.go('/home'),
     );
 
-    return ForcedDarkTheme(
-      child: Scaffold(
-        backgroundColor: SemanticColors.dark.background,
-        body: SafeArea(
-          child: width >= 1024
-              ? Row(
-                  key: const ValueKey('desktop-login-split'),
-                  children: [
-                    Expanded(
-                      flex: 46,
-                      child: KeyedSubtree(
-                        key: const ValueKey('desktop-login-hero'),
-                        child: LoginHero(brand: brand, compact: false),
-                      ),
+    return Scaffold(
+      backgroundColor: context.semantic.background,
+      body: SafeArea(
+        child: width >= 1024
+            ? Row(
+                key: const ValueKey('desktop-login-split'),
+                children: [
+                  Expanded(
+                    flex: 46,
+                    child: KeyedSubtree(
+                      key: const ValueKey('desktop-login-hero'),
+                      child: LoginHero(brand: brand, compact: false),
                     ),
-                    Expanded(
-                      flex: 54,
-                      child: Center(
-                        key: const ValueKey('desktop-login-form'),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(32),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 440),
-                            child: form,
-                          ),
+                  ),
+                  Expanded(
+                    flex: 54,
+                    child: Center(
+                      key: const ValueKey('desktop-login-form'),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(32),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: form,
                         ),
                       ),
                     ),
-                  ],
-                )
-              : Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          KeyedSubtree(
-                            key: const ValueKey('mobile-login-hero'),
-                            child: LoginHero(brand: brand, compact: true),
-                          ),
-                          const SizedBox(height: 16),
-                          form,
-                        ],
-                      ),
+                  ),
+                ],
+              )
+            : Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        KeyedSubtree(
+                          key: const ValueKey('mobile-login-hero'),
+                          child: LoginHero(brand: brand, compact: true),
+                        ),
+                        const SizedBox(height: 16),
+                        form,
+                      ],
                     ),
                   ),
                 ),
-        ),
+              ),
       ),
     );
   }

@@ -144,7 +144,6 @@ class HomeIntro extends StatelessWidget {
                 Text(
                   'Що приготуємо сьогодні?',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontFamily: AppFonts.body,
                         fontWeight: FontWeight.w600,
                         height: 1.1,
                       ),
@@ -515,7 +514,6 @@ class _DesktopHomeIntro extends StatelessWidget {
                 Text(
                   'Що приготуємо сьогодні?',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontFamily: AppFonts.body,
                         fontWeight: FontWeight.w600,
                         fontSize: 34,
                       ),

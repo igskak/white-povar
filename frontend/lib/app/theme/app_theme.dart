@@ -17,8 +17,7 @@ class AppThemeV2 {
       );
 
   /// The dark theme for the same brand as [base], regardless of the ambient
-  /// [ThemeMode]. Used by the permanently dark scenes (camera flow, login,
-  /// paywall) per the Handoff Spec.
+  /// [ThemeMode]. Reserved for immersive scenes such as the camera flow.
   static ThemeData forcedDark(ThemeData base) {
     final brand = base.extension<BrandThemeExtension>();
     if (brand == null) return base;
@@ -60,7 +59,7 @@ class AppThemeV2 {
         isDark ? const Color(0xFF15120E) : semantic.surfaceRaised;
     final surfaceContainerLow = semantic.surface;
     final surfaceContainer =
-        isDark ? const Color(0xFF272119) : const Color(0xFFFAF9F6);
+        isDark ? const Color(0xFF272119) : const Color(0xFFFAF8F4);
     final surfaceContainerHigh =
         isDark ? semantic.surfaceStrong : const Color(0xFFF4F2EC);
     final surfaceContainerHighest =
@@ -114,14 +113,14 @@ class AppThemeV2 {
     final textTheme = baseText.copyWith(
       headlineLarge: TextStyle(
           fontFamily: brand.displayFontFamily,
-          fontSize: 40,
-          height: 1.05,
+          fontSize: 44,
+          height: 1.04,
           fontWeight: FontWeight.w700,
           color: onSurface),
       headlineMedium: TextStyle(
           fontFamily: brand.displayFontFamily,
-          fontSize: 30,
-          height: 1.1,
+          fontSize: 34,
+          height: 1.08,
           fontWeight: FontWeight.w700,
           color: onSurface),
       headlineSmall: TextStyle(
@@ -213,6 +212,7 @@ class AppThemeV2 {
       navigationBarTheme: ComponentThemes.navigationBarTheme(scheme, textTheme),
       navigationRailTheme:
           ComponentThemes.navigationRailTheme(scheme, textTheme),
+      iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
       listTileTheme: ComponentThemes.listTileTheme(scheme),
       dividerTheme: ComponentThemes.dividerTheme(scheme),
       dialogTheme: ComponentThemes.dialogTheme(scheme),

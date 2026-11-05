@@ -47,7 +47,7 @@ class PaywallPitch extends StatelessWidget {
           const SizedBox(height: 4),
           Text('— ${brand.creatorName}, ${brand.name}',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.brandTheme.accentOnDark,
+                  color: _selectionAccent(context),
                   fontStyle: FontStyle.italic)),
           const SizedBox(height: 16),
           // 13m: the course benefit disappears when the brand publishes no
@@ -148,7 +148,7 @@ class PaywallProductOption extends StatelessWidget {
               decoration: BoxDecoration(
                   border: Border.all(
                       color: selected
-                          ? context.brandTheme.accentOnDark
+                          ? _selectionAccent(context)
                           : context.semantic.surfaceStrong,
                       width: selected ? 2 : 1),
                   borderRadius: AppRadius.md),
@@ -157,7 +157,7 @@ class PaywallProductOption extends StatelessWidget {
                     selected
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
-                    color: context.brandTheme.accentOnDark),
+                    color: _selectionAccent(context)),
                 const SizedBox(width: 10),
                 Expanded(
                     child: Column(
@@ -194,10 +194,15 @@ class PaywallBenefit extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(children: [
-        Icon(icon, size: 18, color: context.brandTheme.accentOnDark),
+        Icon(icon, size: 18, color: _selectionAccent(context)),
         const SizedBox(width: 9),
         Expanded(
             child: Text(text,
                 style: TextStyle(color: context.semantic.textPrimary)))
       ]));
 }
+
+Color _selectionAccent(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+        ? context.brandTheme.accentOnDark
+        : context.brandTheme.accent;
